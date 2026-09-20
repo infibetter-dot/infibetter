@@ -1,0 +1,49 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+.output
+.vinxi
+.tanstack/**
+.nitro
+*.local
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vercel
+.env*
+# Olive Living backup / test files
+backup.dump
+backup.sql
+olive_backup.sql
+BF08-check.png
+Invoice-OLV-TEST-001.pdf
+checkout.txt
+checkout.zip
+fix-featured.cjs
+fix-rating.cjs
+rebuild-featured-card.cjs
+redesign-card.cjs
+test-email.cjs
+test-invoice.cjs
+schema.sql
