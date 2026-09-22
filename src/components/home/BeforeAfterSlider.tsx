@@ -16,7 +16,7 @@ interface BeforeAfterSliderProps {
 }
 
 const R2_BASE =
-  "https://pub-16208320b245401d98649b48aeb33803.r2.dev";
+  "https://pub-0cd2f412dea6458f9d637462a9d3716b.r2.dev";
 
 const FLOOR_LAMP_IMAGES: Record<string, string> = {
   halfround: `${R2_BASE}/products/halfround.jpg`,

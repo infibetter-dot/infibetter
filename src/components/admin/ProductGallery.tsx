@@ -30,8 +30,7 @@ interface Props {
  *
  * Database chỉ lưu URL R2 vào product_images.image_url
  */
-const R2_UPLOAD_URL =
-  "https://olive-r2-upload.racheltrinh0.workers.dev/upload";
+const R2_UPLOAD_URL = "/api/upload-r2";
 
 interface ProductImage {
   id: string;
