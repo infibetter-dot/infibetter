@@ -1,0 +1,7 @@
+name = "olive-r2-upload"
+main = "worker-r2.js"
+compatibility_date = "2026-09-16"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "olive-storage"

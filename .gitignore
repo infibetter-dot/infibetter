@@ -47,3 +47,8 @@ redesign-card.cjs
 test-email.cjs
 test-invoice.cjs
 schema.sql
+# Supabase local temp
+supabase/.temp/
+
+# Windows shortcuts
+*.lnk

@@ -1,0 +1,31 @@
+﻿project_id = "ovphfbpslxzonshphfhh"
+
+[functions.send-voucher-email]
+enabled = true
+verify_jwt = false
+import_map = "./functions/send-voucher-email/deno.json"
+entrypoint = "./functions/send-voucher-email/index.ts"
+
+
+[functions.send-order-confirmation]
+verify_jwt = false
+import_map = "./functions/send-order-confirmation/deno.json"
+entrypoint = "./functions/send-order-confirmation/index.ts"
+
+
+[functions.deploy-test]
+verify_jwt = false
+import_map = "./functions/deploy-test/deno.json"
+entrypoint = "./functions/deploy-test/index.ts"
+
+
+[functions.deploy-test-olive]
+enabled = true
+verify_jwt = false
+import_map = "./functions/deploy-test-olive/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/deploy-test-olive/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/deploy-test-olive/*.html" ]
