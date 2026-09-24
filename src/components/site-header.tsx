@@ -1,74 +1,149 @@
-import { Link } from "@tanstack/react-router";
+﻿import { Link } from "@tanstack/react-router";
 import {
+  ArrowRight,
+  ChevronDown,
+  Menu,
+  Search,
   ShoppingBag,
   User,
-  Menu,
   X,
-  Search,
-  ChevronDown,
-  LampDesk,
-  LampFloor,
-  Lightbulb,
-  Home,
-  Sparkles,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/lib/cart";
 
-const NAV = [
-  { to: "/", label: "Trang chủ" },
-  { to: "/shop", label: "Cửa hàng" },
-];
+import banner01 from "@/assets/hero/banner01.png";
+import banner02 from "@/assets/hero/banner02.png";
+import banner03 from "@/assets/hero/banner03.png";
 
-const categories = [
+type MegaMenuKey = "cases" | "charging" | "lifestyle" | null;
+
+type MegaColumn = {
+  title: string;
+  image: string;
+  items: string[];
+  category: string;
+};
+
+const megaMenus: Record<
+  Exclude<MegaMenuKey, null>,
   {
-    title: "Đèn bàn",
-    slug: "den-ban",
-    icon: LampDesk,
+    title: string;
+    image: string;
+    columns: MegaColumn[];
+  }
+> = {
+  cases: {
+    title: "Cases & Bands",
+    image: banner02,
+    columns: [
+      {
+        title: "iPhone Cases",
+        image: banner01,
+        items: [
+          "Signature Cases",
+          "Stand Cases",
+          "Bumper Cases",
+          "Essential Cases",
+        ],
+        category: "iphone-cases",
+      },
+      {
+        title: "iPad Cases",
+        image: banner02,
+        items: ["TypeMate", "StudioCase Air", "PivotCase"],
+        category: "ipad-cases",
+      },
+      {
+        title: "Apple Watch Bands",
+        image: banner03,
+        items: ["WatchBand Active", "Titanium Bands", "Sport Bands"],
+        category: "watch-bands",
+      },
+    ],
   },
-  {
-    title: "Đèn đứng",
-    slug: "den-dung",
-    icon: LampFloor,
+
+  charging: {
+    title: "Charging",
+    image: banner03,
+    columns: [
+      {
+        title: "Wireless Charging",
+        image: banner03,
+        items: ["MagFold Qi2", "MagBank Qi2", "3-in-1 Chargers"],
+        category: "wireless-chargers",
+      },
+      {
+        title: "Power Banks",
+        image: banner02,
+        items: ["MagBank Slim", "MagBank Pro", "Travel Power"],
+        category: "power-banks",
+      },
+      {
+        title: "Wall Chargers",
+        image: banner01,
+        items: ["20W Chargers", "30W Chargers", "65W Chargers"],
+        category: "chargers",
+      },
+      {
+        title: "Charging Cables",
+        image: banner03,
+        items: ["USB-C", "USB-C to Lightning", "Braided Cables"],
+        category: "charging-cables",
+      },
+    ],
   },
-  {
-    title: "Đèn thả",
-    slug: "den-tha",
-    icon: Lightbulb,
+
+  lifestyle: {
+    title: "Lifestyle Gear",
+    image: banner01,
+    columns: [
+      {
+        title: "Travel",
+        image: banner01,
+        items: ["Travel Accessories", "Tech Organizers", "Portable Gear"],
+        category: "travel",
+      },
+      {
+        title: "Desk Setup",
+        image: banner03,
+        items: ["Desk Accessories", "Stands", "Organization"],
+        category: "desk-setup",
+      },
+      {
+        title: "Everyday Carry",
+        image: banner02,
+        items: ["Everyday Gear", "Minimal Accessories", "Smart Essentials"],
+        category: "everyday-carry",
+      },
+      {
+        title: "Apple Setup",
+        image: banner01,
+        items: ["iPhone", "Apple Watch", "AirPods"],
+        category: "apple",
+      },
+    ],
   },
-  {
-    title: "Đèn tường",
-    slug: "den-tuong",
-    icon: Home,
-  },
-  {
-    title: "Đồ decor",
-    slug: "do-decor",
-    icon: Sparkles,
-  },
-];
+};
 
 export function SiteHeader() {
   const { count } = useCart();
 
-  const [open, setOpen] = useState(false);
-  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<MegaMenuKey>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const categoryRef = useRef<HTMLDivElement>(null);
-
-  /* =====================================================
-     CLOSE CATEGORY WHEN CLICK OUTSIDE
-  ====================================================== */
+  const headerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        categoryRef.current &&
-        !categoryRef.current.contains(event.target as Node)
+        headerRef.current &&
+        !headerRef.current.contains(event.target as Node)
       ) {
-        setCategoryOpen(false);
+        setActiveMenu(null);
+        setSearchOpen(false);
+        setMobileOpen(false);
       }
     };
 
@@ -79,16 +154,12 @@ export function SiteHeader() {
     };
   }, []);
 
-  /* =====================================================
-     ESC TO CLOSE
-  ====================================================== */
-
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setCategoryOpen(false);
+        setActiveMenu(null);
         setSearchOpen(false);
-        setOpen(false);
+        setMobileOpen(false);
       }
     };
 
@@ -98,10 +169,6 @@ export function SiteHeader() {
       document.removeEventListener("keydown", handleEscape);
     };
   }, []);
-
-  /* =====================================================
-     SEARCH
-  ====================================================== */
 
   const handleSearchSubmit = (
     event: React.FormEvent<HTMLFormElement>,
@@ -115,770 +182,665 @@ export function SiteHeader() {
     window.location.href = `/shop?q=${encodeURIComponent(keyword)}`;
   };
 
-  /* =====================================================
-     CLOSE MOBILE MENU
-  ====================================================== */
+  const toggleMenu = (menu: Exclude<MegaMenuKey, null>) => {
+    setSearchOpen(false);
+    setMobileOpen(false);
 
-  const closeMobileMenu = () => {
-    setOpen(false);
-    setCategoryOpen(false);
+    setActiveMenu((current) => (current === menu ? null : menu));
   };
+
+  const activeMegaMenu =
+    activeMenu === null ? null : megaMenus[activeMenu];
 
   return (
     <header
+      ref={headerRef}
       className="
         sticky
         top-0
-        z-50
-        bg-transparent
-        px-3
+        z-[100]
+        w-full
+        bg-[#F7F8FA]/95
         py-2
-        sm:px-5
-        sm:py-3
+        backdrop-blur-xl
+        sm:py-2.5
       "
     >
-      {/* =====================================================
-          MAIN CAPSULE HEADER
-      ====================================================== */}
+      {/* TOP ANNOUNCEMENT */}
 
       <div
         className="
-          mx-auto
+          mb-1.5
           flex
-          h-14
-          w-full
-          max-w-[1600px]
+          h-4
           items-center
-          justify-between
-          gap-4
-          rounded-full
-          border
-          border-neutral-200/80
-          bg-white
-          px-5
-          shadow-[0_8px_30px_rgba(0,0,0,0.06)]
-          sm:h-16
-          sm:px-6
-          lg:px-7
+          justify-center
+          gap-2
+          text-[7px]
+          font-semibold
+          uppercase
+          tracking-[0.08em]
+          text-[#334155]
         "
       >
-        {/* =================================================
-            LOGO
-        ================================================== */}
+        <span>Free tracked shipping</span>
+        <span className="text-[#94A3B8]">·</span>
+        <span>30-day returns</span>
+      </div>
 
-        <Link
-          to="/"
+      {/* HEADER CAPSULE */}
+
+      <div className="relative mx-auto w-[calc(100%-24px)] max-w-[1320px]">
+        <div
           className="
-            shrink-0
-            font-display
-            text-[20px]
-            font-semibold
-            tracking-[0.12em]
-            text-[#2F2F2F]
-            sm:text-[22px]
-          "
-        >
-          OLIVE LIVING
-          <span className="text-primary">.</span>
-        </Link>
-
-        {/* =================================================
-            DESKTOP NAV
-        ================================================== */}
-
-        <nav
-          className="
-            hidden
+            relative
+            flex
+            h-[54px]
             items-center
-            gap-9
-            lg:flex
+            rounded-[12px]
+            border
+            border-[#D8DDE4]
+            bg-white
+            px-3
+            shadow-[0_2px_12px_rgba(15,23,42,0.06)]
+            sm:h-[58px]
+            sm:px-4
+            lg:px-5
           "
         >
-          {/* -------------------------------------------------
-              TRANG CHỦ / CỬA HÀNG
-          -------------------------------------------------- */}
+          {/* LOGO */}
 
-          {NAV.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className="
-                relative
-                text-[14px]
-                font-normal
-                tracking-wide
-                text-neutral-600
-                transition-all
-                duration-300
-                hover:text-black
-
-                after:absolute
-                after:-bottom-1
-                after:left-0
-                after:h-px
-                after:w-0
-                after:bg-black
-                after:transition-all
-                hover:after:w-full
-              "
-              activeProps={{
-                className:
-                  "relative text-[14px] font-normal tracking-wide text-black after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:bg-black",
-              }}
-            >
-              {item.label}
-            </Link>
-          ))}
-
-          {/* =================================================
-              DANH MỤC
-          ================================================== */}
-
-          <div
-            ref={categoryRef}
-            className="relative"
+          <Link
+            to="/"
+            onClick={() => {
+              setActiveMenu(null);
+              setMobileOpen(false);
+            }}
+            className="
+              shrink-0
+              text-[18px]
+              font-bold
+              tracking-[-0.055em]
+              text-[#111827]
+              sm:text-[20px]
+            "
           >
-            <button
-              type="button"
-              onClick={() =>
-                setCategoryOpen((value) => !value)
-              }
-              aria-expanded={categoryOpen}
-              aria-haspopup="menu"
+            INFIBETTER
+          </Link>
+
+          {/* DESKTOP NAV */}
+
+          <nav
+            className="
+              absolute
+              left-1/2
+              hidden
+              -translate-x-1/2
+              items-center
+              gap-7
+              lg:flex
+            "
+          >
+            <Link
+              to="/shop"
               className="
                 flex
                 items-center
-                gap-1.5
-                text-[14px]
-                font-normal
-                tracking-wide
-                text-neutral-600
-                transition-all
-                duration-300
-                hover:text-black
+                gap-1
+                whitespace-nowrap
+                text-[10px]
+                font-semibold
+                text-[#334155]
+                transition-colors
+                hover:text-[#0877E8]
               "
             >
-              <span>Danh mục</span>
-
-              <ChevronDown
-                className={`
-                  h-3.5
-                  w-3.5
-                  transition-transform
-                  duration-300
-                  ${
-                    categoryOpen
-                      ? "rotate-180"
-                      : "rotate-0"
-                  }
-                `}
-                strokeWidth={1.5}
-              />
-            </button>
-
-            {/* =================================================
-                DESKTOP DROPDOWN
-            ================================================== */}
-
-            {categoryOpen && (
-              <div
-                className="
-                  absolute
-                  left-1/2
-                  top-[calc(100%+18px)]
-                  z-[100]
-                  w-[245px]
-                  -translate-x-1/2
-                  overflow-hidden
-                  rounded-2xl
-                  border
-                  border-neutral-200/80
-                  bg-white
-                  p-2
-                  shadow-[0_18px_50px_rgba(0,0,0,0.10)]
-                "
-              >
-                {/* -------------------------------------------------
-                    DROPDOWN HEADER
-                -------------------------------------------------- */}
-
-                <div className="px-3 pb-2 pt-2">
-                  <p
-                    className="
-                      text-[9px]
-                      font-medium
-                      uppercase
-                      tracking-[0.28em]
-                      text-neutral-400
-                    "
-                  >
-                    COLLECTIONS
-                  </p>
-                </div>
-
-                {/* -------------------------------------------------
-                    CATEGORY LIST
-                -------------------------------------------------- */}
-
-                <div className="space-y-0.5">
-                  {categories.map((category) => {
-                    const Icon = category.icon;
-
-                    return (
-                      <Link
-                        key={category.slug}
-                        to="/shop"
-                        search={{
-                          category: category.slug,
-                        } as never}
-                        onClick={() =>
-                          setCategoryOpen(false)
-                        }
-                        className="
-                          group
-                          flex
-                          items-center
-                          justify-between
-                          rounded-xl
-                          px-3
-                          py-2.5
-                          text-[13px]
-                          text-neutral-600
-                          transition-all
-                          duration-200
-                          hover:bg-[#F7FAF5]
-                          hover:text-[#6F8B5E]
-                        "
-                      >
-                        {/* ICON + LABEL */}
-
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="
-                              flex
-                              h-8
-                              w-8
-                              shrink-0
-                              items-center
-                              justify-center
-                              rounded-lg
-                              border
-                              border-neutral-100
-                              bg-neutral-50
-                              text-neutral-500
-                              transition-all
-                              duration-200
-                              group-hover:border-[#DDE8D7]
-                              group-hover:bg-[#F1F6EE]
-                              group-hover:text-[#6F8B5E]
-                            "
-                          >
-                            <Icon
-                              className="
-                                h-[17px]
-                                w-[17px]
-                              "
-                              strokeWidth={1.5}
-                            />
-                          </div>
-
-                          <span>
-                            {category.title}
-                          </span>
-                        </div>
-
-                        {/* ARROW */}
-
-                        <span
-                          className="
-                            text-[13px]
-                            text-neutral-300
-                            transition-transform
-                            duration-200
-                            group-hover:translate-x-1
-                            group-hover:text-[#6F8B5E]
-                          "
-                        >
-                          →
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-
-                {/* -------------------------------------------------
-                    ALL PRODUCTS
-                -------------------------------------------------- */}
-
-                <div
-                  className="
-                    mt-1
-                    border-t
-                    border-neutral-100
-                    pt-1
-                  "
-                >
-                  <Link
-                    to="/shop"
-                    onClick={() =>
-                      setCategoryOpen(false)
-                    }
-                    className="
-                      group
-                      flex
-                      items-center
-                      justify-between
-                      rounded-xl
-                      px-3
-                      py-2.5
-                      text-[13px]
-                      font-medium
-                      text-[#2F2F2F]
-                      transition-all
-                      duration-200
-                      hover:bg-neutral-50
-                    "
-                  >
-                    <span>
-                      Xem tất cả sản phẩm
-                    </span>
-
-                    <span
-                      className="
-                        transition-transform
-                        duration-200
-                        group-hover:translate-x-1
-                      "
-                    >
-                      →
-                    </span>
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-        </nav>
-
-        {/* =====================================================
-            RIGHT ACTIONS
-        ====================================================== */}
-
-        <div className="flex items-center gap-0.5">
-          {/* =================================================
-              ACCOUNT - DESKTOP ONLY
-          ================================================== */}
-
-          <Link
-            to="/account"
-            aria-label="Tài khoản"
-            className="
-              hidden
-              h-10
-              w-10
-              items-center
-              justify-center
-              rounded-full
-              text-neutral-600
-              transition-all
-              duration-300
-              hover:bg-neutral-100
-              hover:text-black
-              lg:inline-flex
-            "
-          >
-            <User
-              className="h-[18px] w-[18px]"
-              strokeWidth={1.5}
-            />
-          </Link>
-
-          {/* =================================================
-              SEARCH
-          ================================================== */}
-
-          <button
-            type="button"
-            aria-label="Tìm kiếm"
-            onClick={() =>
-              setSearchOpen((value) => !value)
-            }
-            className="
-              inline-flex
-              h-10
-              w-10
-              items-center
-              justify-center
-              rounded-full
-              text-neutral-600
-              transition-all
-              duration-300
-              hover:bg-neutral-100
-              hover:text-black
-            "
-          >
-            <Search
-              className="h-[19px] w-[19px]"
-              strokeWidth={1.5}
-            />
-          </button>
-
-          {/* =================================================
-              CART
-          ================================================== */}
-
-          <Link
-            to="/cart"
-            aria-label="Giỏ hàng"
-            className="
-              relative
-              inline-flex
-              h-10
-              w-10
-              items-center
-              justify-center
-              rounded-full
-              text-neutral-600
-              transition-all
-              duration-300
-              hover:bg-neutral-100
-              hover:text-black
-            "
-          >
-            <ShoppingBag
-              className="h-[19px] w-[19px]"
-              strokeWidth={1.5}
-            />
-
-            {count > 0 && (
-              <span
-                className="
-                  absolute
-                  right-0
-                  top-0
-                  grid
-                  h-[17px]
-                  min-w-[17px]
-                  place-items-center
-                  rounded-full
-                  bg-primary
-                  px-1
-                  text-[9px]
-                  font-medium
-                  text-primary-foreground
-                "
-              >
-                {count}
-              </span>
-            )}
-          </Link>
-
-          {/* =================================================
-              MOBILE MENU
-          ================================================== */}
-
-          <button
-            type="button"
-            aria-label="Menu"
-            onClick={() =>
-              setOpen((value) => !value)
-            }
-            className="
-              inline-flex
-              h-10
-              w-10
-              items-center
-              justify-center
-              rounded-full
-              text-neutral-600
-              transition-all
-              duration-300
-              hover:bg-neutral-100
-              lg:hidden
-            "
-          >
-            {open ? (
-              <X
-                className="h-[19px] w-[19px]"
-                strokeWidth={1.5}
-              />
-            ) : (
-              <Menu
-                className="h-[19px] w-[19px]"
-                strokeWidth={1.5}
-              />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* =====================================================
-          SEARCH PANEL
-      ====================================================== */}
-
-      {searchOpen && (
-        <div
-          className="
-            mx-auto
-            mt-2
-            max-w-[1600px]
-            rounded-2xl
-            border
-            border-neutral-200
-            bg-white
-            p-3
-            shadow-[0_10px_35px_rgba(0,0,0,0.08)]
-          "
-        >
-          <form
-            onSubmit={handleSearchSubmit}
-            className="
-              flex
-              items-center
-              gap-2
-            "
-          >
-            <Search
-              className="
-                ml-2
-                h-4
-                w-4
-                shrink-0
-                text-neutral-400
-              "
-              strokeWidth={1.5}
-            />
-
-            <input
-              autoFocus
-              type="text"
-              value={searchValue}
-              onChange={(event) =>
-                setSearchValue(event.target.value)
-              }
-              placeholder="Tìm kiếm sản phẩm..."
-              className="
-                h-10
-                flex-1
-                bg-transparent
-                px-2
-                text-sm
-                text-neutral-800
-                outline-none
-                placeholder:text-neutral-400
-              "
-            />
+              Shop Apple accessories
+              <ArrowRight size={10} strokeWidth={1.8} />
+            </Link>
 
             <button
-              type="submit"
-              className="
-                rounded-full
-                bg-[#2F3528]
-                px-5
-                py-2.5
-                text-xs
-                font-medium
-                text-white
-                transition
-                hover:bg-[#6F8B5E]
-              "
+              type="button"
+              onClick={() => toggleMenu("cases")}
+              className={`
+                flex
+                items-center
+                gap-1
+                whitespace-nowrap
+                text-[10px]
+                font-semibold
+                transition-colors
+                ${
+                  activeMenu === "cases"
+                    ? "text-[#0877E8]"
+                    : "text-[#334155]"
+                }
+              `}
             >
-              Tìm kiếm
+              Cases & Bands
+              <ChevronDown
+                size={11}
+                strokeWidth={1.7}
+                className={`transition-transform duration-200 ${
+                  activeMenu === "cases" ? "rotate-180" : ""
+                }`}
+              />
             </button>
-          </form>
-        </div>
-      )}
 
-      {/* =====================================================
-          MOBILE MENU
-      ====================================================== */}
-
-      {open && (
-        <div
-          className="
-            mx-auto
-            mt-2
-            max-w-[1600px]
-            overflow-hidden
-            rounded-2xl
-            border
-            border-neutral-200
-            bg-white
-            shadow-[0_10px_35px_rgba(0,0,0,0.08)]
-            lg:hidden
-          "
-        >
-          <nav className="flex flex-col p-3">
-            {/* -------------------------------------------------
-                TRANG CHỦ
-            -------------------------------------------------- */}
-
-            <Link
-              to="/"
-              onClick={closeMobileMenu}
-              className="
-                rounded-xl
-                px-4
-                py-3
-                text-sm
-                text-neutral-700
-                transition
-                hover:bg-neutral-50
-              "
+            <button
+              type="button"
+              onClick={() => toggleMenu("charging")}
+              className={`
+                flex
+                items-center
+                gap-1
+                whitespace-nowrap
+                text-[10px]
+                font-semibold
+                transition-colors
+                ${
+                  activeMenu === "charging"
+                    ? "text-[#0877E8]"
+                    : "text-[#334155]"
+                }
+              `}
             >
-              Trang chủ
-            </Link>
+              Charging
+              <ChevronDown
+                size={11}
+                strokeWidth={1.7}
+                className={`transition-transform duration-200 ${
+                  activeMenu === "charging" ? "rotate-180" : ""
+                }`}
+              />
+            </button>
 
-            {/* -------------------------------------------------
-                CỬA HÀNG
-            -------------------------------------------------- */}
-
-            <Link
-              to="/shop"
-              onClick={closeMobileMenu}
-              className="
-                rounded-xl
-                px-4
-                py-3
-                text-sm
-                text-neutral-700
-                transition
-                hover:bg-neutral-50
-              "
+            <button
+              type="button"
+              onClick={() => toggleMenu("lifestyle")}
+              className={`
+                flex
+                items-center
+                gap-1
+                whitespace-nowrap
+                text-[10px]
+                font-semibold
+                transition-colors
+                ${
+                  activeMenu === "lifestyle"
+                    ? "text-[#0877E8]"
+                    : "text-[#334155]"
+                }
+              `}
             >
-              Cửa hàng
-            </Link>
+              Lifestyle Gear
+              <ChevronDown
+                size={11}
+                strokeWidth={1.7}
+                className={`transition-transform duration-200 ${
+                  activeMenu === "lifestyle" ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          </nav>
 
-            {/* =================================================
-                MOBILE CATEGORY
-            ================================================== */}
+          {/* ACTIONS */}
 
-            <div
-              className="
-                mt-1
-                border-t
-                border-neutral-100
-                pt-1
-              "
-            >
-              <p
+          <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
+            {searchOpen && (
+              <form
+                onSubmit={handleSearchSubmit}
                 className="
-                  px-4
-                  pb-2
-                  pt-3
-                  text-[9px]
-                  font-medium
-                  uppercase
-                  tracking-[0.28em]
-                  text-neutral-400
+                  hidden
+                  h-8
+                  w-[180px]
+                  overflow-hidden
+                  rounded-[7px]
+                  border
+                  border-[#D9DEE5]
+                  bg-[#F8FAFC]
+                  lg:flex
                 "
               >
-                DANH MỤC
-              </p>
+                <input
+                  autoFocus
+                  value={searchValue}
+                  onChange={(event) =>
+                    setSearchValue(event.target.value)
+                  }
+                  placeholder="Search"
+                  className="
+                    min-w-0
+                    flex-1
+                    bg-transparent
+                    px-3
+                    text-[9px]
+                    text-[#111827]
+                    outline-none
+                    placeholder:text-[#94A3B8]
+                  "
+                />
+              </form>
+            )}
 
-              {categories.map((category) => {
-                const Icon = category.icon;
+            <button
+              type="button"
+              onClick={() => setSearchOpen((value) => !value)}
+              aria-label="Search"
+              className="
+                flex
+                h-8
+                w-8
+                items-center
+                justify-center
+                rounded-full
+                text-[#334155]
+                transition
+                hover:bg-[#F1F5F9]
+                hover:text-[#0877E8]
+              "
+            >
+              {searchOpen ? (
+                <X size={16} strokeWidth={1.7} />
+              ) : (
+                <Search size={16} strokeWidth={1.7} />
+              )}
+            </button>
 
-                return (
-                  <Link
-                    key={category.slug}
-                    to="/shop"
-                    search={{
-                      category: category.slug,
-                    } as never}
-                    onClick={closeMobileMenu}
-                    className="
-                      group
-                      flex
-                      items-center
-                      justify-between
-                      rounded-xl
-                      px-4
-                      py-2.5
-                      text-sm
-                      text-neutral-600
-                      transition-all
-                      duration-200
-                      hover:bg-[#F7FAF5]
-                      hover:text-[#6F8B5E]
-                    "
-                  >
-                    {/* ICON + LABEL */}
+            <Link
+              to="/account"
+              aria-label="Account"
+              className="
+                hidden
+                h-8
+                w-8
+                items-center
+                justify-center
+                rounded-full
+                text-[#334155]
+                transition
+                hover:bg-[#F1F5F9]
+                hover:text-[#0877E8]
+                sm:flex
+              "
+            >
+              <User size={16} strokeWidth={1.7} />
+            </Link>
 
-                    <div className="flex items-center gap-3">
+            <Link
+              to="/cart"
+              aria-label="Cart"
+              className="
+                relative
+                flex
+                h-8
+                w-8
+                items-center
+                justify-center
+                rounded-full
+                text-[#334155]
+                transition
+                hover:bg-[#F1F5F9]
+                hover:text-[#0877E8]
+              "
+            >
+              <ShoppingBag size={16} strokeWidth={1.7} />
+
+              {count > 0 && (
+                <span
+                  className="
+                    absolute
+                    right-0
+                    top-0
+                    flex
+                    h-3.5
+                    min-w-3.5
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-[#0877E8]
+                    px-1
+                    text-[7px]
+                    font-bold
+                    text-white
+                  "
+                >
+                  {count > 99 ? "99+" : count}
+                </span>
+              )}
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMobileOpen((value) => !value);
+                setActiveMenu(null);
+              }}
+              aria-label="Menu"
+              className="
+                flex
+                h-8
+                w-8
+                items-center
+                justify-center
+                rounded-full
+                text-[#334155]
+                lg:hidden
+              "
+            >
+              {mobileOpen ? <X size={17} /> : <Menu size={17} />}
+            </button>
+          </div>
+        </div>
+
+        {/* MEGA MENU */}
+
+        {activeMegaMenu && (
+          <div
+            className="
+              absolute
+              left-1/2
+              top-[62px]
+              hidden
+              w-[calc(100%-48px)]
+              max-w-[1240px]
+              -translate-x-1/2
+              overflow-hidden
+              rounded-[14px]
+              border
+              border-[#DDE2E8]
+              bg-white
+              shadow-[0_18px_50px_rgba(15,23,42,0.14)]
+              lg:block
+            "
+          >
+            <div className="grid grid-cols-[1fr_172px] gap-2 p-3">
+              {/* CATEGORY CARDS */}
+
+              <div
+                className="
+                  grid
+                  grid-cols-3
+                  gap-5
+                  p-2
+                "
+              >
+                {activeMegaMenu.columns.map((column) => (
+                  <div key={column.title} className="min-w-0">
+                    <Link
+                      to="/shop"
+                      search={{
+                        category: column.category,
+                      } as never}
+                      onClick={() => setActiveMenu(null)}
+                      className="group block"
+                    >
+                      {/* DEMO IMAGE CARD */}
+
                       <div
                         className="
-                          flex
-                          h-8
-                          w-8
-                          items-center
-                          justify-center
-                          rounded-lg
-                          bg-neutral-50
-                          text-neutral-400
-                          transition-all
-                          group-hover:bg-[#F1F6EE]
-                          group-hover:text-[#6F8B5E]
+                          relative
+                          mb-3
+                          aspect-[2.2/1]
+                          w-full
+                          overflow-hidden
+                          rounded-[9px]
+                          border
+                          border-[#E5E7EB]
+                          bg-[#F1F3F5]
                         "
                       >
-                        <Icon
-                          className="h-4 w-4"
-                          strokeWidth={1.5}
+                        <img
+                          src={column.image}
+                          alt={column.title}
+                          className="
+                            h-full
+                            w-full
+                            object-cover
+                            transition-transform
+                            duration-500
+                            group-hover:scale-[1.04]
+                          "
                         />
                       </div>
 
-                      <span>
-                        {category.title}
-                      </span>
+                      {/* TITLE */}
+
+                      <div
+                        className="
+                          flex
+                          items-center
+                          gap-1
+                          text-[10px]
+                          font-semibold
+                          text-[#111827]
+                          transition-colors
+                          group-hover:text-[#0877E8]
+                        "
+                      >
+                        {column.title}
+                        <ArrowRight
+                          size={9}
+                          className="
+                            opacity-40
+                            transition
+                            group-hover:translate-x-0.5
+                            group-hover:opacity-100
+                          "
+                        />
+                      </div>
+                    </Link>
+
+                    {/* ITEMS */}
+
+                    <div className="mt-3 flex flex-col gap-2">
+                      {column.items.map((item) => (
+                        <Link
+                          key={item}
+                          to="/shop"
+                          search={{ q: item } as never}
+                          onClick={() => setActiveMenu(null)}
+                          className="
+                            w-fit
+                            text-[9px]
+                            font-medium
+                            text-[#64748B]
+                            transition-colors
+                            hover:text-[#0877E8]
+                          "
+                        >
+                          {item}
+                        </Link>
+                      ))}
                     </div>
 
-                    {/* ARROW */}
+                    {/* VIEW ALL */}
 
-                    <span
+                    <Link
+                      to="/shop"
+                      search={{
+                        category: column.category,
+                      } as never}
+                      onClick={() => setActiveMenu(null)}
                       className="
-                        text-neutral-300
-                        transition-transform
-                        duration-200
-                        group-hover:translate-x-1
+                        mt-4
+                        inline-flex
+                        items-center
+                        gap-1
+                        text-[8px]
+                        font-medium
+                        text-[#64748B]
+                        underline
+                        underline-offset-2
+                        transition
+                        hover:text-[#0877E8]
                       "
                     >
-                      →
-                    </span>
-                  </Link>
-                );
-              })}
+                      View all
+                      <ArrowRight size={8} />
+                    </Link>
+                  </div>
+                ))}
+              </div>
 
-              {/* -------------------------------------------------
-                  ALL PRODUCTS
-              -------------------------------------------------- */}
+              {/* FEATURE CARD */}
 
               <Link
                 to="/shop"
-                onClick={closeMobileMenu}
+                onClick={() => setActiveMenu(null)}
                 className="
-                  mt-1
-                  flex
-                  items-center
-                  justify-between
-                  rounded-xl
-                  border-t
-                  border-neutral-100
-                  px-4
-                  py-3
-                  text-sm
-                  font-medium
-                  text-[#2F2F2F]
+                  group
+                  relative
+                  min-h-[250px]
+                  overflow-hidden
+                  rounded-[10px]
+                  bg-[#E9EEF3]
                 "
               >
-                <span>
-                  Xem tất cả sản phẩm
-                </span>
+                <img
+                  src={activeMegaMenu.image}
+                  alt={activeMegaMenu.title}
+                  className="
+                    absolute
+                    inset-0
+                    h-full
+                    w-full
+                    object-cover
+                    transition-transform
+                    duration-500
+                    group-hover:scale-[1.03]
+                  "
+                />
 
-                <span>→</span>
+                <div
+                  className="
+                    absolute
+                    inset-0
+                    bg-gradient-to-t
+                    from-black/65
+                    via-black/10
+                    to-transparent
+                  "
+                />
+
+                <div
+                  className="
+                    absolute
+                    inset-x-0
+                    bottom-0
+                    p-3.5
+                  "
+                >
+                  <p
+                    className="
+                      text-[7px]
+                      font-medium
+                      uppercase
+                      tracking-[0.12em]
+                      text-white/75
+                    "
+                  >
+                    Explore
+                  </p>
+
+                  <h3
+                    className="
+                      mt-1
+                      text-[15px]
+                      font-semibold
+                      tracking-[-0.03em]
+                      text-white
+                    "
+                  >
+                    {activeMegaMenu.title}
+                  </h3>
+
+                  <span
+                    className="
+                      mt-3
+                      inline-flex
+                      h-7
+                      items-center
+                      gap-2
+                      rounded-[6px]
+                      bg-white
+                      px-3
+                      text-[8px]
+                      font-semibold
+                      text-[#111827]
+                    "
+                  >
+                    Shop now
+                    <ArrowRight size={10} />
+                  </span>
+                </div>
               </Link>
             </div>
-          </nav>
-        </div>
-      )}
+          </div>
+        )}
+
+        {/* MOBILE MENU */}
+
+        {mobileOpen && (
+          <div
+            className="
+              absolute
+              left-0
+              right-0
+              top-[62px]
+              overflow-hidden
+              rounded-[12px]
+              border
+              border-[#DDE2E8]
+              bg-white
+              shadow-[0_15px_45px_rgba(15,23,42,0.12)]
+              lg:hidden
+            "
+          >
+            <nav className="flex flex-col p-3">
+              {[
+                ["Shop Apple accessories", "/shop"],
+                ["Cases & Bands", "/shop"],
+                ["Charging", "/shop"],
+                ["Lifestyle Gear", "/shop"],
+              ].map(([label, to]) => (
+                <Link
+                  key={label}
+                  to={to}
+                  onClick={() => setMobileOpen(false)}
+                  className="
+                    rounded-[8px]
+                    px-3
+                    py-3
+                    text-[11px]
+                    font-medium
+                    text-[#111827]
+                    hover:bg-[#F8FAFC]
+                  "
+                >
+                  {label}
+                </Link>
+              ))}
+
+              <Link
+                to="/account"
+                onClick={() => setMobileOpen(false)}
+                className="
+                  mt-1
+                  border-t
+                  border-[#E5E7EB]
+                  px-3
+                  py-3
+                  text-[11px]
+                  text-[#64748B]
+                "
+              >
+                Account
+              </Link>
+            </nav>
+          </div>
+        )}
+      </div>
     </header>
   );
 }

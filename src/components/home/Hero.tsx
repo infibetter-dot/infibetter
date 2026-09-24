@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+﻿import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import hero1 from "@/assets/hero/banner02.png";
@@ -44,21 +44,23 @@ export default function Hero() {
     <section
       className="
         relative
+        mx-auto
+        mt-2
         w-full
+        max-w-[1320px]
         overflow-hidden
+        rounded-[10px]
+        border
+        border-[#E2E4E8]
+        bg-[#F7F7F7]
+        shadow-[0_2px_10px_rgba(15,23,42,0.04)]
 
-        /*
-         * Mobile
-         * Giữ tỷ lệ ngang để ảnh không bị crop.
-         */
-        aspect-video
+        aspect-[16/5.25]
 
-        /*
-         * Desktop
-         * Vẫn giữ tỷ lệ ảnh nhưng thấp hơn,
-         * tránh Hero chiếm gần toàn bộ màn hình.
-         */
-        lg:aspect-[16/7]
+        sm:mt-3
+        sm:rounded-[11px]
+
+        lg:mt-3
       "
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -78,17 +80,10 @@ export default function Hero() {
             inset-0
             h-full
             w-full
-
-            /*
-             * Giữ ảnh phủ toàn bộ khung.
-             * Khung Hero đã được đặt theo tỷ lệ ngang
-             * nên hạn chế crop tối đa.
-             */
             object-cover
             object-center
-
             transition-opacity
-            duration-1000
+            duration-700
 
             ${
               index === current
@@ -100,10 +95,11 @@ export default function Hero() {
       ))}
 
       {/* =====================================================
-          OVERLAY
+          VERY LIGHT OVERLAY
+          Only to keep text readable.
       ====================================================== */}
 
-      <div className="absolute inset-0 bg-black/15" />
+      <div className="absolute inset-0 bg-white/[0.03]" />
 
       {/* =====================================================
           CONTENT
@@ -111,223 +107,250 @@ export default function Hero() {
 
       <div
         className="
-          container-x
-          relative
+          absolute
+          inset-0
           z-20
           flex
-          h-full
           items-center
         "
       >
         <div
           className="
-            max-w-[300px]
-            text-white
+            ml-[7%]
+            w-[310px]
+            max-w-[34%]
 
-            sm:max-w-[380px]
+            sm:ml-[7%]
+            sm:w-[350px]
 
-            /*
-             * Desktop nhỏ gọn hơn
-             */
-            lg:max-w-[430px]
+            lg:w-[380px]
           "
         >
-          {/* =================================================
-              LABEL
-          ================================================== */}
-
-          <p
-            className="
-              mb-2
-              text-[7px]
-              font-medium
-              uppercase
-              tracking-[0.28em]
-              text-white/90
-
-              sm:mb-3
-              sm:text-[9px]
-
-              lg:mb-3
-              lg:text-[10px]
-              lg:tracking-[0.35em]
-            "
-          >
-            THÀNH VIÊN MỚI
-          </p>
-
           {/* =================================================
               TITLE
           ================================================== */}
 
           <h1
             className="
-              font-display
               text-[25px]
-              leading-[1.08]
-              tracking-[-0.02em]
+              font-semibold
+              leading-[1.05]
+              tracking-[-0.045em]
+              text-[#111827]
 
-              sm:text-[34px]
-              sm:leading-[1.06]
+              sm:text-[31px]
 
-              /*
-               * Desktop nhỏ hơn trước
-               */
-              lg:text-[44px]
-              lg:leading-[1.08]
+              lg:text-[35px]
             "
           >
-            Ưu đãi 5%
-            <br />
-            cho đơn đầu tiên.
+            Your Apple{" "}
+            <span className="text-[#0877E8]">
+              setup.
+            </span>
           </h1>
 
           {/* =================================================
-              DESCRIPTION
+              SUBTITLE
           ================================================== */}
 
           <p
             className="
               mt-2
-              max-w-[260px]
-              text-[9px]
+              text-[10px]
+              font-medium
               leading-4
-              text-white/90
+              text-[#475569]
 
-              sm:mt-3
-              sm:max-w-[340px]
-              sm:text-[12px]
-              sm:leading-5
+              sm:text-[11px]
 
-              /*
-               * Desktop nhỏ gọn
-               */
-              lg:mt-4
-              lg:max-w-[380px]
-              lg:text-[13px]
-              lg:leading-5
+              lg:text-[12px]
             "
           >
-            Giảm tối đa 35.000đ · Không yêu cầu giá trị
-            đơn hàng.
+            Cases, bands & chargers.
           </p>
 
           {/* =================================================
-              BUTTONS
+              PRODUCT LINE
+          ================================================== */}
+
+          <p
+            className="
+              mt-1
+              text-[7px]
+              font-medium
+              tracking-[0.01em]
+              text-[#64748B]
+
+              sm:text-[8px]
+
+              lg:text-[9px]
+            "
+          >
+            iPhone · Watch · AirPods
+          </p>
+
+          {/* =================================================
+              PRIMARY CTA
+          ================================================== */}
+
+          <Link
+            to="/shop"
+            className="
+              group
+              mt-3
+              flex
+              h-8
+              w-[185px]
+              items-center
+              justify-between
+              rounded-[6px]
+              bg-[#0877E8]
+              px-3.5
+              text-[9px]
+              font-semibold
+              text-white
+              shadow-[0_4px_12px_rgba(8,119,232,0.20)]
+              transition-all
+              duration-200
+              hover:bg-[#0668CC]
+              hover:shadow-[0_6px_16px_rgba(8,119,232,0.25)]
+              active:scale-[0.98]
+
+              sm:mt-4
+              sm:h-9
+              sm:w-[205px]
+              sm:px-4
+              sm:text-[10px]
+
+              lg:h-9
+              lg:w-[220px]
+              lg:text-[10px]
+            "
+          >
+            <span>Shop accessories</span>
+
+            <ArrowRight
+              size={12}
+              strokeWidth={2}
+              className="
+                transition-transform
+                duration-200
+                group-hover:translate-x-1
+              "
+            />
+          </Link>
+
+          {/* =================================================
+              QUICK TAGS
           ================================================== */}
 
           <div
             className="
-              mt-3
+              mt-2
               flex
               items-center
-              gap-2
-
-              sm:mt-5
-              sm:gap-3
-
-              lg:mt-5
-              lg:gap-3
+              gap-1.5
+              sm:gap-2
             "
           >
-            {/* -------------------------------------------------
-                NHẬN ƯU ĐÃI
-            -------------------------------------------------- */}
-
             <Link
-              to="/voucher-register"
+              to="/shop"
               className="
                 flex
-                h-8
-                min-w-[92px]
+                h-7
                 items-center
-                justify-center
-                rounded-full
-                bg-white
-                px-3
-                text-[10px]
-                font-semibold
-                text-[#2F2F2F]
-                shadow-md
+                rounded-[6px]
+                border
+                border-[#D7DCE2]
+                bg-white/90
+                px-2.5
+                text-[7px]
+                font-medium
+                text-[#334155]
+                backdrop-blur-sm
                 transition-all
-                duration-300
-                hover:-translate-y-0.5
-                hover:bg-[#F5F5F5]
+                duration-200
+                hover:border-[#0877E8]
+                hover:bg-white
+                hover:text-[#0877E8]
 
-                sm:h-10
-                sm:min-w-[120px]
-                sm:px-4
-                sm:text-[12px]
-
-                /*
-                 * Desktop nhỏ hơn
-                 */
-                lg:h-10
-                lg:min-w-[135px]
-                lg:px-5
-                lg:text-[12px]
+                sm:px-3
+                sm:text-[8px]
               "
             >
-              Nhận ưu đãi
+              For travel
             </Link>
-
-            {/* -------------------------------------------------
-                XEM SẢN PHẨM
-            -------------------------------------------------- */}
 
             <Link
               to="/shop"
               className="
                 flex
-                h-8
-                min-w-[92px]
+                h-7
                 items-center
-                justify-center
-                rounded-full
+                rounded-[6px]
                 border
-                border-white/50
-                bg-black/10
-                px-3
-                text-[10px]
+                border-[#D7DCE2]
+                bg-white/90
+                px-2.5
+                text-[7px]
                 font-medium
-                text-white
-                backdrop-blur-md
+                text-[#334155]
+                backdrop-blur-sm
                 transition-all
-                duration-300
-                hover:-translate-y-0.5
-                hover:bg-white/15
+                duration-200
+                hover:border-[#0877E8]
+                hover:bg-white
+                hover:text-[#0877E8]
 
-                sm:h-10
-                sm:min-w-[120px]
-                sm:px-4
-                sm:text-[12px]
-
-                /*
-                 * Desktop nhỏ hơn
-                 */
-                lg:h-10
-                lg:min-w-[135px]
-                lg:px-5
-                lg:text-[12px]
+                sm:px-3
+                sm:text-[8px]
               "
             >
-              Xem sản phẩm
+              At home
+            </Link>
+
+            <Link
+              to="/shop"
+              className="
+                flex
+                h-7
+                items-center
+                rounded-[6px]
+                border
+                border-[#D7DCE2]
+                bg-white/90
+                px-2.5
+                text-[7px]
+                font-medium
+                text-[#334155]
+                backdrop-blur-sm
+                transition-all
+                duration-200
+                hover:border-[#0877E8]
+                hover:bg-white
+                hover:text-[#0877E8]
+
+                sm:px-3
+                sm:text-[8px]
+              "
+            >
+              In the car
             </Link>
           </div>
         </div>
       </div>
 
       {/* =====================================================
-          ARROW LEFT
+          LEFT ARROW
       ====================================================== */}
 
       <button
         type="button"
         onClick={prev}
-        aria-label="Ảnh trước"
+        aria-label="Previous banner"
         className="
           absolute
-          left-2
+          left-3
           top-1/2
           z-30
           flex
@@ -337,48 +360,40 @@ export default function Hero() {
           items-center
           justify-center
           rounded-full
-          bg-black/15
-          text-white
-          backdrop-blur-md
+          border
+          border-white/70
+          bg-white/75
+          text-[#334155]
+          shadow-sm
+          backdrop-blur-sm
           transition-all
-          duration-300
+          duration-200
           hover:bg-white
-          hover:text-black
+          hover:text-[#0877E8]
 
           sm:left-4
-          sm:h-9
-          sm:w-9
+          sm:h-8
+          sm:w-8
 
-          lg:left-7
-          lg:h-10
-          lg:w-10
+          lg:left-5
+          lg:h-9
+          lg:w-9
         "
       >
-        <ChevronLeft
-          className="
-            h-4
-            w-4
-
-            sm:h-5
-            sm:w-5
-
-            lg:h-5
-            lg:w-5
-          "
-        />
+        <ChevronLeft size={15} strokeWidth={1.8} />
       </button>
 
       {/* =====================================================
-          ARROW RIGHT
+          RIGHT ARROW
       ====================================================== */}
 
       <button
         type="button"
         onClick={next}
-        aria-label="Ảnh tiếp theo"
+        aria-label="Next banner"
         className="
           absolute
-          right-2
+          right-3
           top-1/2
           z-30
           flex
@@ -388,39 +403,31 @@ export default function Hero() {
           items-center
           justify-center
           rounded-full
-          bg-black/15
-          text-white
-          backdrop-blur-md
+          border
+          border-white/70
+          bg-white/75
+          text-[#334155]
+          shadow-sm
+          backdrop-blur-sm
           transition-all
-          duration-300
+          duration-200
           hover:bg-white
-          hover:text-black
+          hover:text-[#0877E8]
 
           sm:right-4
-          sm:h-9
-          sm:w-9
+          sm:h-8
+          sm:w-8
 
-          lg:right-7
-          lg:h-10
-          lg:w-10
+          lg:right-5
+          lg:h-9
+          lg:w-9
         "
       >
-        <ChevronRight
-          className="
-            h-4
-            w-4
-
-            sm:h-5
-            sm:w-5
-
-            lg:h-5
-            lg:w-5
-          "
-        />
+        <ChevronRight size={15} strokeWidth={1.8} />
       </button>
 
       {/* =====================================================
-          INDICATOR
+          SLIDE INDICATOR
       ====================================================== */}
 
       <div
@@ -433,12 +440,6 @@ export default function Hero() {
           -translate-x-1/2
           items-center
           gap-1.5
-
-          sm:bottom-5
-          sm:gap-2
-
-          lg:bottom-5
-          lg:gap-2.5
         "
       >
         {slides.map((_, index) => (
@@ -446,7 +447,7 @@ export default function Hero() {
             key={index}
             type="button"
             onClick={() => setCurrent(index)}
-            aria-label={`Chuyển đến slide ${index + 1}`}
+            aria-label={`Go to slide ${index + 1}`}
             className={`
               h-1
               rounded-full
@@ -455,45 +456,14 @@ export default function Hero() {
 
               ${
                 current === index
-                  ? "w-6 bg-white sm:w-8 lg:w-8"
-                  : "w-1 bg-white/40 hover:bg-white/70"
+                  ? "w-5 bg-[#0877E8]"
+                  : "w-1.5 bg-[#64748B]/35"
               }
             `}
           />
         ))}
       </div>
-
-      {/* =====================================================
-          SCROLL - DESKTOP
-      ====================================================== */}
-
-      <div
-        className="
-          absolute
-          bottom-6
-          right-7
-          z-30
-          hidden
-          flex-col
-          items-center
-          text-white/70
-          lg:flex
-        "
-      >
-        <span
-          className="
-            mb-3
-            rotate-90
-            text-[9px]
-            uppercase
-            tracking-[0.35em]
-          "
-        >
-          Scroll
-        </span>
-
-        <div className="h-10 w-px bg-white/35" />
-      </div>
     </section>
   );
 }
+

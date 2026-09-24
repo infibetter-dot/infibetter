@@ -17,11 +17,6 @@ import { formatVND } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
-import {
-  trackInitiateCheckout,
-  trackPurchase,
-} from "@/lib/meta";
-
 import CheckoutVoucher from "@/components/checkout/CheckoutVoucher";
 
 import type {
@@ -152,11 +147,6 @@ const wards = districtValue
 
   useEffect(() => {
     if (items.length === 0) return;
-
-    trackInitiateCheckout(
-      subtotal,
-      items.reduce((sum, item) => sum + item.quantity, 0)
-    );
   }, []);
 
   if (count === 0) {
@@ -454,11 +444,6 @@ shippingDiscount:
 localStorage.setItem(
   "olive_last_order",
   JSON.stringify(orderSuccess)
-);
-
-trackPurchase(
-  order.id,
-  total
 );
 
 clear();
