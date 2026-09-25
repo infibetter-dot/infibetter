@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ProductEditorRichText from "./ProductEditorRichText";
@@ -60,17 +60,25 @@ const [bestSeller, setBestSeller] = useState(
 const [topSeller, setTopSeller] = useState(
   product.top_seller ?? false
 );
-  
-
   const [categoryId, setCategoryId] = useState(
-  product.category_id ?? ""
-);
+    product.category_id ?? ""
+  );
 
-const [categories, setCategories] = useState<any[]>([]);
+  const [parentCategoryId, setParentCategoryId] = useState("");
 
-const [imageUrl, setImageUrl] = useState(
-  product.image_url ?? ""
-);
+  const [categories, setCategories] = useState<any[]>([]);
+
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categoryModalMode, setCategoryModalMode] = useState<
+    "parent" | "child"
+  >("child");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+
+  const [imageUrl, setImageUrl] = useState(
+    product.image_url ?? ""
+  );
 
 useEffect(() => {
   
@@ -107,13 +115,224 @@ setImageUrl(data.publicUrl);
 }
 
 async function loadCategories() {
-
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("categories")
     .select("*")
     .order("name");
 
+  if (error) {
+    toast.error(error.message);
+    return;
+  }
+
   setCategories(data ?? []);
+}
+
+useEffect(() => {
+  if (!categories.length) return;
+
+  const selected = categories.find(
+    (item) => item.id === categoryId
+  );
+
+  if (!selected) {
+    setParentCategoryId("");
+    return;
+  }
+
+  setParentCategoryId(
+    selected.parent_id || selected.id
+  );
+}, [categories, categoryId]);
+
+const parentCategories = useMemo(
+  () =>
+    [...categories].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    ),
+  [categories]
+);
+
+const childCategories = useMemo(
+  () =>
+    categories
+      .filter((item) => item.parent_id === parentCategoryId)
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  [categories, parentCategoryId]
+);
+
+function openCreateCategory(mode: "parent" | "child") {
+  setCategoryModalMode(mode);
+  setNewCategoryName("");
+  setCategoryModalOpen(true);
+}
+
+async function createCategory() {
+  const name = newCategoryName.trim();
+
+  if (!name) {
+    toast.error("Vui lòng nhập tên danh mục.");
+    return;
+  }
+
+  if (categoryModalMode === "child" && !parentCategoryId) {
+    toast.error("Hãy chọn danh mục cha trước.");
+    return;
+  }
+
+  try {
+    setCreatingCategory(true);
+
+    let duplicateQuery = supabase
+      .from("categories")
+      .select("id,name,parent_id")
+      .eq("name", name);
+
+    duplicateQuery =
+      categoryModalMode === "child"
+        ? duplicateQuery.eq("parent_id", parentCategoryId)
+        : duplicateQuery.is("parent_id", null);
+
+    const { data: duplicate, error: duplicateError } =
+      await duplicateQuery.maybeSingle();
+
+    if (duplicateError) throw duplicateError;
+
+    if (duplicate) {
+      toast.error("Danh mục này đã tồn tại.");
+      return;
+    }
+
+    const slug = createSlug(name);
+
+    const { data: sameSlug, error: slugError } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (slugError) throw slugError;
+
+    if (sameSlug) {
+      toast.error("Slug đã tồn tại. Hãy dùng tên khác.");
+      return;
+    }
+
+    const { data: created, error } = await supabase
+      .from("categories")
+      .insert({
+        name,
+        slug,
+        parent_id:
+          categoryModalMode === "child"
+            ? parentCategoryId
+            : null,
+      })
+      .select("*")
+      .single();
+
+    if (error) throw error;
+
+    setCategories((current) =>
+      [...current, created].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      )
+    );
+
+    if (categoryModalMode === "child") {
+      setCategoryId(created.id);
+    } else {
+      setParentCategoryId(created.id);
+      setCategoryId("");
+    }
+
+    setCategoryModalOpen(false);
+    setNewCategoryName("");
+
+    toast.success(
+      categoryModalMode === "child"
+        ? `Đã tạo danh mục con "${name}".`
+        : `Đã tạo danh mục chính "${name}".`
+    );
+  } catch (error: any) {
+    toast.error(
+      error?.message || "Không thể tạo danh mục."
+    );
+  } finally {
+    setCreatingCategory(false);
+  }
+}
+
+async function deleteCategory(categoryIdToDelete: string) {
+  const category = categories.find(
+    (item) => item.id === categoryIdToDelete
+  );
+
+  if (!category) return;
+
+  const confirmed = window.confirm(
+    `Bạn có chắc muốn xóa danh mục "${category.name}"?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    setDeletingCategoryId(categoryIdToDelete);
+
+    const { count: childCount, error: childError } = await supabase
+      .from("categories")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_id", categoryIdToDelete);
+
+    if (childError) throw childError;
+
+    if ((childCount ?? 0) > 0) {
+      toast.error(
+        `Không thể xóa "${category.name}" vì danh mục này vẫn còn danh mục con.`
+      );
+      return;
+    }
+
+    const { count: productCount, error: productError } = await supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("category_id", categoryIdToDelete);
+
+    if (productError) throw productError;
+
+    if ((productCount ?? 0) > 0) {
+      toast.error(
+        `Không thể xóa "${category.name}" vì đang có ${productCount} sản phẩm sử dụng danh mục này. Hãy chuyển sản phẩm sang danh mục khác trước.`
+      );
+      return;
+    }
+
+    const { error: deleteError } = await supabase
+      .from("categories")
+      .delete()
+      .eq("id", categoryIdToDelete);
+
+    if (deleteError) throw deleteError;
+
+    setCategories((current) =>
+      current.filter((item) => item.id !== categoryIdToDelete)
+    );
+
+    if (parentCategoryId === categoryIdToDelete) {
+      setParentCategoryId("");
+      setCategoryId("");
+    }
+
+    if (categoryId === categoryIdToDelete) {
+      setCategoryId("");
+    }
+
+    toast.success(`Đã xóa danh mục "${category.name}".`);
+  } catch (error: any) {
+    toast.error(error?.message || "Không thể xóa danh mục.");
+  } finally {
+    setDeletingCategoryId(null);
+  }
 }
 
 function createSlug(text: string) {
@@ -137,6 +356,20 @@ async function save() {
   try {
     if (!product?.id) {
       toast.error("Không tìm thấy ID sản phẩm.");
+      return;
+    }
+
+    if (!categoryId) {
+      toast.error("Vui lòng chọn danh mục con cho sản phẩm.");
+      return;
+    }
+
+    const selectedCategory = categories.find(
+      (item) => item.id === categoryId
+    );
+
+    if (!selectedCategory?.parent_id) {
+      toast.error("Sản phẩm phải được gán vào danh mục con.");
       return;
     }
 
@@ -314,37 +547,153 @@ if (error) throw error;
     </div>
 
     {/* DANH MỤC */}
-    <div>
-      <label className="mb-1 block text-xs font-semibold text-[#222]">
-        Danh mục
-      </label>
+    <div className="lg:col-span-2">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-[#222]">
+            Danh mục sản phẩm
+          </label>
+          <p className="mt-0.5 text-[10px] text-neutral-500">
+            Sản phẩm được lưu vào danh mục con; danh mục chính chỉ dùng để phân nhóm.
+          </p>
+        </div>
 
-      <select
-        value={categoryId}
-        onChange={(e) => setCategoryId(e.target.value)}
-        className="
-          h-9
-          w-full
-          rounded-lg
-          border border-[#D9D4CC]
-          bg-white
-          px-3
-          text-xs
-          outline-none
-          transition
-          focus:border-[#9B7B5A]
-          focus:ring-2
-          focus:ring-[#F6EFE8]
-        "
-      >
-        <option value="">Chọn danh mục</option>
+        <span className="shrink-0 text-[10px] font-medium text-emerald-700">
+          {categoryId ? "Category đã chọn" : "Chưa chọn"}
+        </span>
+      </div>
 
-        {categories.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.name}
-          </option>
-        ))}
-      </select>
+      <div className="grid gap-2 md:grid-cols-2">
+        <div>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-[11px] font-semibold text-neutral-700">
+              Danh mục cha
+            </label>
+
+            <div className="flex items-center gap-2">
+              {parentCategoryId && (
+                <button
+                  type="button"
+                  disabled={deletingCategoryId === parentCategoryId}
+                  onClick={() => deleteCategory(parentCategoryId)}
+                  className="text-[10px] font-semibold text-red-600 hover:underline disabled:opacity-50"
+                >
+                  {deletingCategoryId === parentCategoryId ? "Đang xóa..." : "Xóa"}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => openCreateCategory("parent")}
+                className="text-[10px] font-semibold text-[#2D6A4F] hover:underline"
+              >
+                + Thêm danh mục
+              </button>
+            </div>
+          </div>
+
+          <select
+            value={parentCategoryId}
+            onChange={(e) => {
+              setParentCategoryId(e.target.value);
+              setCategoryId("");
+            }}
+            className="h-9 w-full rounded-lg border border-[#D9D4CC] bg-white px-3 text-xs outline-none focus:border-[#9B7B5A] focus:ring-2 focus:ring-[#F6EFE8]"
+          >
+            <option value="">Chọn danh mục cha</option>
+            {parentCategories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-[11px] font-semibold text-neutral-700">
+              Danh mục con <span className="text-red-500">*</span>
+            </label>
+
+            <div className="flex items-center gap-2">
+              {categoryId && (
+                <button
+                  type="button"
+                  disabled={deletingCategoryId === categoryId}
+                  onClick={() => deleteCategory(categoryId)}
+                  className="text-[10px] font-semibold text-red-600 hover:underline disabled:opacity-50"
+                >
+                  {deletingCategoryId === categoryId ? "Đang xóa..." : "Xóa"}
+                </button>
+              )}
+
+              <button
+                type="button"
+                disabled={!parentCategoryId}
+                onClick={() => openCreateCategory("child")}
+                className="text-[10px] font-semibold text-[#2D6A4F] hover:underline disabled:cursor-not-allowed disabled:text-neutral-300"
+              >
+                + Thêm danh mục con
+              </button>
+            </div>
+          </div>
+
+          <select
+            value={
+              childCategories.some(
+                (item) => item.id === categoryId
+              )
+                ? categoryId
+                : ""
+            }
+            onChange={(e) => setCategoryId(e.target.value)}
+            disabled={!parentCategoryId}
+            className="h-9 w-full rounded-lg border border-[#D9D4CC] bg-white px-3 text-xs outline-none disabled:cursor-not-allowed disabled:bg-[#F7F5F2] focus:border-[#9B7B5A] focus:ring-2 focus:ring-[#F6EFE8]"
+          >
+            <option value="">
+              {parentCategoryId
+                ? "Chọn danh mục con"
+                : "Chọn danh mục cha trước"}
+            </option>
+
+            {childCategories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-2 rounded-lg border border-[#E4DED6] bg-[#FAF8F5] px-3 py-2">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
+          Product category path
+        </p>
+
+        <p className="mt-1 text-[11px] text-neutral-700">
+          {parentCategoryId
+            ? parentCategories.find(
+                (item) => item.id === parentCategoryId
+              )?.name
+            : "Chưa chọn danh mục cha"}
+
+          <span className="mx-1.5 text-neutral-300">/</span>
+
+          <span
+            className={
+              categoryId
+                ? "font-semibold text-neutral-900"
+                : "text-neutral-400"
+            }
+          >
+            {categoryId
+              ? childCategories.find(
+                  (item) => item.id === categoryId
+                )?.name
+              : "Chưa chọn danh mục con"}
+          </span>
+        </p>
+      </div>
     </div>
 
     {/* ẢNH ĐẠI DIỆN */}
@@ -731,6 +1080,99 @@ if (error) throw error;
           </div>
         )}
       </section>
+
+      {/* CATEGORY CREATE MODAL */}
+      {categoryModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 px-4"
+          onMouseDown={() => {
+            if (!creatingCategory) setCategoryModalOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                Category manager
+              </p>
+
+              <h3 className="mt-1 text-lg font-semibold text-neutral-900">
+                {categoryModalMode === "child"
+                  ? "Thêm danh mục con"
+                  : "Thêm danh mục chính"}
+              </h3>
+
+              {categoryModalMode === "child" && (
+                <p className="mt-1 text-[11px] text-neutral-500">
+                  Parent:{" "}
+                  <span className="font-semibold text-neutral-700">
+                    {
+                      parentCategories.find(
+                        (item) => item.id === parentCategoryId
+                      )?.name
+                    }
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <label className="mb-1 block text-[11px] font-semibold text-neutral-700">
+              Tên danh mục <span className="text-red-500">*</span>
+            </label>
+
+            <input
+              autoFocus
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !creatingCategory) {
+                  e.preventDefault();
+                  createCategory();
+                }
+              }}
+              placeholder={
+                categoryModalMode === "child"
+                  ? "Ví dụ: MagBank Slim"
+                  : "Ví dụ: Power Banks"
+              }
+              className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:border-[#9B7B5A] focus:ring-2 focus:ring-[#F6EFE8]"
+            />
+
+            <div className="mt-2 rounded-lg bg-[#FAF8F5] px-3 py-2">
+              <p className="text-[9px] text-neutral-400">
+                Slug sẽ được tạo tự động.
+              </p>
+              <p className="mt-0.5 text-[11px] font-medium text-neutral-700">
+                {newCategoryName
+                  ? createSlug(newCategoryName)
+                  : "category-slug"}
+              </p>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={creatingCategory}
+                onClick={() => setCategoryModalOpen(false)}
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-4 text-xs font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+              >
+                Hủy
+              </button>
+
+              <button
+                type="button"
+                disabled={creatingCategory || !newCategoryName.trim()}
+                onClick={createCategory}
+                className="h-9 rounded-lg bg-[#2D6A4F] px-4 text-xs font-semibold text-white hover:bg-[#245640] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {creatingCategory ? "Đang tạo..." : "Tạo danh mục"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ACTIONS — giữ đầy đủ */}
       <div className="flex flex-col-reverse gap-2 border-t border-[#E8E4DE] pt-4 sm:flex-row sm:items-center sm:justify-end">

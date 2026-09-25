@@ -1,26 +1,45 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { ProductCard } from "@/components/product-card";
 
 import {
-  ArrowDown,
-  ArrowUp,
-  Copy,
-  Check,
-  Ticket,
+  BatteryCharging,
+  Cable,
+  ChevronDown,
+  Headphones,
+  Package,
+  Search,
+  SlidersHorizontal,
+  Smartphone,
+  Watch,
 } from "lucide-react";
 
 import { z } from "zod";
 
+/* =========================================================
+   SEARCH
+========================================================= */
+
 const search = z.object({
   category: z.string().optional(),
   q: z.string().optional(),
-  sort: z.enum(["newest", "best"]).optional(),
+  sort: z
+    .enum([
+      "newest",
+      "best",
+      "price-low",
+      "price-high",
+    ])
+    .optional(),
   max: z.coerce.number().optional(),
 });
+
+/* =========================================================
+   ROUTE
+========================================================= */
 
 export const Route = createFileRoute("/shop")({
   validateSearch: search,
@@ -28,12 +47,12 @@ export const Route = createFileRoute("/shop")({
   head: () => ({
     meta: [
       {
-        title: "Cửa hàng — NHÀ",
+        title: "Shop — INFIBETTER",
       },
       {
         name: "description",
         content:
-          "Toàn bộ sản phẩm nội thất: sofa, bàn, ghế, giường, tủ kệ.",
+          "Cases, chargers, cables and everyday accessories for your setup.",
       },
     ],
   }),
@@ -41,36 +60,274 @@ export const Route = createFileRoute("/shop")({
   component: ShopPage,
 });
 
+/* =========================================================
+   DEVICE FILTERS
+========================================================= */
+
+const DEVICE_FILTERS = [
+  {
+    id: "all",
+    label: "All",
+    icon: Package,
+  },
+  {
+    id: "iphone",
+    label: "iPhone",
+    icon: Smartphone,
+  },
+  {
+    id: "watch",
+    label: "Apple Watch",
+    icon: Watch,
+  },
+  {
+    id: "airpods",
+    label: "AirPods",
+    icon: Headphones,
+  },
+  {
+    id: "charging",
+    label: "Charging",
+    icon: BatteryCharging,
+  },
+  {
+    id: "cables",
+    label: "Cables",
+    icon: Cable,
+  },
+];
+
+/* =========================================================
+   IPHONE MODELS
+========================================================= */
+
+const IPHONE_MODELS = [
+  "iPhone 18 Pro Max",
+  "iPhone 18 Pro",
+  "iPhone 18",
+  "iPhone 17 Pro Max",
+  "iPhone 17 Pro",
+  "iPhone 17",
+  "iPhone 17 Air",
+  "iPhone 16 Pro Max",
+  "iPhone 16 Pro",
+  "iPhone 16 Plus",
+  "iPhone 16",
+  "iPhone 15 Pro Max",
+  "iPhone 15 Pro",
+  "iPhone 15 Plus",
+  "iPhone 15",
+  "iPhone 14 Pro Max",
+  "iPhone 14 Pro",
+  "iPhone 14 Plus",
+  "iPhone 14",
+];
+
+/* =========================================================
+   CATEGORY KEYWORDS
+========================================================= */
+
+const CATEGORY_KEYWORDS: Record<
+  string,
+  string[]
+> = {
+  iphone: [
+    "iphone",
+    "case",
+    "ốp",
+    "op",
+    "magsafe",
+    "magnetic",
+  ],
+
+  watch: [
+    "watch",
+    "apple watch",
+    "strap",
+    "band",
+    "dây đeo",
+    "day deo",
+  ],
+
+  airpods: [
+    "airpods",
+    "airpod",
+    "earbuds",
+    "tai nghe",
+  ],
+
+  charging: [
+    "charger",
+    "charging",
+    "sạc",
+    "sac",
+    "wireless",
+    "power bank",
+    "adapter",
+  ],
+
+  cables: [
+    "cable",
+    "cáp",
+    "cap",
+    "usb",
+    "lightning",
+    "type-c",
+    "type c",
+  ],
+};
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function normalizeText(
+  value: unknown,
+) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(
+      /[\u0300-\u036f]/g,
+      "",
+    );
+}
+
+function matchesDevice(
+  product: any,
+  device: string,
+) {
+  if (
+    !device ||
+    device === "all"
+  ) {
+    return true;
+  }
+
+  const text = normalizeText(
+    `${product.name} ${product.slug}`,
+  );
+
+  const keywords =
+    CATEGORY_KEYWORDS[
+      device
+    ] ?? [];
+
+  return keywords.some(
+    (keyword) =>
+      text.includes(
+        normalizeText(keyword),
+      ),
+  );
+}
+
+function matchesIphoneModel(
+  product: any,
+  model: string,
+) {
+  if (!model) {
+    return true;
+  }
+
+  const text = normalizeText(
+    `${product.name} ${product.slug}`,
+  );
+
+  return text.includes(
+    normalizeText(model),
+  );
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
+
 function ShopPage() {
   const sp = Route.useSearch();
 
-  const [copiedVoucher, setCopiedVoucher] =
-    useState<string | null>(null);
+  const activeDevice =
+    sp.category ?? "all";
 
-  const [showAllVouchers, setShowAllVouchers] =
-    useState(false);
+  const selectedModel =
+    sp.q ?? "";
 
-  /* =================================================
+  /* =======================================================
      PRODUCTS
-  ================================================== */
+  ======================================================= */
 
   const productsQ = useQuery({
     queryKey: [
-      "shop-products",
+      "infibetter-shop-products",
       sp.category,
       sp.q,
       sp.sort,
       sp.max,
     ],
 
-    staleTime: 1000 * 60 * 10,
+    staleTime:
+      1000 * 60 * 5,
 
-    gcTime: 1000 * 60 * 30,
+    gcTime:
+      1000 * 60 * 30,
 
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus:
+      false,
 
     queryFn: async () => {
-      let q = supabase
+      /*
+       * REAL CATEGORY FILTER
+       * --------------------
+       * The URL uses a category slug:
+       * /shop?category=iphone-cases
+       *
+       * We resolve that slug to the real category ID(s), then
+       * filter products by products.category_id.
+       *
+       * Parent category:
+       *   include the parent + its direct children.
+       *
+       * Child category:
+       *   include only that exact category.
+       */
+      let categoryIds: string[] | null = null;
+
+      if (sp.category && sp.category !== "all") {
+        const { data: selectedCategory, error: categoryError } =
+          await supabase
+            .from("categories")
+            .select("id,name,slug,parent_id")
+            .eq("slug", sp.category)
+            .maybeSingle();
+
+        if (categoryError) {
+          throw categoryError;
+        }
+
+        if (selectedCategory) {
+          if (selectedCategory.parent_id) {
+            // Subcategory: exact match only.
+            categoryIds = [selectedCategory.id];
+          } else {
+            // Parent category: parent + direct children.
+            const { data: children, error: childrenError } =
+              await supabase
+                .from("categories")
+                .select("id")
+                .eq("parent_id", selectedCategory.id);
+
+            if (childrenError) {
+              throw childrenError;
+            }
+
+            categoryIds = [
+              selectedCategory.id,
+              ...(children ?? []).map((item: any) => item.id),
+            ];
+          }
+        }
+      }
+
+      let query = supabase
         .from("products")
         .select(`
           id,
@@ -85,1017 +342,1087 @@ function ShopPage() {
           image_url
         `);
 
-      if (sp.sort === "best") {
-        q = q
-          .order("best_seller", {
-            ascending: false,
-          })
-          .order("created_at", {
-            ascending: false,
-          });
-      } else {
-        q = q.order("created_at", {
-          ascending: false,
-        });
+      // Only use real category_id filtering when the URL contains
+      // an actual category slug from the categories table.
+      if (categoryIds && categoryIds.length > 0) {
+        query = query.in("category_id", categoryIds);
       }
 
-      const { data } = await q.range(0, 39);
+      /* -----------------------------------------------
+         SORT
+      ------------------------------------------------ */
 
-      return (
-        data?.map((item: any) => ({
-          ...item,
-          image_url: item.image_url,
-        })) ?? []
+      if (
+        sp.sort === "best"
+      ) {
+        query = query
+          .order(
+            "best_seller",
+            {
+              ascending: false,
+            },
+          )
+          .order(
+            "created_at",
+            {
+              ascending: false,
+            },
+          );
+      } else if (
+        sp.sort ===
+        "price-low"
+      ) {
+        query = query.order(
+          "price",
+          {
+            ascending: true,
+          },
+        );
+      } else if (
+        sp.sort ===
+        "price-high"
+      ) {
+        query = query.order(
+          "price",
+          {
+            ascending: false,
+          },
+        );
+      } else {
+        query = query.order(
+          "created_at",
+          {
+            ascending: false,
+          },
+        );
+      }
+
+      const {
+        data,
+        error,
+      } = await query.range(
+        0,
+        99,
       );
-    },
-  });
-
-  /* =================================================
-     CATEGORIES
-  ================================================== */
-
-  const categoriesQ = useQuery({
-    queryKey: ["shop-categories"],
-
-    queryFn: async () =>
-      (
-        await supabase
-          .from("categories")
-          .select("id,slug,name")
-          .order("name")
-      ).data ?? [],
-  });
-
-  /* =================================================
-     HOME VOUCHERS
-  ================================================== */
-
-  const vouchersQ = useQuery({
-    queryKey: ["shop-home-vouchers"],
-
-    staleTime: 1000 * 60 * 5,
-
-    gcTime: 1000 * 60 * 15,
-
-    refetchOnWindowFocus: false,
-
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vouchers")
-        .select("*")
-        .eq("active", true)
-        .eq("show_home", true)
-        .order("created_at", {
-          ascending: false,
-        });
 
       if (error) {
-        console.error(
-          "SHOP HOME VOUCHER ERROR:",
-          error
-        );
-
-        return [];
+        throw error;
       }
 
-      const now = new Date();
+      return (
+        data?.map(
+          (item: any) => ({
+            ...item,
 
-      return (data ?? []).filter((voucher: any) => {
-        /* Chưa bắt đầu */
+            /*
+             * ProductCard expects
+             * old_price.
+             */
+            old_price:
+              item.compare_at_price,
 
-        if (
-          voucher.start_at &&
-          now < new Date(voucher.start_at)
-        ) {
-          return false;
-        }
-
-        /* Đã hết hạn */
-
-        if (
-          voucher.end_at &&
-          now > new Date(voucher.end_at)
-        ) {
-          return false;
-        }
-
-        /* Hết lượt */
-
-        if (
-          voucher.quantity !== null &&
-          voucher.quantity !== undefined
-        ) {
-          const quantity = Number(
-            voucher.quantity
-          );
-
-          const used = Number(
-            voucher.used ?? 0
-          );
-
-          if (used >= quantity) {
-            return false;
-          }
-        }
-
-        /* Không cho nhập mã thủ công */
-
-        if (voucher.manual_apply === false) {
-          return false;
-        }
-
-        return true;
-      });
+            image_url:
+              item.image_url,
+          }),
+        ) ?? []
+      );
     },
   });
 
-  /* =================================================
-     COPY VOUCHER
-  ================================================== */
+  /* =======================================================
+     FILTER PRODUCTS
+  ======================================================= */
 
-  const copyVoucher = async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
+  const filteredProducts =
+    useMemo(() => {
+      const products =
+        productsQ.data ?? [];
 
-      setCopiedVoucher(code);
+      return products.filter(
+        (product: any) => {
+          /*
+           * DEVICE
+           *
+           * Legacy device filters (iphone/watch/charging/etc.)
+           * remain available when they are used directly.
+           *
+           * Real category slugs such as:
+           * iphone-cases
+           * wireless-charging
+           * magfold-qi2
+           * power-banks
+           * ...
+           * are already filtered at Supabase level by category_id.
+           */
+          const isRealCategorySlug =
+            Boolean(sp.category) &&
+            sp.category !== "all" &&
+            sp.category.includes("-");
 
-      setTimeout(() => {
-        setCopiedVoucher(null);
-      }, 1800);
-    } catch (error) {
-      console.error(
-        "COPY VOUCHER ERROR:",
-        error
+          if (
+            !isRealCategorySlug &&
+            activeDevice !== "all" &&
+            !matchesDevice(product, activeDevice)
+          ) {
+            return false;
+          }
+
+          /* IPHONE MODEL */
+
+          if (
+            activeDevice ===
+              "iphone" &&
+            selectedModel &&
+            !matchesIphoneModel(
+              product,
+              selectedModel,
+            )
+          ) {
+            return false;
+          }
+
+          /* MAX PRICE */
+
+          if (
+            sp.max !==
+              undefined &&
+            Number(
+              product.price,
+            ) >
+              Number(sp.max)
+          ) {
+            return false;
+          }
+
+          return true;
+        },
+      );
+    }, [
+      productsQ.data,
+      activeDevice,
+      selectedModel,
+      sp.max,
+    ]);
+
+  /* =======================================================
+     DEVICE COUNTS
+  ======================================================= */
+
+  const deviceCounts =
+    useMemo(() => {
+      const products =
+        productsQ.data ?? [];
+
+      const counts: Record<
+        string,
+        number
+      > = {
+        all: products.length,
+        iphone: 0,
+        watch: 0,
+        airpods: 0,
+        charging: 0,
+        cables: 0,
+      };
+
+      products.forEach(
+        (product: any) => {
+          Object.keys(
+            CATEGORY_KEYWORDS,
+          ).forEach(
+            (device) => {
+              if (
+                matchesDevice(
+                  product,
+                  device,
+                )
+              ) {
+                counts[
+                  device
+                ] += 1;
+              }
+            },
+          );
+        },
+      );
+
+      return counts;
+    }, [productsQ.data]);
+
+  /* =======================================================
+     NAVIGATION
+  ======================================================= */
+
+  function changeDevice(
+    device: string,
+  ) {
+    if (
+      device === "all"
+    ) {
+      window.location.href =
+        "/shop";
+
+      return;
+    }
+
+    window.location.href =
+      `/shop?category=${device}`;
+  }
+
+  function changeModel(
+    model: string,
+  ) {
+    const params =
+      new URLSearchParams();
+
+    params.set(
+      "category",
+      "iphone",
+    );
+
+    if (model) {
+      params.set(
+        "q",
+        model,
       );
     }
-  };
 
-  /* =================================================
-     MAX PRICE
-  ================================================== */
+    window.location.href =
+      `/shop?${params.toString()}`;
+  }
 
-  const maxPrice = useMemo(() => {
-    const m = Math.max(
-      0,
-      ...(productsQ.data?.map((p) =>
-        Number(p.price)
-      ) ?? [0])
-    );
+  function changeSort(
+    value: string,
+  ) {
+    const params =
+      new URLSearchParams();
 
-    return (
-      Math.ceil(m / 1_000_000) *
-        1_000_000 ||
-      30_000_000
-    );
-  }, [productsQ.data]);
-
-  /* =================================================
-     CATEGORY ALIAS
-  ================================================== */
-
-  const CATEGORY_ALIASES: Record<string, string> = {
-    "do-decor": "noi-that-decor",
-  };
-
-  const normalizedCategory = sp.category
-    ? CATEGORY_ALIASES[sp.category] ??
-      sp.category
-    : undefined;
-
-  /* =================================================
-     ACTIVE CATEGORY
-  ================================================== */
-
-  const activeCatId = categoriesQ.data?.find(
-    (c) => c.slug === normalizedCategory
-  )?.id;
-
-  const priceCap = sp.max ?? maxPrice;
-
-  /* =================================================
-     FILTER PRODUCTS
-  ================================================== */
-
-  const filtered = useMemo(() => {
-    const list = productsQ.data ?? [];
-
-    if (sp.category && !activeCatId) {
-      return [];
+    if (
+      activeDevice !==
+      "all"
+    ) {
+      params.set(
+        "category",
+        activeDevice,
+      );
     }
 
-    return list.filter((p) => {
-      if (
-        activeCatId &&
-        p.category_id !== activeCatId
-      ) {
-        return false;
-      }
+    if (selectedModel) {
+      params.set(
+        "q",
+        selectedModel,
+      );
+    }
 
-      if (
-        sp.q &&
-        !p.name
-          .toLowerCase()
-          .includes(sp.q.toLowerCase())
-      ) {
-        return false;
-      }
+    if (
+      value !== "newest"
+    ) {
+      params.set(
+        "sort",
+        value,
+      );
+    }
 
-      if (Number(p.price) > priceCap) {
-        return false;
-      }
+    if (
+      sp.max !==
+      undefined
+    ) {
+      params.set(
+        "max",
+        String(sp.max),
+      );
+    }
 
-      return true;
-    });
-  }, [
-    productsQ.data,
-    activeCatId,
-    sp.q,
-    priceCap,
-    sp.category,
-  ]);
+    const query =
+      params.toString();
 
-  /* =================================================
-     SCROLL
-  ================================================== */
+    window.location.href =
+      query
+        ? `/shop?${query}`
+        : "/shop";
+  }
 
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
+  const isLoading =
+    productsQ.isLoading;
 
-  const scrollToBottom = () => {
-    window.scrollTo({
-      top: document.documentElement.scrollHeight,
-      behavior: "smooth",
-    });
-  };
-
-  /* =================================================
+  /* =======================================================
      RENDER
-  ================================================== */
+  ======================================================= */
 
   return (
-    <div className="container-x py-12">
+    <main className="min-h-screen bg-white text-[#1D1D1F]">
 
-      {/* =================================================
-          BANNER
-      ================================================== */}
+      {/* ===================================================
+          HERO
+      =================================================== */}
 
-      <section className="mb-8 w-full">
-        <div
-          className="
-            relative
-            aspect-[1.8/1]
-            w-full
-            overflow-hidden
-            rounded-[10px]
-            bg-[#F7F5F2]
-            sm:aspect-[2.4/1]
-            lg:aspect-[2.8/1]
-          "
-        >
-          <img
-            src="/images/banner03.png"
-            alt="Olive Living — Bộ sưu tập đèn decor"
-            loading="eager"
-            fetchPriority="high"
-            className="
-              absolute
-              inset-0
-              h-full
-              w-full
-              object-cover
-            "
-          />
-
-          {/* LEFT CONTENT */}
+      <section className="bg-white px-5 pb-8 pt-6 md:px-8 md:pb-10 md:pt-8">
+        <div className="mx-auto max-w-[1240px]">
 
           <div
             className="
-              absolute
-              inset-y-0
-              left-0
-              flex
-              w-[55%]
-              items-center
-              bg-gradient-to-r
-              from-[#F7F1E8]/95
-              via-[#F7F1E8]/80
-              to-transparent
-              px-5
-              sm:w-[50%]
-              sm:px-8
-              md:px-10
-              lg:w-[46%]
-              lg:px-12
+              relative
+              overflow-hidden
+              rounded-[28px]
+              bg-[#F5F5F7]
+              px-7
+              py-12
+              md:px-12
+              md:py-16
+              lg:px-16
+              lg:py-20
             "
           >
+
+            {/* BACKGROUND LIGHT */}
+
             <div
               className="
-                max-w-[300px]
-                sm:max-w-[360px]
+                pointer-events-none
+                absolute
+                right-[-120px]
+                top-[-140px]
+                h-[420px]
+                w-[420px]
+                rounded-full
+                bg-white
+                opacity-60
+                blur-3xl
               "
-            >
+            />
+
+            <div
+              className="
+                pointer-events-none
+                absolute
+                bottom-[-180px]
+                left-[30%]
+                h-[360px]
+                w-[360px]
+                rounded-full
+                bg-white
+                opacity-50
+                blur-3xl
+              "
+            />
+
+            {/* CONTENT */}
+
+            <div className="relative max-w-[720px]">
+
               <p
                 className="
-                  mb-1.5
-                  text-[7px]
-                  font-medium
+                  mb-4
+                  text-[10px]
+                  font-semibold
                   uppercase
-                  tracking-[0.28em]
-                  text-[#5C5954]
-                  sm:text-[8px]
-                  md:text-[9px]
+                  tracking-[0.2em]
+                  text-[#6E6E73]
+                  md:text-[11px]
                 "
-                style={{
-                  fontFamily:
-                    '"Times New Roman", Times, serif',
-                }}
               >
-                OLIVE LIVING
+                INFIBETTER ACCESSORIES
               </p>
 
               <h1
                 className="
-                  text-[22px]
-                  leading-[1.05]
-                  tracking-[-0.02em]
-                  text-[#1E1E1E]
-                  sm:text-[28px]
-                  md:text-[34px]
-                  lg:text-[40px]
+                  text-[42px]
+                  font-semibold
+                  leading-[1.04]
+                  tracking-[-0.045em]
+                  text-[#1D1D1F]
+                  md:text-[54px]
+                  lg:text-[62px]
                 "
-                style={{
-                  fontFamily:
-                    '"Times New Roman", Times, serif',
-                }}
               >
-                Bộ sưu tập
+                Accessories
                 <br />
-                đèn decor
+                that fit.
               </h1>
 
               <p
                 className="
-                  mt-2
-                  max-w-[220px]
-                  text-[9px]
-                  leading-[1.5]
-                  text-[#55514C]
-                  sm:mt-3
-                  sm:max-w-[270px]
-                  sm:text-[10px]
-                  md:text-[12px]
+                  mt-5
+                  max-w-[590px]
+                  text-[16px]
+                  leading-7
+                  text-[#6E6E73]
+                  md:text-[18px]
                 "
-                style={{
-                  fontFamily:
-                    "Arial, Helvetica, sans-serif",
-                }}
               >
-                Ánh sáng tinh tế cho không gian
-                sống hiện đại và ấm áp.
+                Cases, chargers,
+                cables and everyday
+                accessories designed
+                to complete your
+                setup.
               </p>
 
-              
+              <div className="mt-7 flex flex-wrap gap-3">
+
+                <Link
+                  to="/shop"
+                  className="
+                    inline-flex
+                    h-10
+                    items-center
+                    rounded-full
+                    bg-[#0071E3]
+                    px-5
+                    text-[13px]
+                    font-semibold
+                    text-white
+                    transition
+                    hover:bg-[#0077ED]
+                  "
+                >
+                  Shop accessories
+                </Link>
+
+                <a
+                  href="#products"
+                  className="
+                    inline-flex
+                    h-10
+                    items-center
+                    rounded-full
+                    border
+                    border-[#D2D2D7]
+                    bg-white
+                    px-5
+                    text-[13px]
+                    font-medium
+                    text-[#1D1D1F]
+                    transition
+                    hover:bg-[#FAFAFA]
+                  "
+                >
+                  Browse products
+                </a>
+
+              </div>
+
             </div>
+
           </div>
+
         </div>
       </section>
 
-      {/* =================================================
-          HOME VOUCHERS
-      ================================================== */}
+      {/* ===================================================
+          DEVICE NAVIGATION
+      =================================================== */}
 
-      {vouchersQ.data &&
-        vouchersQ.data.length > 0 && (
-          <section className="mb-8 w-full">
+      <section className="border-y border-[#E5E5E7] bg-white">
 
-            {/* TITLE */}
+        <div className="mx-auto max-w-[1240px] px-5 md:px-8">
 
-            <div className="mb-3 flex items-end justify-between">
+          <div className="flex gap-2 overflow-x-auto py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
+            {DEVICE_FILTERS.map(
+              (item) => {
+                const Icon =
+                  item.icon;
+
+                const active =
+                  activeDevice ===
+                  item.id;
+
+                return (
+                  <button
+                    key={
+                      item.id
+                    }
+                    type="button"
+                    onClick={() =>
+                      changeDevice(
+                        item.id,
+                      )
+                    }
+                    className={[
+                      "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium transition",
+                      active
+                        ? "border-[#1D1D1F] bg-[#1D1D1F] text-white"
+                        : "border-[#D2D2D7] bg-white text-[#424245] hover:bg-[#F5F5F7]",
+                    ].join(
+                      " ",
+                    )}
+                  >
+                    <Icon
+                      size={15}
+                      strokeWidth={
+                        1.8
+                      }
+                    />
+
+                    <span>
+                      {
+                        item.label
+                      }
+                    </span>
+
+                    <span
+                      className={
+                        active
+                          ? "text-white/60"
+                          : "text-[#86868B]"
+                      }
+                    >
+                      {deviceCounts[
+                        item.id
+                      ] ?? 0}
+                    </span>
+                  </button>
+                );
+              },
+            )}
+
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* ===================================================
+          IPHONE COMPATIBILITY
+      =================================================== */}
+
+      {activeDevice ===
+        "iphone" && (
+        <section className="border-b border-[#E5E5E7] bg-white">
+
+          <div className="mx-auto max-w-[1240px] px-5 py-8 md:px-8">
+
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+
               <div>
+
                 <p
                   className="
-                    text-[8px]
-                    font-medium
+                    text-[11px]
+                    font-semibold
                     uppercase
-                    tracking-[0.22em]
-                    text-neutral-400
+                    tracking-[0.16em]
+                    text-[#86868B]
                   "
                 >
-                  ƯU ĐÃI HÔM NAY
+                  COMPATIBILITY
                 </p>
 
                 <h2
                   className="
-                    mt-0.5
-                    text-[17px]
-                    leading-tight
-                    text-[#252525]
-                    sm:text-[20px]
+                    mt-2
+                    text-[28px]
+                    font-semibold
+                    tracking-[-0.035em]
+                    text-[#1D1D1F]
                   "
-                  style={{
-                    fontFamily:
-                      '"Times New Roman", Times, serif',
-                  }}
                 >
-                  Voucher dành cho bạn
+                  Start with your iPhone.
                 </h2>
+
+                <p className="mt-2 text-[14px] text-[#6E6E73]">
+                  Find accessories made
+                  for your iPhone.
+                </p>
+
               </div>
 
-              <span
-                className="
-                  text-[8px]
-                  text-neutral-400
-                "
-              >
-                {vouchersQ.data.length} ưu đãi
-              </span>
-            </div>
+              {/* SELECT */}
 
-            {/* =================================================
-                VOUCHER GRID
-            ================================================== */}
+              <div className="relative min-w-[260px]">
 
-            <div
-              className="
-                grid
-                grid-cols-2
-                gap-2
-                sm:grid-cols-2
-                lg:grid-cols-3
-              "
-            >
-              {(
-                showAllVouchers
-                  ? vouchersQ.data
-                  : vouchersQ.data.slice(0, 2)
-              ).map((voucher: any) => {
-
-                const code = String(
-                  voucher.code ?? ""
-                );
-
-                const type = String(
-                  voucher.type ?? ""
-                ).toLowerCase();
-
-                const value = Number(
-                  voucher.value ?? 0
-                );
-
-                const minOrder = Number(
-                  voucher.min_order ?? 0
-                );
-
-                const maxDiscount =
-                  voucher.max_discount !== null &&
-                  voucher.max_discount !== undefined
-                    ? Number(
-                        voucher.max_discount
-                      )
-                    : null;
-
-                const isShipping =
-                  type === "shipping";
-
-                let discountText = "";
-
-                if (isShipping) {
-                  discountText =
-                    "MIỄN PHÍ SHIP";
-                } else if (
-                  type === "percent"
-                ) {
-                  discountText =
-                    `${value}% OFF`;
-                } else {
-                  discountText =
-                    `GIẢM ${value.toLocaleString(
-                      "vi-VN"
-                    )}đ`;
-                }
-
-                return (
-                  <div
-                    key={voucher.id}
-                    className="
-                      group
-                      relative
-                      min-w-0
-                      overflow-hidden
-                      rounded-[8px]
-                      border
-                      border-[#E7E2DA]
-                      bg-[#FAF8F4]
-                      p-2
-                      sm:p-2.5
-                    "
-                  >
-                    {/* DECORATION */}
-
-                    <div
-                      className="
-                        pointer-events-none
-                        absolute
-                        -right-6
-                        -top-6
-                        h-14
-                        w-14
-                        rounded-full
-                        bg-white/70
-                      "
-                    />
-
-                    <div
-                      className="
-                        relative
-                        flex
-                        min-w-0
-                        flex-col
-                      "
-                    >
-
-                      {/* TOP */}
-
-                      <div
-                        className="
-                          flex
-                          min-w-0
-                          items-center
-                          gap-2
-                        "
-                      >
-
-                        {/* ICON */}
-
-                        <div
-                          className="
-                            flex
-                            h-8
-                            w-8
-                            shrink-0
-                            items-center
-                            justify-center
-                            rounded-[7px]
-                            bg-white
-                            text-[#8A765D]
-                            shadow-sm
-                            sm:h-9
-                            sm:w-9
-                          "
-                        >
-                          <Ticket
-                            size={14}
-                            strokeWidth={1.5}
-                          />
-                        </div>
-
-                        {/* CONTENT */}
-
-                        <div className="min-w-0 flex-1">
-                          <p
-                            className="
-                              truncate
-                              text-[12px]
-                              font-semibold
-                              leading-4
-                              tracking-tight
-                              text-[#292929]
-                              sm:text-[13px]
-                            "
-                          >
-                            {discountText}
-                          </p>
-
-                          <p
-                            className="
-                              mt-0.5
-                              truncate
-                              text-[8px]
-                              leading-3
-                              text-neutral-500
-                              sm:text-[9px]
-                            "
-                          >
-                            {voucher.description ||
-                              (minOrder > 0
-                                ? `Đơn từ ${minOrder.toLocaleString(
-                                    "vi-VN"
-                                  )}đ`
-                                : "Áp dụng đơn hàng")}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* INFO */}
-
-                      <div
-                        className="
-                          mt-1.5
-                          min-h-[12px]
-                          truncate
-                          text-[7px]
-                          leading-3
-                          text-neutral-400
-                        "
-                      >
-                        {type === "percent" &&
-                        maxDiscount !== null
-                          ? `Tối đa ${maxDiscount.toLocaleString(
-                              "vi-VN"
-                            )}đ`
-                          : minOrder > 0
-                            ? `Đơn từ ${minOrder.toLocaleString(
-                                "vi-VN"
-                              )}đ`
-                            : "Áp dụng toàn shop"}
-                      </div>
-
-                      {/* COPY BUTTON */}
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          copyVoucher(code)
-                        }
-                        className="
-                          mt-1.5
-                          flex
-                          h-6
-                          w-full
-                          items-center
-                          justify-center
-                          gap-1
-                          rounded-full
-                          border
-                          border-[#D9D2C8]
-                          bg-white
-                          px-2
-                          text-[7px]
-                          font-semibold
-                          uppercase
-                          tracking-[0.06em]
-                          text-[#4A4742]
-                          transition
-                          hover:bg-[#F5F1EA]
-                          sm:h-7
-                          sm:text-[8px]
-                        "
-                      >
-                        {copiedVoucher ===
-                        code ? (
-                          <>
-                            <Check size={9} />
-                            Đã sao chép
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={9} />
-                            {code}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* =================================================
-                EXPAND / COLLAPSE
-            ================================================== */}
-
-            {vouchersQ.data.length > 2 && (
-              <button
-                type="button"
-                onClick={() =>
-                  setShowAllVouchers(
-                    (prev) => !prev
-                  )
-                }
-                className="
-                  mx-auto
-                  mt-4
-                  flex
-                  items-center
-                  gap-1.5
-                  rounded-full
-                  border
-                  border-[#DDD6CC]
-                  bg-white/70
-                  px-4
-                  py-2
-                  text-[8px]
-                  font-medium
-                  uppercase
-                  tracking-[0.12em]
-                  text-[#55514C]
-                  backdrop-blur-sm
-                  transition-all
-                  duration-300
-                  hover:bg-[#F7F3ED]
-                "
-              >
-                {showAllVouchers ? (
-                  <>
-                    Thu gọn
-                    <ArrowUp size={11} />
-                  </>
-                ) : (
-                  <>
-                    Xem thêm voucher
-                    <ArrowDown size={11} />
-                  </>
-                )}
-              </button>
-            )}
-          </section>
-        )}
-
-      {/* =================================================
-          PRODUCTS
-      ================================================== */}
-
-      <div className="w-full">
-        <div>
-
-          {/* LOADING */}
-
-          {productsQ.isLoading ? (
-            <div
-              className="
-                grid
-                grid-cols-2
-                gap-4
-                md:grid-cols-3
-                lg:grid-cols-4
-                xl:grid-cols-4
-                2xl:grid-cols-4
-              "
-            >
-              {Array.from({
-                length: 6,
-              }).map((_, i) => (
-                <div
-                  key={i}
+                <select
+                  value={
+                    selectedModel
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    changeModel(
+                      event.target
+                        .value,
+                    )
+                  }
                   className="
-                    aspect-[4/5]
-                    animate-pulse
-                    rounded-md
-                    bg-muted
+                    h-11
+                    w-full
+                    appearance-none
+                    rounded-xl
+                    border
+                    border-[#D2D2D7]
+                    bg-white
+                    px-4
+                    pr-10
+                    text-[14px]
+                    font-medium
+                    text-[#1D1D1F]
+                    outline-none
+                    transition
+                    focus:border-[#0071E3]
+                    focus:ring-2
+                    focus:ring-[#0071E3]/10
+                  "
+                >
+
+                  <option value="">
+                    All iPhone models
+                  </option>
+
+                  {IPHONE_MODELS.map(
+                    (model) => (
+                      <option
+                        key={model}
+                        value={model}
+                      >
+                        {model}
+                      </option>
+                    ),
+                  )}
+
+                </select>
+
+                <ChevronDown
+                  size={17}
+                  className="
+                    pointer-events-none
+                    absolute
+                    right-4
+                    top-1/2
+                    -translate-y-1/2
+                    text-[#6E6E73]
                   "
                 />
-              ))}
-            </div>
 
-          ) : filtered.length === 0 ? (
-
-            /* EMPTY */
-
-            <div
-              className="
-                rounded-lg
-                border
-                border-dashed
-                border-border
-                p-16
-                text-center
-                text-muted-foreground
-              "
-            >
-              Không tìm thấy sản phẩm phù hợp.
-            </div>
-
-          ) : (
-            <>
-              {/* =================================================
-                  PRODUCT GRID
-              ================================================== */}
-
-              <div
-                className="
-                  grid
-                  grid-cols-2
-                  gap-4
-                  md:grid-cols-3
-                  lg:grid-cols-4
-                  xl:grid-cols-4
-                  2xl:grid-cols-4
-                "
-              >
-                {filtered.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={{
-                      ...p,
-                      old_price:
-                        p.compare_at_price,
-                    }}
-                  />
-                ))}
               </div>
 
-              {/* =================================================
-                  LIFESTYLE VIDEO
-              ================================================== */}
+            </div>
 
-              <section className="mt-10 w-full">
-                <div
-                  className="
-                    relative
-                    w-full
-                    overflow-hidden
-                    rounded-[10px]
-                    bg-[#F7F5F2]
-                  "
+            {/* ACTIVE MODEL */}
+
+            {selectedModel && (
+              <div className="mt-5 flex items-center gap-2">
+
+                <span className="rounded-full bg-[#F5F5F7] px-3 py-1.5 text-[12px] font-medium text-[#424245]">
+                  {selectedModel}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    changeModel(
+                      "",
+                    )
+                  }
+                  className="text-[12px] font-medium text-[#0071E3] hover:underline"
                 >
-                  <video
-                    src="/videos/0825%20(9).mp4"
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata"
-                    className="
-                      block
-                      h-auto
-                      max-h-[720px]
-                      w-full
-                      object-cover
-                    "
-                  />
-                </div>
-              </section>
-            </>
-          )}
-        </div>
-      </div>
+                  Clear
+                </button>
 
-      {/* =================================================
-          FLOATING SCROLL BUTTONS
-      ================================================== */}
+              </div>
+            )}
 
-      <div
+          </div>
+
+        </section>
+      )}
+
+      {/* ===================================================
+          PRODUCT AREA
+      =================================================== */}
+
+      <section
+        id="products"
         className="
-          fixed
-          right-3
-          top-1/2
-          z-[100]
-          flex
-          -translate-y-1/2
-          flex-col
-          gap-1.5
+          mx-auto
+          max-w-[1240px]
+          px-5
+          py-10
+          md:px-8
+          md:py-12
         "
       >
 
-        {/* UP */}
+        {/* TOOLBAR */}
 
-        <button
-          type="button"
-          onClick={scrollToTop}
-          aria-label="Lên đầu trang"
+        <div
           className="
-            group
-            relative
+            mb-7
             flex
-            h-8
-            w-8
-            items-center
-            justify-center
-            overflow-hidden
-            rounded-full
-            border
-            border-white/45
-            bg-white/25
-            text-black/50
-            shadow-[0_3px_14px_rgba(0,0,0,0.06)]
-            backdrop-blur-xl
-            backdrop-saturate-125
-            transition-all
-            duration-300
-            hover:bg-white/45
-            hover:text-black/65
-            hover:shadow-[0_5px_18px_rgba(0,0,0,0.09)]
+            flex-col
+            gap-4
+            border-b
+            border-[#E5E5E7]
+            pb-5
+            md:flex-row
+            md:items-center
+            md:justify-between
           "
         >
-          <span
-            className="
-              pointer-events-none
-              absolute
-              -left-8
-              top-0
-              h-full
-              w-3
-              rotate-[25deg]
-              bg-white/40
-              blur-sm
-              transition-all
-              duration-700
-              group-hover:left-[120%]
-            "
-          />
 
-          <span
-            className="
-              pointer-events-none
-              absolute
-              inset-[1px]
-              rounded-full
-              border
-              border-white/35
-            "
-          />
+          <div className="flex items-center gap-3">
 
-          <ArrowUp
-            size={12}
-            strokeWidth={1.7}
-            className="
-              relative
-              z-10
-              opacity-70
-              transition-transform
-              duration-300
-              group-hover:-translate-y-0.5
-            "
-          />
-        </button>
+            <h2
+              className="
+                text-[22px]
+                font-semibold
+                tracking-[-0.025em]
+                text-[#1D1D1F]
+              "
+            >
+              {sp.category && sp.category !== "all"
+                ? sp.category
+                    .replace(/-/g, " ")
+                    .replace(/\b\w/g, (letter) =>
+                      letter.toUpperCase(),
+                    )
+                : "All accessories"}
+            </h2>
 
-        {/* DOWN */}
+            <span className="rounded-full bg-[#F5F5F7] px-2.5 py-1 text-[11px] font-medium text-[#6E6E73]">
+              {
+                filteredProducts.length
+              }
+            </span>
 
-        <button
-          type="button"
-          onClick={scrollToBottom}
-          aria-label="Xuống cuối trang"
+          </div>
+
+          <div className="flex items-center gap-2">
+
+            <div className="hidden items-center gap-2 text-[13px] text-[#6E6E73] sm:flex">
+
+              <SlidersHorizontal
+                size={15}
+              />
+
+              <span>
+                Filter & sort
+              </span>
+
+            </div>
+
+            {/* SORT */}
+
+            <div className="relative">
+
+              <select
+                value={
+                  sp.sort ??
+                  "newest"
+                }
+                onChange={(
+                  event,
+                ) =>
+                  changeSort(
+                    event.target
+                      .value,
+                  )
+                }
+                className="
+                  h-9
+                  appearance-none
+                  rounded-full
+                  border
+                  border-[#D2D2D7]
+                  bg-white
+                  px-4
+                  pr-9
+                  text-[12px]
+                  font-medium
+                  text-[#1D1D1F]
+                  outline-none
+                  hover:bg-[#F5F5F7]
+                "
+              >
+
+                <option value="newest">
+                  Newest
+                </option>
+
+                <option value="best">
+                  Best sellers
+                </option>
+
+                <option value="price-low">
+                  Price: Low to High
+                </option>
+
+                <option value="price-high">
+                  Price: High to Low
+                </option>
+
+              </select>
+
+              <ChevronDown
+                size={14}
+                className="
+                  pointer-events-none
+                  absolute
+                  right-3
+                  top-1/2
+                  -translate-y-1/2
+                  text-[#6E6E73]
+                "
+              />
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* CATEGORY */}
+        {sp.category &&
+          sp.category !== "all" && (
+            <div className="mb-5 flex items-center justify-between rounded-xl border border-[#E5E5E7] bg-white px-4 py-3">
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#86868B]">
+                  CATEGORY
+                </p>
+                <p className="mt-0.5 text-[13px] font-medium capitalize text-[#1D1D1F]">
+                  {sp.category.replace(/-/g, " ")}
+                </p>
+              </div>
+
+              <Link
+                to="/shop"
+                className="text-[12px] font-medium text-[#0071E3] hover:underline"
+              >
+                View all
+              </Link>
+            </div>
+          )}
+
+        {/* SEARCH */}
+
+        {sp.q &&
+          activeDevice !==
+            "iphone" && (
+            <div className="mb-6 flex items-center gap-2 rounded-xl bg-[#F5F5F7] px-4 py-3">
+
+              <Search
+                size={15}
+                className="text-[#6E6E73]"
+              />
+
+              <span className="text-[13px] text-[#424245]">
+                Showing results for
+
+                <strong className="ml-1 font-semibold text-[#1D1D1F]">
+                  {sp.q}
+                </strong>
+              </span>
+
+            </div>
+          )}
+
+        {/* =================================================
+            LOADING
+        ================================================= */}
+
+        {isLoading && (
+          <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+
+            {Array.from({
+              length: 8,
+            }).map(
+              (_, index) => (
+                <div
+                  key={
+                    index
+                  }
+                  className="overflow-hidden rounded-2xl"
+                >
+
+                  <div className="aspect-square animate-pulse rounded-2xl bg-[#F5F5F7]" />
+
+                  <div className="space-y-3 px-1 pt-3">
+
+                    <div className="h-3 w-3/4 animate-pulse rounded bg-[#F5F5F7]" />
+
+                    <div className="h-3 w-1/2 animate-pulse rounded bg-[#F5F5F7]" />
+
+                    <div className="h-4 w-1/3 animate-pulse rounded bg-[#F5F5F7]" />
+
+                  </div>
+
+                </div>
+              ),
+            )}
+
+          </div>
+        )}
+
+        {/* =================================================
+            EMPTY
+        ================================================= */}
+
+        {!isLoading &&
+          filteredProducts.length ===
+            0 && (
+            <div
+              className="
+                flex
+                min-h-[380px]
+                flex-col
+                items-center
+                justify-center
+                rounded-2xl
+                border
+                border-[#E5E5E7]
+                bg-[#F5F5F7]
+                px-6
+                text-center
+              "
+            >
+
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white">
+
+                <Search
+                  size={20}
+                  className="text-[#86868B]"
+                />
+
+              </div>
+
+              <h3 className="text-[20px] font-semibold tracking-[-0.025em]">
+                No accessories found.
+              </h3>
+
+              <p className="mt-2 max-w-md text-[14px] leading-6 text-[#6E6E73]">
+                Try another device,
+                iPhone model or
+                remove some filters.
+              </p>
+
+              <Link
+                to="/shop"
+                className="mt-5 text-[14px] font-medium text-[#0071E3] hover:underline"
+              >
+                View all accessories
+              </Link>
+
+            </div>
+          )}
+
+        {/* =================================================
+            PRODUCT GRID
+        ================================================= */}
+
+        {!isLoading &&
+          filteredProducts.length >
+            0 && (
+            <div
+              className="
+                grid
+                grid-cols-2
+                gap-x-4
+                gap-y-8
+                md:grid-cols-3
+                lg:grid-cols-4
+              "
+            >
+
+              {filteredProducts.map(
+                (
+                  product: any,
+                ) => (
+                  <ProductCard
+                    key={
+                      product.id
+                    }
+                    product={
+                      product
+                    }
+                    variant={
+                      product.best_seller
+                        ? "best-seller"
+                        : "default"
+                    }
+                  />
+                ),
+              )}
+
+            </div>
+          )}
+
+      </section>
+
+      {/* ===================================================
+          BENEFITS
+      =================================================== */}
+
+      <section className="border-t border-[#E5E5E7] bg-[#F5F5F7]">
+
+        <div
           className="
-            group
-            relative
-            flex
-            h-8
-            w-8
-            items-center
-            justify-center
-            overflow-hidden
-            rounded-full
-            border
-            border-white/45
-            bg-white/25
-            text-black/50
-            shadow-[0_3px_14px_rgba(0,0,0,0.06)]
-            backdrop-blur-xl
-            backdrop-saturate-125
-            transition-all
-            duration-300
-            hover:bg-white/45
-            hover:text-black/65
-            hover:shadow-[0_5px_18px_rgba(0,0,0,0.09)]
+            mx-auto
+            grid
+            max-w-[1240px]
+            grid-cols-2
+            divide-x
+            divide-[#D2D2D7]
+            px-5
+            md:grid-cols-4
+            md:px-8
           "
         >
-          <span
-            className="
-              pointer-events-none
-              absolute
-              -left-8
-              top-0
-              h-full
-              w-3
-              rotate-[25deg]
-              bg-white/40
-              blur-sm
-              transition-all
-              duration-700
-              group-hover:left-[120%]
-            "
-          />
 
-          <span
-            className="
-              pointer-events-none
-              absolute
-              inset-[1px]
-              rounded-full
-              border
-              border-white/35
-            "
-          />
+          <div className="px-4 py-8 text-center md:px-8">
 
-          <ArrowDown
-            size={12}
-            strokeWidth={1.7}
-            className="
-              relative
-              z-10
-              opacity-70
-              transition-transform
-              duration-300
-              group-hover:translate-y-0.5
-            "
-          />
-        </button>
+            <p className="text-[14px] font-semibold">
+              Secure checkout
+            </p>
 
-      </div>
-    </div>
+            <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">
+              Safe and protected
+              payments.
+            </p>
+
+          </div>
+
+          <div className="px-4 py-8 text-center md:px-8">
+
+            <p className="text-[14px] font-semibold">
+              Tracked shipping
+            </p>
+
+            <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">
+              Follow your order
+              every step.
+            </p>
+
+          </div>
+
+          <div className="border-t border-[#D2D2D7] px-4 py-8 text-center md:border-t-0 md:px-8">
+
+            <p className="text-[14px] font-semibold">
+              Easy returns
+            </p>
+
+            <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">
+              Simple support when
+              you need it.
+            </p>
+
+          </div>
+
+          <div className="border-t border-[#D2D2D7] px-4 py-8 text-center md:border-t-0 md:px-8">
+
+            <p className="text-[14px] font-semibold">
+              Built for everyday
+            </p>
+
+            <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">
+              Accessories that fit
+              your setup.
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
   );
 }

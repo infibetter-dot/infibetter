@@ -21,6 +21,7 @@ import {
   Flame,
   LayoutDashboard,
   LogOut,
+  Menu,
   Package,
   Search,
   Settings,
@@ -35,7 +36,7 @@ import { useMemo, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { formatVND } from "@/lib/format";
+import { formatUSDFromVND } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/account")({
@@ -104,6 +105,11 @@ const navigationGroups = [
         label: "Danh mục",
         href: "/admin/categories",
         icon: FolderTree,
+      },
+      {
+        label: "Mega Menu",
+        href: "/admin/mega-menu",
+        icon: Menu,
       },
       {
         label: "Phụ kiện",
@@ -1172,7 +1178,7 @@ function AccountPage() {
                   <p className="mt-3 text-2xl font-semibold tracking-tight text-[#282B27]">
                     {loading
                       ? "..."
-                      : formatVND(
+                      : formatUSDFromVND(
                           analytics.revenue,
                         )}
                   </p>
@@ -1455,7 +1461,7 @@ function AccountPage() {
                           "revenue"
                         ) {
                           return [
-                            formatVND(
+                            formatUSDFromVND(
                               Number(
                                 value,
                               ),
@@ -1626,7 +1632,7 @@ function AccountPage() {
                           </td>
 
                           <td className="px-6 py-4 text-sm font-medium text-[#30332F]">
-                            {formatVND(
+                            {formatUSDFromVND(
                               Number(
                                 order.total ??
                                   0,
@@ -1731,7 +1737,7 @@ function AccountPage() {
 
                       <div className="mt-4 flex items-center justify-between">
                         <p className="text-base font-semibold text-[#30332F]">
-                          {formatVND(
+                          {formatUSDFromVND(
                             Number(
                               order.total ??
                                 0,
@@ -1762,7 +1768,7 @@ function AccountPage() {
               QUICK ACCESS
           ================================================= */}
 
-          <section className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <section className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <QuickAccess
               icon={Package}
               title="Quản lý sản phẩm"
@@ -1775,6 +1781,13 @@ function AccountPage() {
               title="Danh mục"
               description="Quản lý nhóm sản phẩm"
               href="/admin/categories"
+            />
+
+            <QuickAccess
+              icon={Menu}
+              title="Mega Menu"
+              description="Chỉnh menu Header"
+              href="/admin/mega-menu"
             />
 
             <QuickAccess

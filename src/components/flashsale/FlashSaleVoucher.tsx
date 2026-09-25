@@ -24,7 +24,7 @@ type Voucher = {
   end_at?: string | null;
 };
 
-function formatVND(value: number | null | undefined) {
+function formatUSDFromVND(value: number | null | undefined) {
   return new Intl.NumberFormat("vi-VN").format(Number(value ?? 0)) + "đ";
 }
 
@@ -87,7 +87,7 @@ function getVoucherTitle(voucher: Voucher) {
       return `Giảm ${value}%`;
 
     case "fixed":
-      return `Giảm ${formatVND(value)}`;
+      return `Giảm ${formatUSDFromVND(value)}`;
 
     default:
       return voucher.title || "Ưu đãi đặc biệt";
@@ -98,7 +98,7 @@ function getVoucherDescription(voucher: Voucher) {
   const minOrder = Number(voucher.min_order ?? 0);
 
   if (minOrder > 0) {
-    return `Đơn từ ${formatVND(minOrder)}`;
+    return `Đơn từ ${formatUSDFromVND(minOrder)}`;
   }
 
   return voucher.description || "Áp dụng cho đơn hàng";

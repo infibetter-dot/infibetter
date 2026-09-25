@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCart } from "@/lib/cart";
-import { formatVND } from "@/lib/format";
+import { formatUSDFromVND } from "@/lib/format";
 import { Minus, Plus, X, ShoppingBag, ArrowRight } from "lucide-react";
 import NextVoucherSuggestion from "@/components/cart/NextVoucherSuggestion";
 
@@ -232,7 +232,7 @@ function CartPage() {
                       {/* PRICE */}
 
                       <p className="mt-2 text-[13px] text-[#6F736A]">
-                        {formatVND(item.price)}
+                        {formatUSDFromVND(item.price)}
                       </p>
 
                       {/* BOTTOM */}
@@ -328,7 +328,7 @@ function CartPage() {
                         {/* ITEM TOTAL */}
 
                         <span className="text-[14px] font-medium tracking-tight text-[#282B25]">
-                          {formatVND(
+                          {formatUSDFromVND(
                             item.price * item.quantity
                           )}
                         </span>
@@ -409,7 +409,7 @@ function CartPage() {
                   </dt>
 
                   <dd className="font-medium text-[#34372F]">
-                    {formatVND(subtotal)}
+                    {formatUSDFromVND(subtotal)}
                   </dd>
                 </div>
 
@@ -421,7 +421,7 @@ function CartPage() {
                   <dd className="font-medium text-[#34372F]">
                     {shipping === 0
                       ? "Miễn phí"
-                      : formatVND(shipping)}
+                      : formatUSDFromVND(shipping)}
                   </dd>
                 </div>
 
@@ -444,7 +444,7 @@ function CartPage() {
                   </div>
 
                   <span className="font-display text-[26px] tracking-tight text-[#252820]">
-                    {formatVND(total)}
+                    {formatUSDFromVND(total)}
                   </span>
 
                 </div>

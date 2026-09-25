@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { ProductCardProduct } from "@/components/product-card";
-import { formatVND } from "@/lib/format";
+import { formatUSDFromVND } from "@/lib/format";
 import { getImageUrl } from "@/lib/storage";
 interface Props {
   products: ProductCardProduct[];
@@ -266,12 +266,12 @@ export default function FavoriteProducts({
           text-[#2F2F2F]
         "
       >
-        {formatVND(salePrice)}
+        {formatUSDFromVND(salePrice)}
       </div>
 
       <p className="mt-2 text-[13px] font-semibold text-green-600">
   Tiết kiệm{" "}
-  {formatVND(originalPrice - salePrice)}
+  {formatUSDFromVND(originalPrice - salePrice)}
 </p>
 
       <div
@@ -282,7 +282,7 @@ export default function FavoriteProducts({
           line-through
         "
       >
-        {formatVND(originalPrice)}
+        {formatUSDFromVND(originalPrice)}
       </div>
 
     </div>

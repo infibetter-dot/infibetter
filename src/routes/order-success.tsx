@@ -18,7 +18,7 @@ import {
   CreditCard,
 } from "lucide-react";
 
-import { formatVND } from "@/lib/format";
+import { formatUSDFromVND } from "@/lib/format";
 
 export const Route = createFileRoute(
   "/order-success"
@@ -369,7 +369,7 @@ Hỗ trợ đổi mới nếu lỗi nhà sản xuất.
 
         <span>
 
-          {formatVND(order.subtotal)}
+          {formatUSDFromVND(order.subtotal)}
 
         </span>
 
@@ -382,7 +382,7 @@ Hỗ trợ đổi mới nếu lỗi nhà sản xuất.
   </span>
 
   <span>
-    {formatVND(order.shipping)}
+    {formatUSDFromVND(order.shipping)}
   </span>
 
 </div>
@@ -401,7 +401,7 @@ Hỗ trợ đổi mới nếu lỗi nhà sản xuất.
         </div>
 
         <span className="text-green-600">
-            -{formatVND(order.discountAmount)}
+            -{formatUSDFromVND(order.discountAmount)}
         </span>
 
     </div>
@@ -421,7 +421,7 @@ Hỗ trợ đổi mới nếu lỗi nhà sản xuất.
         </div>
 
         <span className="text-green-600">
-            -{formatVND(order.shippingDiscount)}
+            -{formatUSDFromVND(order.shippingDiscount)}
         </span>
 
     </div>
@@ -435,7 +435,7 @@ Hỗ trợ đổi mới nếu lỗi nhà sản xuất.
 
         <span className="text-2xl font-bold">
 
-          {formatVND(order.total)}
+          {formatUSDFromVND(order.total)}
 
         </span>
 
@@ -600,7 +600,7 @@ Hỗ trợ đổi mới nếu lỗi nhà sản xuất.
         </p>
 
         <p className="mt-3 text-lg font-semibold">
-          {formatVND(item.unit_price * item.quantity)}
+          {formatUSDFromVND(item.unit_price * item.quantity)}
         </p>
 
       </div>

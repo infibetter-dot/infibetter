@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { ProductCardProduct } from "@/components/product-card";
-import { formatVND } from "@/lib/format";
+import { formatUSDFromVND } from "@/lib/format";
 import { motion } from "framer-motion";
 import HomeProductCard from "./HomeProductCard";
 

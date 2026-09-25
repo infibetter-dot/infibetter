@@ -8,7 +8,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ProductCardProduct } from "@/components/product-card";
-import { formatVND } from "@/lib/format";
+import { formatUSDFromVND } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { getImageUrl } from "@/lib/storage";
 
@@ -416,7 +416,7 @@ lg:text-[30px]
               leading-none
             "
           >
-            {formatVND(salePrice)}
+            {formatUSDFromVND(salePrice)}
           </span>
 
           <span
@@ -427,7 +427,7 @@ lg:text-[30px]
               line-through
             "
           >
-            {formatVND(originalPrice)}
+            {formatUSDFromVND(originalPrice)}
           </span>
 
         </div>
@@ -445,7 +445,7 @@ text-[9px]
               text-[#C76A2F]
             "
           >
-            Tiết kiệm {formatVND(originalPrice - salePrice)}
+            Tiết kiệm {formatUSDFromVND(originalPrice - salePrice)}
           </span>
 
           <span

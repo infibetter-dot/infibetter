@@ -5,6 +5,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
+import { formatUSDFromVND } from "@/lib/format";
 
 import banner01 from "@/assets/hero/banner01.png";
 import banner02 from "@/assets/hero/banner02.png";
@@ -39,27 +40,27 @@ const collections = [
   {
     title: "Ốp iPhone",
     subtitle: "Shop iPhone Cases",
-    slug: "op-dien-thoai",
+    slug: "iphone-cases",
   },
   {
     title: "Sạc không dây",
-    subtitle: "Shop Wireless Chargers",
-    slug: "sac-khong-day",
+    subtitle: "Shop Wireless Charging",
+    slug: "wireless-charging",
   },
   {
     title: "Pin dự phòng",
     subtitle: "Shop Power Banks",
-    slug: "pin-du-phong",
+    slug: "power-banks",
   },
   {
     title: "Dây đeo Apple Watch",
     subtitle: "Shop Watch Bands",
-    slug: "day-deo-apple-watch",
+    slug: "apple-watch-bands",
   },
   {
     title: "Phụ kiện iPad",
     subtitle: "Shop iPad Cases",
-    slug: "phu-kien-ipad",
+    slug: "ipad-cases",
   },
 ];
 
@@ -71,9 +72,6 @@ const demoProductImages = [
   hero2,
 ];
 
-function formatPrice(value: number | string) {
-  return `${Number(value).toLocaleString("vi-VN")} VNĐ`;
-}
 
 function ProductMiniCard({
   product,
@@ -100,17 +98,19 @@ function ProductMiniCard({
       {/* IMAGE */}
       <div
         className="
-          relative aspect-[1/0.92]
-          overflow-hidden bg-[#F7F7F7]
+          relative aspect-square
+          overflow-hidden bg-white
         "
       >
         <img
           src={product.image_url || fallbackImage}
           alt={product.name}
           className="
-            h-full w-full object-contain p-3
+            absolute inset-0
+            h-full w-full
+            object-contain p-1
             transition-transform duration-500
-            group-hover:scale-[1.04]
+            group-hover:scale-[1.03]
           "
         />
 
@@ -160,12 +160,12 @@ function ProductMiniCard({
 
         <div className="mt-2 flex items-center gap-1">
           <span className="text-[11px] font-bold text-[#0066E6]">
-            {formatPrice(price)}
+            {formatUSDFromVND(price)}
           </span>
 
           {comparePrice > price && (
             <span className="text-[8px] text-neutral-400 line-through">
-              {formatPrice(comparePrice)}
+              {formatUSDFromVND(comparePrice)}
             </span>
           )}
         </div>

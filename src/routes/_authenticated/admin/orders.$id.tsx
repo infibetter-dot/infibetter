@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { formatVND } from "@/lib/format";
+import { formatUSDFromVND } from "@/lib/format";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -274,13 +274,13 @@ function OrderDetailPage() {
 
                   <td className="px-3 py-2 text-center text-sm">
 
-                    {formatVND(Number(item.unit_price))}
+                    {formatUSDFromVND(Number(item.unit_price))}
 
                   </td>
 
                   <td className="text-center font-semibold">
 
-                    {formatVND(total)}
+                    {formatUSDFromVND(total)}
 
                   </td>
 

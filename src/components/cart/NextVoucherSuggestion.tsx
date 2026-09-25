@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { formatVND } from "@/lib/format";
+import { formatUSDFromVND } from "@/lib/format";
 
 interface Props {
   subtotal: number;
@@ -207,14 +207,14 @@ export default function NextVoucherSuggestion({
                           Number(
                             voucher.max_discount,
                           ) > 0
-                            ? ` · Tối đa ${formatVND(
+                            ? ` · Tối đa ${formatUSDFromVND(
                                 voucher.max_discount,
                               )}`
                             : ""
                         }`
                       : voucher.type === "shipping"
                       ? "Miễn phí vận chuyển"
-                      : `Giảm ${formatVND(
+                      : `Giảm ${formatUSDFromVND(
                           voucher.value,
                         )}`}
                   </div>
@@ -423,14 +423,14 @@ export default function NextVoucherSuggestion({
     nextVoucher.type === "percent"
       ? `Giảm ${nextVoucher.value}%${
           Number(nextVoucher.max_discount) > 0
-            ? ` (tối đa ${formatVND(
+            ? ` (tối đa ${formatUSDFromVND(
                 nextVoucher.max_discount,
               )})`
             : ""
         }`
       : nextVoucher.type === "shipping"
       ? "Miễn phí vận chuyển"
-      : `Giảm ${formatVND(
+      : `Giảm ${formatUSDFromVND(
           nextVoucher.value,
         )}`;
 
@@ -575,7 +575,7 @@ export default function NextVoucherSuggestion({
 
                     <div className="mt-1 text-[11px] text-neutral-500">
                       Đơn từ{" "}
-                      {formatVND(
+                      {formatUSDFromVND(
                         voucher.min_order,
                       )}
                     </div>
@@ -622,7 +622,7 @@ export default function NextVoucherSuggestion({
                     "
                   >
                     Còn thiếu{" "}
-                    {formatVND(
+                    {formatUSDFromVND(
                       Number(
                         voucher.min_order,
                       ) - subtotal,
@@ -722,7 +722,7 @@ export default function NextVoucherSuggestion({
               text-[#6F8B5E]
             "
           >
-            {formatVND(remain)}
+            {formatUSDFromVND(remain)}
           </div>
 
           <p className="mt-2 text-[13px] leading-5 text-neutral-700">
@@ -730,7 +730,7 @@ export default function NextVoucherSuggestion({
             Còn thiếu{" "}
 
             <span className="font-semibold text-[#6F8B5E]">
-              {formatVND(remain)}
+              {formatUSDFromVND(remain)}
             </span>
 
             {" "}để mở khóa{" "}

@@ -1,4 +1,5 @@
 ﻿import { Link } from "@tanstack/react-router";
+import CartDrawer from "@/components/cart/CartDrawer";
 import {
   ArrowRight,
   ChevronDown,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/lib/cart";
+import { supabase } from "@/integrations/supabase/client";
 
 import banner01 from "@/assets/hero/banner01.png";
 import banner02 from "@/assets/hero/banner02.png";
@@ -17,129 +19,132 @@ import banner03 from "@/assets/hero/banner03.png";
 
 type MegaMenuKey = "cases" | "charging" | "lifestyle" | null;
 
-type MegaColumn = {
+type MegaItem = {
+  id: string;
+  category_id: string | null;
+  label_override: string | null;
+  sort_order: number;
+  is_visible: boolean;
+  categories: { id: string; name: string; slug: string; parent_id: string | null } | null;
+};
+
+type MegaGroup = {
+  id: string;
+  section_id: string;
   title: string;
-  image: string;
-  items: string[];
-  category: string;
+  category_id: string | null;
+  image_url: string | null;
+  sort_order: number;
+  is_visible: boolean;
+  mega_menu_items: MegaItem[];
+  category: { id: string; name: string; slug: string; parent_id: string | null } | null;
 };
 
-const megaMenus: Record<
-  Exclude<MegaMenuKey, null>,
-  {
-    title: string;
-    image: string;
-    columns: MegaColumn[];
+type MegaSection = {
+  id: string;
+  menu_key: Exclude<MegaMenuKey, null>;
+  title: string;
+  image_url: string | null;
+  sort_order: number;
+  is_visible: boolean;
+  mega_menu_groups: MegaGroup[];
+};
+
+const fallbackImages = [banner01, banner02, banner03];
+
+function getSectionFallback(menuKey: string) {
+  if (menuKey === "cases") return banner02;
+  if (menuKey === "charging") return banner03;
+  return banner01;
+}
+
+function getGroupFallback(menuKey: string, index: number) {
+  if (menuKey === "charging") {
+    return [banner03, banner02, banner01, banner03][index] ?? banner03;
   }
-> = {
-  cases: {
-    title: "Cases & Bands",
-    image: banner02,
-    columns: [
-      {
-        title: "iPhone Cases",
-        image: banner01,
-        items: [
-          "Signature Cases",
-          "Stand Cases",
-          "Bumper Cases",
-          "Essential Cases",
-        ],
-        category: "iphone-cases",
-      },
-      {
-        title: "iPad Cases",
-        image: banner02,
-        items: ["TypeMate", "StudioCase Air", "PivotCase"],
-        category: "ipad-cases",
-      },
-      {
-        title: "Apple Watch Bands",
-        image: banner03,
-        items: ["WatchBand Active", "Titanium Bands", "Sport Bands"],
-        category: "watch-bands",
-      },
-    ],
-  },
-
-  charging: {
-    title: "Charging",
-    image: banner03,
-    columns: [
-      {
-        title: "Wireless Charging",
-        image: banner03,
-        items: ["MagFold Qi2", "MagBank Qi2", "3-in-1 Chargers"],
-        category: "wireless-chargers",
-      },
-      {
-        title: "Power Banks",
-        image: banner02,
-        items: ["MagBank Slim", "MagBank Pro", "Travel Power"],
-        category: "power-banks",
-      },
-      {
-        title: "Wall Chargers",
-        image: banner01,
-        items: ["20W Chargers", "30W Chargers", "65W Chargers"],
-        category: "chargers",
-      },
-      {
-        title: "Charging Cables",
-        image: banner03,
-        items: ["USB-C", "USB-C to Lightning", "Braided Cables"],
-        category: "charging-cables",
-      },
-    ],
-  },
-
-  lifestyle: {
-    title: "Lifestyle Gear",
-    image: banner01,
-    columns: [
-      {
-        title: "Travel",
-        image: banner01,
-        items: ["Travel Accessories", "Tech Organizers", "Portable Gear"],
-        category: "travel",
-      },
-      {
-        title: "Desk Setup",
-        image: banner03,
-        items: ["Desk Accessories", "Stands", "Organization"],
-        category: "desk-setup",
-      },
-      {
-        title: "Everyday Carry",
-        image: banner02,
-        items: ["Everyday Gear", "Minimal Accessories", "Smart Essentials"],
-        category: "everyday-carry",
-      },
-      {
-        title: "Apple Setup",
-        image: banner01,
-        items: ["iPhone", "Apple Watch", "AirPods"],
-        category: "apple",
-      },
-    ],
-  },
-};
+  if (menuKey === "cases") {
+    return [banner01, banner02, banner03][index] ?? banner01;
+  }
+  return fallbackImages[index % fallbackImages.length];
+}
 
 export function SiteHeader() {
   const { count } = useCart();
 
-  const [activeMenu, setActiveMenu] = useState<MegaMenuKey>(null);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [activeMenu, setActiveMenu] =
+    useState<MegaMenuKey>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [megaMenus, setMegaMenus] = useState<MegaSection[]>([]);
 
-  const headerRef = useRef<HTMLDivElement>(null);
+  const loadMegaMenus = async () => {
+    const { data, error } = await supabase
+      .from("mega_menu_sections")
+      .select(`
+        id, menu_key, title, image_url, sort_order, is_visible,
+        mega_menu_groups (
+          id, section_id, title, category_id, image_url, sort_order, is_visible,
+          categories ( id, name, slug, parent_id ),
+          mega_menu_items (
+            id, category_id, label_override, sort_order, is_visible,
+            categories ( id, name, slug, parent_id )
+          )
+        )
+      `)
+      .eq("is_visible", true)
+      .order("sort_order");
+
+    if (error) {
+      console.error("Mega Menu load error:", error);
+      return;
+    }
+
+    const normalized = ((data ?? []) as any[]).map((section) => ({
+      ...section,
+      mega_menu_groups: [...(section.mega_menu_groups ?? [])]
+        .filter((group: any) => group.is_visible)
+        .sort((a: any, b: any) => a.sort_order - b.sort_order)
+        .map((group: any) => ({
+          ...group,
+          category: group.categories ?? null,
+          mega_menu_items: [...(group.mega_menu_items ?? [])]
+            .filter((item: any) => item.is_visible && item.category_id)
+            .sort((a: any, b: any) => a.sort_order - b.sort_order),
+        })),
+    }));
+
+    setMegaMenus(normalized as MegaSection[]);
+  };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    loadMegaMenus();
+    const handleMegaMenuUpdated = () => loadMegaMenus();
+    window.addEventListener("infibetter:mega-menu-updated", handleMegaMenuUpdated);
+    return () => {
+      window.removeEventListener("infibetter:mega-menu-updated", handleMegaMenuUpdated);
+    };
+  }, []);
+
+  const headerRef =
+    useRef<HTMLDivElement>(null);
+
+  /*
+   * ============================================================
+   * CLICK OUTSIDE
+   * ============================================================
+   */
+
+  useEffect(() => {
+    const handleClickOutside = (
+      event: MouseEvent,
+    ) => {
       if (
         headerRef.current &&
-        !headerRef.current.contains(event.target as Node)
+        !headerRef.current.contains(
+          event.target as Node,
+        )
       ) {
         setActiveMenu(null);
         setSearchOpen(false);
@@ -147,28 +152,87 @@ export function SiteHeader() {
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside,
+    );
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
     };
   }, []);
 
+  /*
+   * ============================================================
+   * ESC
+   * ============================================================
+   */
+
   useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
+    const handleEscape = (
+      event: KeyboardEvent,
+    ) => {
       if (event.key === "Escape") {
         setActiveMenu(null);
         setSearchOpen(false);
         setMobileOpen(false);
+        setCartOpen(false);
       }
     };
 
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener(
+      "keydown",
+      handleEscape,
+    );
 
     return () => {
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener(
+        "keydown",
+        handleEscape,
+      );
     };
   }, []);
+
+  /*
+   * ============================================================
+   * OPEN CART FROM PRODUCT PAGE
+   * ============================================================
+   *
+   * Product detail phát:
+   *
+   * window.dispatchEvent(
+   *   new Event("infibetter:open-cart")
+   * )
+   *
+   * Header nhận event này và mở CartDrawer.
+   */
+
+  useEffect(() => {
+    const handleOpenCart = () => {
+      setCartOpen(true);
+    };
+
+    window.addEventListener(
+      "infibetter:open-cart",
+      handleOpenCart,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "infibetter:open-cart",
+        handleOpenCart,
+      );
+    };
+  }, []);
+
+  /*
+   * ============================================================
+   * SEARCH
+   * ============================================================
+   */
 
   const handleSearchSubmit = (
     event: React.FormEvent<HTMLFormElement>,
@@ -179,18 +243,32 @@ export function SiteHeader() {
 
     if (!keyword) return;
 
-    window.location.href = `/shop?q=${encodeURIComponent(keyword)}`;
+    window.location.href = `/shop?q=${encodeURIComponent(
+      keyword,
+    )}`;
   };
 
-  const toggleMenu = (menu: Exclude<MegaMenuKey, null>) => {
+  /*
+   * ============================================================
+   * MEGA MENU
+   * ============================================================
+   */
+
+  const toggleMenu = (
+    menu: Exclude<MegaMenuKey, null>,
+  ) => {
     setSearchOpen(false);
     setMobileOpen(false);
 
-    setActiveMenu((current) => (current === menu ? null : menu));
+    setActiveMenu((current) =>
+      current === menu ? null : menu,
+    );
   };
 
   const activeMegaMenu =
-    activeMenu === null ? null : megaMenus[activeMenu];
+    activeMenu === null
+      ? null
+      : megaMenus.find((menu) => menu.menu_key === activeMenu) ?? null;
 
   return (
     <header
@@ -224,7 +302,11 @@ export function SiteHeader() {
         "
       >
         <span>Free tracked shipping</span>
-        <span className="text-[#94A3B8]">·</span>
+
+        <span className="text-[#94A3B8]">
+          ·
+        </span>
+
         <span>30-day returns</span>
       </div>
 
@@ -296,12 +378,18 @@ export function SiteHeader() {
               "
             >
               Shop Apple accessories
-              <ArrowRight size={10} strokeWidth={1.8} />
+
+              <ArrowRight
+                size={10}
+                strokeWidth={1.8}
+              />
             </Link>
 
             <button
               type="button"
-              onClick={() => toggleMenu("cases")}
+              onClick={() =>
+                toggleMenu("cases")
+              }
               className={`
                 flex
                 items-center
@@ -318,18 +406,23 @@ export function SiteHeader() {
               `}
             >
               Cases & Bands
+
               <ChevronDown
                 size={11}
                 strokeWidth={1.7}
                 className={`transition-transform duration-200 ${
-                  activeMenu === "cases" ? "rotate-180" : ""
+                  activeMenu === "cases"
+                    ? "rotate-180"
+                    : ""
                 }`}
               />
             </button>
 
             <button
               type="button"
-              onClick={() => toggleMenu("charging")}
+              onClick={() =>
+                toggleMenu("charging")
+              }
               className={`
                 flex
                 items-center
@@ -346,18 +439,23 @@ export function SiteHeader() {
               `}
             >
               Charging
+
               <ChevronDown
                 size={11}
                 strokeWidth={1.7}
                 className={`transition-transform duration-200 ${
-                  activeMenu === "charging" ? "rotate-180" : ""
+                  activeMenu === "charging"
+                    ? "rotate-180"
+                    : ""
                 }`}
               />
             </button>
 
             <button
               type="button"
-              onClick={() => toggleMenu("lifestyle")}
+              onClick={() =>
+                toggleMenu("lifestyle")
+              }
               className={`
                 flex
                 items-center
@@ -374,11 +472,14 @@ export function SiteHeader() {
               `}
             >
               Lifestyle Gear
+
               <ChevronDown
                 size={11}
                 strokeWidth={1.7}
                 className={`transition-transform duration-200 ${
-                  activeMenu === "lifestyle" ? "rotate-180" : ""
+                  activeMenu === "lifestyle"
+                    ? "rotate-180"
+                    : ""
                 }`}
               />
             </button>
@@ -389,7 +490,9 @@ export function SiteHeader() {
           <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
             {searchOpen && (
               <form
-                onSubmit={handleSearchSubmit}
+                onSubmit={
+                  handleSearchSubmit
+                }
                 className="
                   hidden
                   h-8
@@ -406,7 +509,9 @@ export function SiteHeader() {
                   autoFocus
                   value={searchValue}
                   onChange={(event) =>
-                    setSearchValue(event.target.value)
+                    setSearchValue(
+                      event.target.value,
+                    )
                   }
                   placeholder="Search"
                   className="
@@ -423,9 +528,15 @@ export function SiteHeader() {
               </form>
             )}
 
+            {/* SEARCH */}
+
             <button
               type="button"
-              onClick={() => setSearchOpen((value) => !value)}
+              onClick={() =>
+                setSearchOpen(
+                  (value) => !value,
+                )
+              }
               aria-label="Search"
               className="
                 flex
@@ -441,11 +552,19 @@ export function SiteHeader() {
               "
             >
               {searchOpen ? (
-                <X size={16} strokeWidth={1.7} />
+                <X
+                  size={16}
+                  strokeWidth={1.7}
+                />
               ) : (
-                <Search size={16} strokeWidth={1.7} />
+                <Search
+                  size={16}
+                  strokeWidth={1.7}
+                />
               )}
             </button>
+
+            {/* ACCOUNT */}
 
             <Link
               to="/account"
@@ -464,11 +583,19 @@ export function SiteHeader() {
                 sm:flex
               "
             >
-              <User size={16} strokeWidth={1.7} />
+              <User
+                size={16}
+                strokeWidth={1.7}
+              />
             </Link>
 
-            <Link
-              to="/cart"
+            {/* CART */}
+
+            <button
+              type="button"
+              onClick={() =>
+                setCartOpen(true)
+              }
               aria-label="Cart"
               className="
                 relative
@@ -484,7 +611,10 @@ export function SiteHeader() {
                 hover:text-[#0877E8]
               "
             >
-              <ShoppingBag size={16} strokeWidth={1.7} />
+              <ShoppingBag
+                size={16}
+                strokeWidth={1.7}
+              />
 
               {count > 0 && (
                 <span
@@ -505,15 +635,21 @@ export function SiteHeader() {
                     text-white
                   "
                 >
-                  {count > 99 ? "99+" : count}
+                  {count > 99
+                    ? "99+"
+                    : count}
                 </span>
               )}
-            </Link>
+            </button>
+
+            {/* MOBILE MENU */}
 
             <button
               type="button"
               onClick={() => {
-                setMobileOpen((value) => !value);
+                setMobileOpen(
+                  (value) => !value,
+                );
                 setActiveMenu(null);
               }}
               aria-label="Menu"
@@ -528,7 +664,11 @@ export function SiteHeader() {
                 lg:hidden
               "
             >
-              {mobileOpen ? <X size={17} /> : <Menu size={17} />}
+              {mobileOpen ? (
+                <X size={17} />
+              ) : (
+                <Menu size={17} />
+              )}
             </button>
           </div>
         </div>
@@ -560,134 +700,178 @@ export function SiteHeader() {
               <div
                 className="
                   grid
-                  grid-cols-3
-                  gap-5
+                  gap-4
                   p-2
                 "
+                style={{
+                  gridTemplateColumns: `repeat(${Math.min(
+                    activeMegaMenu.mega_menu_groups.length,
+                    4,
+                  )}, minmax(0, 1fr))`,
+                }}
               >
-                {activeMegaMenu.columns.map((column) => (
-                  <div key={column.title} className="min-w-0">
-                    <Link
-                      to="/shop"
-                      search={{
-                        category: column.category,
-                      } as never}
-                      onClick={() => setActiveMenu(null)}
-                      className="group block"
+                {activeMegaMenu.mega_menu_groups.map(
+                  (column, columnIndex) => (
+                    <div
+                      key={column.title}
+                      className="min-w-0"
                     >
-                      {/* DEMO IMAGE CARD */}
-
-                      <div
-                        className="
-                          relative
-                          mb-3
-                          aspect-[2.2/1]
-                          w-full
-                          overflow-hidden
-                          rounded-[9px]
-                          border
-                          border-[#E5E7EB]
-                          bg-[#F1F3F5]
-                        "
+                      <Link
+                        to="/shop"
+                        search={
+                          {
+                            category:
+                              column.category?.slug ?? undefined,
+                          } as never
+                        }
+                        onClick={() =>
+                          setActiveMenu(
+                            null,
+                          )
+                        }
+                        className="group block"
                       >
-                        <img
-                          src={column.image}
-                          alt={column.title}
+                        <div
                           className="
-                            h-full
+                            relative
+                            mb-3
+                            aspect-[2.2/1]
                             w-full
-                            object-cover
-                            transition-transform
-                            duration-500
-                            group-hover:scale-[1.04]
-                          "
-                        />
-                      </div>
-
-                      {/* TITLE */}
-
-                      <div
-                        className="
-                          flex
-                          items-center
-                          gap-1
-                          text-[10px]
-                          font-semibold
-                          text-[#111827]
-                          transition-colors
-                          group-hover:text-[#0877E8]
-                        "
-                      >
-                        {column.title}
-                        <ArrowRight
-                          size={9}
-                          className="
-                            opacity-40
-                            transition
-                            group-hover:translate-x-0.5
-                            group-hover:opacity-100
-                          "
-                        />
-                      </div>
-                    </Link>
-
-                    {/* ITEMS */}
-
-                    <div className="mt-3 flex flex-col gap-2">
-                      {column.items.map((item) => (
-                        <Link
-                          key={item}
-                          to="/shop"
-                          search={{ q: item } as never}
-                          onClick={() => setActiveMenu(null)}
-                          className="
-                            w-fit
-                            text-[9px]
-                            font-medium
-                            text-[#64748B]
-                            transition-colors
-                            hover:text-[#0877E8]
+                            overflow-hidden
+                            rounded-[9px]
+                            border
+                            border-[#E5E7EB]
+                            bg-[#F1F3F5]
                           "
                         >
-                          {item}
-                        </Link>
-                      ))}
+                          <img
+                            src={column.image_url || getGroupFallback(activeMegaMenu.menu_key, columnIndex)}
+                            alt={column.title}
+                            className="
+                              h-full
+                              w-full
+                              object-cover
+                              transition-transform
+                              duration-500
+                              group-hover:scale-[1.04]
+                            "
+                          />
+                        </div>
+
+                        <div
+                          className="
+                            flex
+                            items-center
+                            gap-1
+                            text-[10px]
+                            font-semibold
+                            text-[#111827]
+                            transition-colors
+                            group-hover:text-[#0877E8]
+                          "
+                        >
+                          {column.title}
+
+                          <ArrowRight
+                            size={9}
+                            className="
+                              opacity-40
+                              transition
+                              group-hover:translate-x-0.5
+                              group-hover:opacity-100
+                            "
+                          />
+                        </div>
+                      </Link>
+
+                      {/* ITEMS */}
+
+                      <div className="mt-3 flex flex-col gap-2">
+                        {column.mega_menu_items.map((item) => {
+                          const itemLabel =
+                            item.label_override ||
+                            item.categories?.name ||
+                            "Category";
+                          const itemSlug = item.categories?.slug;
+
+                          return (
+                            <Link
+                              key={item.id}
+                              to="/shop"
+                              search={
+                                itemSlug
+                                  ? ({ category: itemSlug } as never)
+                                  : undefined
+                              }
+                              onClick={() => setActiveMenu(null)}
+                              className="
+                                w-fit
+                                text-[9px]
+                                font-medium
+                                text-[#64748B]
+                                transition-colors
+                                hover:text-[#0877E8]
+                              "
+                            >
+                              {itemLabel}
+                            </Link>
+                          );
+                        })}
+                      </div>
+
+                      {/* VIEW ALL */}
+
+                      <Link
+                        to="/shop"
+                        search={
+                          {
+                            category:
+                              column.category?.slug ?? undefined,
+                          } as never
+                        }
+                        onClick={() =>
+                          setActiveMenu(
+                            null,
+                          )
+                        }
+                        className="
+                          mt-4
+                          inline-flex
+                          items-center
+                          gap-1
+                          text-[8px]
+                          font-medium
+                          text-[#64748B]
+                          underline
+                          underline-offset-2
+                          transition
+                          hover:text-[#0877E8]
+                        "
+                      >
+                        View all
+
+                        <ArrowRight size={8} />
+                      </Link>
                     </div>
-
-                    {/* VIEW ALL */}
-
-                    <Link
-                      to="/shop"
-                      search={{
-                        category: column.category,
-                      } as never}
-                      onClick={() => setActiveMenu(null)}
-                      className="
-                        mt-4
-                        inline-flex
-                        items-center
-                        gap-1
-                        text-[8px]
-                        font-medium
-                        text-[#64748B]
-                        underline
-                        underline-offset-2
-                        transition
-                        hover:text-[#0877E8]
-                      "
-                    >
-                      View all
-                      <ArrowRight size={8} />
-                    </Link>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
 
               {/* FEATURE CARD */}
 
               <Link
                 to="/shop"
-                onClick={() => setActiveMenu(null)}
+                search={
+                  activeMegaMenu.mega_menu_groups[0]?.category?.slug
+                    ? ({
+                        category:
+                          activeMegaMenu.mega_menu_groups[0].category?.slug,
+                      } as never)
+                    : undefined
+                }
+                onClick={() =>
+                  setActiveMenu(null)
+                }
                 className="
                   group
                   relative
@@ -698,8 +882,10 @@ export function SiteHeader() {
                 "
               >
                 <img
-                  src={activeMegaMenu.image}
-                  alt={activeMegaMenu.title}
+                  src={activeMegaMenu.image_url || getSectionFallback(activeMegaMenu.menu_key)}
+                  alt={
+                    activeMegaMenu.title
+                  }
                   className="
                     absolute
                     inset-0
@@ -771,6 +957,7 @@ export function SiteHeader() {
                     "
                   >
                     Shop now
+
                     <ArrowRight size={10} />
                   </span>
                 </div>
@@ -799,15 +986,31 @@ export function SiteHeader() {
           >
             <nav className="flex flex-col p-3">
               {[
-                ["Shop Apple accessories", "/shop"],
-                ["Cases & Bands", "/shop"],
-                ["Charging", "/shop"],
-                ["Lifestyle Gear", "/shop"],
+                [
+                  "Shop Apple accessories",
+                  "/shop",
+                ],
+                [
+                  "Cases & Bands",
+                  "/shop",
+                ],
+                [
+                  "Charging",
+                  "/shop",
+                ],
+                [
+                  "Lifestyle Gear",
+                  "/shop",
+                ],
               ].map(([label, to]) => (
                 <Link
                   key={label}
                   to={to}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() =>
+                    setMobileOpen(
+                      false,
+                    )
+                  }
                   className="
                     rounded-[8px]
                     px-3
@@ -824,7 +1027,11 @@ export function SiteHeader() {
 
               <Link
                 to="/account"
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(
+                    false,
+                  )
+                }
                 className="
                   mt-1
                   border-t
@@ -841,6 +1048,19 @@ export function SiteHeader() {
           </div>
         )}
       </div>
+
+      {/* ========================================================
+          CART DRAWER
+          ======================================================== */}
+
+      <CartDrawer
+  open={cartOpen}
+  onClose={() => setCartOpen(false)}
+  onPayPal={() => {
+    window.location.href = "/checkout";
+  }}
+/>
+
     </header>
   );
 }

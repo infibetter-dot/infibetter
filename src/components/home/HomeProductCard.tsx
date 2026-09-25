@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { formatVND } from "@/lib/format";
+import { formatUSDFromVND } from "@/lib/format";
 import { ArrowRight } from "lucide-react";
 import clsx from "clsx";
 import { getImageUrl } from "@/lib/storage";
@@ -334,7 +334,7 @@ py-0.5
       line-through
     "
   >
-    {formatVND(originalPrice)}
+    {formatUSDFromVND(originalPrice)}
   </div>
 
   <div
@@ -351,7 +351,7 @@ lg:text-[20px]
       lg:text-[20px]
     "
   >
-    {formatVND(salePrice)}
+    {formatUSDFromVND(salePrice)}
   </div>
 
 <div
@@ -362,7 +362,7 @@ lg:text-[20px]
     text-green-600
   "
 >
-  Tiết kiệm {formatVND(originalPrice - salePrice)}
+  Tiết kiệm {formatUSDFromVND(originalPrice - salePrice)}
 </div>
 
 </div>

@@ -5,7 +5,7 @@ import {
 
 import { Link } from "@tanstack/react-router";
 import { ProductCardProduct } from "@/components/product-card";
-import { formatVND } from "@/lib/format";
+import { formatUSDFromVND } from "@/lib/format";
 import { getImageUrl } from "@/lib/storage";
 
 import { motion } from "framer-motion";
@@ -290,7 +290,7 @@ py-3
   <div className="flex items-end gap-2">
 
     <span className="text-[18px] font-bold tracking-tight text-[#C76A2F]">
-      {formatVND(salePrice)}
+      {formatUSDFromVND(salePrice)}
     </span>
 
     {originalPrice > salePrice && (
@@ -305,7 +305,7 @@ py-3
 
     {originalPrice > salePrice && (
   <span className="text-[11px] text-neutral-400 line-through">
-    {formatVND(originalPrice)}
+    {formatUSDFromVND(originalPrice)}
   </span>
 )}
 
@@ -324,7 +324,7 @@ py-3
 
  {originalPrice > salePrice && (
   <span className="text-[12px] font-semibold tracking-tight text-[#1E3A8A]">
-    Tiết kiệm {formatVND(saving)}
+    Tiết kiệm {formatUSDFromVND(saving)}
   </span>
 )}
 </div>
