@@ -7,10 +7,10 @@ import {
 import { useState } from "react";
 import { formatUSDFromVND } from "@/lib/format";
 
-import banner01 from "@/assets/hero/banner01.png";
-import banner02 from "@/assets/hero/banner02.png";
-import banner03 from "@/assets/hero/banner03.png";
-import hero1 from "@/assets/hero/hero-1.png";
+import banner01 from "@/assets/hero/iphonecase.png";
+import banner02 from "@/assets/hero/wireless charger.png";
+import banner03 from "@/assets/hero/powerbank.png";
+import hero1 from "@/assets/hero/watchband.png";
 import hero2 from "@/assets/hero/hero_2.png";
 
 interface CollectionProduct {
@@ -38,29 +38,29 @@ const categoryImages = [
 
 const collections = [
   {
-    title: "Ốp iPhone",
+    title: "iPhone Cases",
     subtitle: "Shop iPhone Cases",
-    slug: "iphone-cases",
+    slug: "op-dien-thoai",
   },
   {
-    title: "Sạc không dây",
-    subtitle: "Shop Wireless Charging",
-    slug: "wireless-charging",
+    title: "Wireless Charging",
+    subtitle: "Shop Wireless Chargers",
+    slug: "sac-khong-day",
   },
   {
-    title: "Pin dự phòng",
+    title: "Power Banks",
     subtitle: "Shop Power Banks",
-    slug: "power-banks",
+    slug: "pin-du-phong",
   },
   {
-    title: "Dây đeo Apple Watch",
+    title: "Apple Watch Bands",
     subtitle: "Shop Watch Bands",
-    slug: "apple-watch-bands",
+    slug: "day-deo-apple-watch",
   },
   {
-    title: "Phụ kiện iPad",
+    title: "iPad Cases",
     subtitle: "Shop iPad Cases",
-    slug: "ipad-cases",
+    slug: "phu-kien-ipad",
   },
 ];
 
@@ -124,7 +124,7 @@ function ProductMiniCard({
               text-neutral-600
             "
           >
-            Phụ kiện
+            Accessories
           </span>
 
           <span
@@ -155,7 +155,7 @@ function ProductMiniCard({
         </h3>
 
         <p className="mt-1 line-clamp-1 text-[9px] text-neutral-400">
-          Thiết kế hiện đại · tiện dụng
+          Modern design · everyday practical
         </p>
 
         <div className="mt-2 flex items-center gap-1">
@@ -174,21 +174,27 @@ function ProductMiniCard({
           className="
             mt-2 flex h-7
             items-center justify-center
-            rounded-[6px]
-            bg-[#0066E6]
+            rounded-[8px]
+            border border-white/50
+            bg-white/20
             text-[9px] font-semibold
-            text-white
-            transition-colors
-            group-hover:bg-[#0057C9]
+            text-[#111827]
+            backdrop-blur-md
+            shadow-[0_4px_14px_rgba(15,23,42,0.10)]
+            transition-all duration-300
+            group-hover:bg-white/45
+            group-hover:border-white/70
+            group-hover:shadow-[0_6px_18px_rgba(15,23,42,0.14)]
           "
         >
-          Xem sản phẩm
+          View product
 
           <ArrowRight
             size={11}
             className="
               ml-1
               transition-transform
+              duration-300
               group-hover:translate-x-1
             "
           />
@@ -397,7 +403,7 @@ export default function Collections({
                 lg:text-[34px]
               "
             >
-              Find your next upgrade
+              Discover What’s Next
             </h2>
 
             <p
@@ -546,7 +552,7 @@ export default function Collections({
                 text-neutral-400
               "
             >
-              Chưa có sản phẩm.
+              No products available.
             </div>
           )}
 
@@ -587,7 +593,7 @@ export default function Collections({
                 type="button"
                 onClick={prevProducts}
                 disabled={!canGoPrev}
-                aria-label="Sản phẩm trước"
+                aria-label="Previous products"
                 className="
                   flex
                   h-8
@@ -612,7 +618,7 @@ export default function Collections({
                 type="button"
                 onClick={nextProducts}
                 disabled={!canGoNext}
-                aria-label="Sản phẩm tiếp theo"
+                aria-label="Next products"
                 className="
                   flex
                   h-8

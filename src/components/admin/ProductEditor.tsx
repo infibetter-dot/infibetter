@@ -7,6 +7,7 @@ import ProductGallery from "./ProductGallery";
 import ProductSpecification from "./ProductSpecification";
 import ProductUSP from "./ProductUSP";
 import ProductColors from "./ProductColors";
+import ProductFAQs from "./ProductFAQs";
 
 interface Props {
   product: any;
@@ -952,7 +953,7 @@ if (error) throw error;
         </div>
       )}
 
-     {/* SPECIFICATION + USP */}
+ {/* SPECIFICATION + USP */}
 {product.id && (
   <div className="grid min-w-0 items-stretch gap-5 lg:grid-cols-2">
     <div className="min-w-0 h-full">
@@ -965,7 +966,12 @@ if (error) throw error;
   </div>
 )}
 
-     {/* SEO */}
+{/* PRODUCT FAQ */}
+{product.id && (
+  <ProductFAQs productId={product.id} />
+)}
+
+{/* SEO */}
 <section className="rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm md:p-5">
   <ProductSeo
     name={name}

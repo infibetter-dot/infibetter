@@ -1,12 +1,12 @@
 ﻿import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import hero1 from "@/assets/hero/banner02.png";
 import hero2 from "@/assets/hero/banner01.png";
 import hero3 from "@/assets/hero/banner03.png";
 
-const slides = [hero1, hero3];
+const slides = [hero1, hero2, hero3];
 
 export default function Hero() {
   const [current, setCurrent] = useState(0);
@@ -45,22 +45,23 @@ export default function Hero() {
       className="
         relative
         mx-auto
-        mt-2
-        w-full
-        max-w-[1320px]
+        w-[calc(100%-48px)]
+        max-w-[1280px]
         overflow-hidden
-        rounded-[10px]
-        border
-        border-[#E2E4E8]
-        bg-[#F7F7F7]
-        shadow-[0_2px_10px_rgba(15,23,42,0.04)]
+        rounded-[18px]
 
-        aspect-[16/5.25]
+        /*
+         * Mobile
+         * Giá»¯ tá»· lá»‡ ngang Ä‘á»ƒ áº£nh khÃ´ng bá»‹ crop.
+         */
+        aspect-video
 
-        sm:mt-3
-        sm:rounded-[11px]
-
-        lg:mt-3
+        /*
+         * Desktop
+         * Váº«n giá»¯ tá»· lá»‡ áº£nh nhÆ°ng tháº¥p hÆ¡n,
+         * trÃ¡nh Hero chiáº¿m gáº§n toÃ n bá»™ mÃ n hÃ¬nh.
+         */
+        lg:aspect-[16/5.4]
       "
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -80,10 +81,17 @@ export default function Hero() {
             inset-0
             h-full
             w-full
+
+            /*
+             * Giá»¯ áº£nh phá»§ toÃ n bá»™ khung.
+             * Khung Hero Ä‘Ã£ Ä‘Æ°á»£c Ä‘áº·t theo tá»· lá»‡ ngang
+             * nÃªn háº¡n cháº¿ crop tá»‘i Ä‘a.
+             */
             object-cover
             object-center
+
             transition-opacity
-            duration-700
+            duration-1000
 
             ${
               index === current
@@ -95,262 +103,286 @@ export default function Hero() {
       ))}
 
       {/* =====================================================
-          VERY LIGHT OVERLAY
-          Only to keep text readable.
+          OVERLAY
       ====================================================== */}
 
-      <div className="absolute inset-0 bg-white/[0.03]" />
+      <div className="absolute inset-0 bg-gradient-to-r from-white/18 via-white/0 to-transparent" />
 
       {/* =====================================================
-          CONTENT
+          CONTENT — INFIBETTER EDITORIAL PANEL
+          A more ownable, minimal structure:
+          no large white rectangle, asymmetric alignment,
+          subtle glass surface, blue accent line, compact CTA.
       ====================================================== */}
 
       <div
         className="
-          absolute
-          inset-0
+          container-x
+          relative
           z-20
           flex
+          h-full
           items-center
         "
       >
         <div
           className="
-            ml-[7%]
-            w-[310px]
-            max-w-[34%]
+            relative
+            max-w-[310px]
+            pl-5
+            text-[#111827]
 
-            sm:ml-[7%]
-            sm:w-[350px]
+            sm:max-w-[390px]
+            sm:pl-6
 
-            lg:w-[380px]
+            lg:max-w-[450px]
+            lg:pl-7
           "
         >
-          {/* =================================================
-              TITLE
-          ================================================== */}
+          {/* subtle vertical brand accent */}
+          <div
+            className="
+              absolute
+              left-0
+              top-1
+              bottom-1
+              w-[2px]
+              rounded-full
+              bg-gradient-to-b
+              from-[#007AFF]
+              via-[#4DA3FF]
+              to-transparent
+            "
+          />
 
+          {/* eyebrow */}
+          <div
+            className="
+              mb-2
+              flex
+              items-center
+              gap-2
+              sm:mb-3
+              lg:mb-3
+            "
+          >
+            <span
+              className="
+                h-1.5
+                w-1.5
+                rounded-full
+                bg-[#007AFF]
+                shadow-[0_0_0_4px_rgba(0,122,255,0.10)]
+              "
+            />
+
+            <span
+              className="
+                text-[7px]
+                font-semibold
+                uppercase
+                tracking-[0.24em]
+                text-[#667085]
+
+                sm:text-[8px]
+
+                lg:text-[9px]
+                lg:tracking-[0.28em]
+              "
+            >
+              INFIBETTER · APPLE ESSENTIALS
+            </span>
+          </div>
+
+          {/* title */}
           <h1
             className="
-              text-[25px]
+              max-w-[330px]
+              text-[28px]
               font-semibold
-              leading-[1.05]
+              leading-[1.02]
               tracking-[-0.045em]
               text-[#111827]
 
-              sm:text-[31px]
+              sm:text-[38px]
 
-              lg:text-[35px]
+              lg:max-w-[410px]
+              lg:text-[48px]
             "
           >
-            Your Apple{" "}
-            <span className="text-[#0877E8]">
-              setup.
-            </span>
+            Your Apple
+            <br />
+            <span className="text-[#007AFF]">setup.</span>
           </h1>
 
-          {/* =================================================
-              SUBTITLE
-          ================================================== */}
-
+          {/* description */}
           <p
             className="
               mt-2
-              text-[10px]
-              font-medium
-              leading-4
-              text-[#475569]
-
-              sm:text-[11px]
-
-              lg:text-[12px]
-            "
-          >
-            Cases, bands & chargers.
-          </p>
-
-          {/* =================================================
-              PRODUCT LINE
-          ================================================== */}
-
-          <p
-            className="
-              mt-1
-              text-[7px]
-              font-medium
-              tracking-[0.01em]
-              text-[#64748B]
-
-              sm:text-[8px]
-
-              lg:text-[9px]
-            "
-          >
-            iPhone · Watch · AirPods
-          </p>
-
-          {/* =================================================
-              PRIMARY CTA
-          ================================================== */}
-
-          <Link
-            to="/shop"
-            className="
-              group
-              mt-3
-              flex
-              h-8
-              w-[185px]
-              items-center
-              justify-between
-              rounded-[6px]
-              bg-[#0877E8]
-              px-3.5
+              max-w-[260px]
               text-[9px]
-              font-semibold
-              text-white
-              shadow-[0_4px_12px_rgba(8,119,232,0.20)]
-              transition-all
-              duration-200
-              hover:bg-[#0668CC]
-              hover:shadow-[0_6px_16px_rgba(8,119,232,0.25)]
-              active:scale-[0.98]
+              leading-4
+              text-[#667085]
 
-              sm:mt-4
-              sm:h-9
-              sm:w-[205px]
-              sm:px-4
-              sm:text-[10px]
+              sm:mt-3
+              sm:max-w-[310px]
+              sm:text-[11px]
+              sm:leading-5
 
-              lg:h-9
-              lg:w-[220px]
-              lg:text-[10px]
+              lg:mt-3
+              lg:max-w-[350px]
+              lg:text-[12px]
+              lg:leading-5
             "
           >
-            <span>Shop accessories</span>
+            Cases, charging and everyday gear —
+            <br className="hidden sm:block" />
+            designed to work beautifully together.
+          </p>
 
-            <ArrowRight
-              size={12}
-              strokeWidth={2}
-              className="
-                transition-transform
-                duration-200
-                group-hover:translate-x-1
-              "
-            />
-          </Link>
-
-          {/* =================================================
-              QUICK TAGS
-          ================================================== */}
-
+          {/* CTA row */}
           <div
             className="
-              mt-2
+              mt-3
               flex
               items-center
-              gap-1.5
-              sm:gap-2
+              gap-2
+
+              sm:mt-4
+              sm:gap-2.5
+
+              lg:mt-5
+              lg:gap-3
             "
           >
             <Link
               to="/shop"
               className="
+                group
                 flex
-                h-7
+                h-8
                 items-center
-                rounded-[6px]
-                border
-                border-[#D7DCE2]
-                bg-white/90
-                px-2.5
-                text-[7px]
-                font-medium
-                text-[#334155]
-                backdrop-blur-sm
+                gap-4
+                rounded-full
+                bg-[#111827]
+                px-4
+                text-[9px]
+                font-semibold
+                text-white
+                shadow-[0_8px_24px_rgba(17,24,39,0.16)]
                 transition-all
-                duration-200
-                hover:border-[#0877E8]
-                hover:bg-white
-                hover:text-[#0877E8]
+                duration-300
+                hover:-translate-y-0.5
+                hover:bg-[#007AFF]
 
-                sm:px-3
-                sm:text-[8px]
+                sm:h-9
+                sm:px-4.5
+                sm:text-[10px]
+
+                lg:h-10
+                lg:px-5
+                lg:text-[11px]
               "
             >
-              For travel
+              Shop accessories
+
+              <ChevronRight
+                size={13}
+                className="
+                  transition-transform
+                  duration-300
+                  group-hover:translate-x-0.5
+                "
+              />
             </Link>
 
             <Link
               to="/shop"
               className="
                 flex
-                h-7
+                h-8
                 items-center
-                rounded-[6px]
+                rounded-full
                 border
-                border-[#D7DCE2]
-                bg-white/90
-                px-2.5
-                text-[7px]
+                border-black/10
+                bg-white/55
+                px-3
+                text-[9px]
                 font-medium
-                text-[#334155]
-                backdrop-blur-sm
+                text-[#344054]
+                backdrop-blur-md
                 transition-all
-                duration-200
-                hover:border-[#0877E8]
-                hover:bg-white
-                hover:text-[#0877E8]
+                duration-300
+                hover:border-black/20
+                hover:bg-white/75
 
-                sm:px-3
-                sm:text-[8px]
+                sm:h-9
+                sm:px-3.5
+                sm:text-[10px]
+
+                lg:h-10
+                lg:px-4
+                lg:text-[11px]
               "
             >
-              At home
+              Explore
             </Link>
+          </div>
 
-            <Link
-              to="/shop"
-              className="
-                flex
-                h-7
-                items-center
-                rounded-[6px]
-                border
-                border-[#D7DCE2]
-                bg-white/90
-                px-2.5
-                text-[7px]
-                font-medium
-                text-[#334155]
-                backdrop-blur-sm
-                transition-all
-                duration-200
-                hover:border-[#0877E8]
-                hover:bg-white
-                hover:text-[#0877E8]
+          {/* compact use-case chips */}
+          <div
+            className="
+              mt-3
+              flex
+              flex-wrap
+              gap-1.5
 
-                sm:px-3
-                sm:text-[8px]
-              "
-            >
-              In the car
-            </Link>
+              sm:mt-4
+              sm:gap-2
+
+              lg:mt-4
+            "
+          >
+            {["For travel", "At home", "On the go"].map((label) => (
+              <span
+                key={label}
+                className="
+                  rounded-full
+                  border
+                  border-black/10
+                  bg-white/45
+                  px-2.5
+                  py-1
+                  text-[7px]
+                  font-medium
+                  text-[#667085]
+                  backdrop-blur-md
+
+                  sm:px-3
+                  sm:py-1.5
+                  sm:text-[8px]
+
+                  lg:text-[9px]
+                "
+              >
+                {label}
+              </span>
+            ))}
           </div>
         </div>
       </div>
 
       {/* =====================================================
-          LEFT ARROW
+          ARROW LEFT
       ====================================================== */}
 
       <button
         type="button"
         onClick={prev}
-        aria-label="Previous banner"
+        aria-label="Previous slide"
         className="
           absolute
-          left-3
+          left-2
           top-1/2
           z-30
           flex
@@ -360,40 +392,48 @@ export default function Hero() {
           items-center
           justify-center
           rounded-full
-          border
-          border-white/70
-          bg-white/75
-          text-[#334155]
-          shadow-sm
-          backdrop-blur-sm
+          bg-black/15
+          text-white
+          backdrop-blur-md
           transition-all
-          duration-200
+          duration-300
           hover:bg-white
-          hover:text-[#0877E8]
+          hover:text-black
 
           sm:left-4
-          sm:h-8
-          sm:w-8
+          sm:h-9
+          sm:w-9
 
-          lg:left-5
-          lg:h-9
-          lg:w-9
+          lg:left-7
+          lg:h-10
+          lg:w-10
         "
       >
-        <ChevronLeft size={15} strokeWidth={1.8} />
+        <ChevronLeft
+          className="
+            h-4
+            w-4
+
+            sm:h-5
+            sm:w-5
+
+            lg:h-5
+            lg:w-5
+          "
+        />
       </button>
 
       {/* =====================================================
-          RIGHT ARROW
+          ARROW RIGHT
       ====================================================== */}
 
       <button
         type="button"
         onClick={next}
-        aria-label="Next banner"
+        aria-label="Next slide"
         className="
           absolute
-          right-3
+          right-2
           top-1/2
           z-30
           flex
@@ -403,31 +443,39 @@ export default function Hero() {
           items-center
           justify-center
           rounded-full
-          border
-          border-white/70
-          bg-white/75
-          text-[#334155]
-          shadow-sm
-          backdrop-blur-sm
+          bg-black/15
+          text-white
+          backdrop-blur-md
           transition-all
-          duration-200
+          duration-300
           hover:bg-white
-          hover:text-[#0877E8]
+          hover:text-black
 
           sm:right-4
-          sm:h-8
-          sm:w-8
+          sm:h-9
+          sm:w-9
 
-          lg:right-5
-          lg:h-9
-          lg:w-9
+          lg:right-7
+          lg:h-10
+          lg:w-10
         "
       >
-        <ChevronRight size={15} strokeWidth={1.8} />
+        <ChevronRight
+          className="
+            h-4
+            w-4
+
+            sm:h-5
+            sm:w-5
+
+            lg:h-5
+            lg:w-5
+          "
+        />
       </button>
 
       {/* =====================================================
-          SLIDE INDICATOR
+          INDICATOR
       ====================================================== */}
 
       <div
@@ -440,6 +488,12 @@ export default function Hero() {
           -translate-x-1/2
           items-center
           gap-1.5
+
+          sm:bottom-5
+          sm:gap-2
+
+          lg:bottom-5
+          lg:gap-2.5
         "
       >
         {slides.map((_, index) => (
@@ -456,14 +510,45 @@ export default function Hero() {
 
               ${
                 current === index
-                  ? "w-5 bg-[#0877E8]"
-                  : "w-1.5 bg-[#64748B]/35"
+                  ? "w-6 bg-white sm:w-8 lg:w-8"
+                  : "w-1 bg-white/40 hover:bg-white/70"
               }
             `}
           />
         ))}
       </div>
+
+      {/* =====================================================
+          SCROLL - DESKTOP
+      ====================================================== */}
+
+      <div
+        className="
+          absolute
+          bottom-6
+          right-7
+          z-30
+          hidden
+          flex-col
+          items-center
+          text-white/70
+          lg:flex
+        "
+      >
+        <span
+          className="
+            mb-3
+            rotate-90
+            text-[9px]
+            uppercase
+            tracking-[0.35em]
+          "
+        >
+          Scroll
+        </span>
+
+        <div className="h-10 w-px bg-white/35" />
+      </div>
     </section>
   );
 }
-

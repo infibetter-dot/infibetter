@@ -68,6 +68,10 @@ function getGroupFallback(menuKey: string, index: number) {
   return fallbackImages[index % fallbackImages.length];
 }
 
+function getMegaGridColumns(groupCount: number) {
+  return Math.max(1, Math.min(groupCount, 4));
+}
+
 export function SiteHeader() {
   const { count } = useCart();
 
@@ -359,7 +363,13 @@ export function SiteHeader() {
               hidden
               -translate-x-1/2
               items-center
-              gap-7
+              gap-1
+              rounded-full
+              border
+              border-[#D6DCE5]
+              bg-[#F6F8FB]
+              p-1
+              shadow-[0_2px_10px_rgba(15,23,42,0.06)]
               lg:flex
             "
           >
@@ -368,13 +378,19 @@ export function SiteHeader() {
               className="
                 flex
                 items-center
-                gap-1
+                gap-1.5
                 whitespace-nowrap
-                text-[10px]
+                rounded-full
+                px-3.5
+                py-2
+                text-[11px]
                 font-semibold
+                tracking-[-0.01em]
                 text-[#334155]
-                transition-colors
-                hover:text-[#0877E8]
+                transition-all
+                hover:bg-white
+                hover:text-[#111827]
+                hover:shadow-[0_1px_4px_rgba(15,23,42,0.06)]
               "
             >
               Shop Apple accessories
@@ -393,14 +409,18 @@ export function SiteHeader() {
               className={`
                 flex
                 items-center
-                gap-1
+                gap-1.5
                 whitespace-nowrap
-                text-[10px]
+                rounded-full
+                px-3.5
+                py-2
+                text-[11px]
                 font-semibold
-                transition-colors
+                tracking-[-0.01em]
+                transition-all
                 ${
                   activeMenu === "cases"
-                    ? "text-[#0877E8]"
+                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
                     : "text-[#334155]"
                 }
               `}
@@ -408,8 +428,8 @@ export function SiteHeader() {
               Cases & Bands
 
               <ChevronDown
-                size={11}
-                strokeWidth={1.7}
+                size={12}
+                strokeWidth={2}
                 className={`transition-transform duration-200 ${
                   activeMenu === "cases"
                     ? "rotate-180"
@@ -426,14 +446,18 @@ export function SiteHeader() {
               className={`
                 flex
                 items-center
-                gap-1
+                gap-1.5
                 whitespace-nowrap
-                text-[10px]
+                rounded-full
+                px-3.5
+                py-2
+                text-[11px]
                 font-semibold
-                transition-colors
+                tracking-[-0.01em]
+                transition-all
                 ${
                   activeMenu === "charging"
-                    ? "text-[#0877E8]"
+                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
                     : "text-[#334155]"
                 }
               `}
@@ -441,8 +465,8 @@ export function SiteHeader() {
               Charging
 
               <ChevronDown
-                size={11}
-                strokeWidth={1.7}
+                size={12}
+                strokeWidth={2}
                 className={`transition-transform duration-200 ${
                   activeMenu === "charging"
                     ? "rotate-180"
@@ -459,14 +483,18 @@ export function SiteHeader() {
               className={`
                 flex
                 items-center
-                gap-1
+                gap-1.5
                 whitespace-nowrap
-                text-[10px]
+                rounded-full
+                px-3.5
+                py-2
+                text-[11px]
                 font-semibold
-                transition-colors
+                tracking-[-0.01em]
+                transition-all
                 ${
                   activeMenu === "lifestyle"
-                    ? "text-[#0877E8]"
+                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
                     : "text-[#334155]"
                 }
               `}
@@ -474,8 +502,8 @@ export function SiteHeader() {
               Lifestyle Gear
 
               <ChevronDown
-                size={11}
-                strokeWidth={1.7}
+                size={12}
+                strokeWidth={2}
                 className={`transition-transform duration-200 ${
                   activeMenu === "lifestyle"
                     ? "rotate-180"
@@ -682,31 +710,31 @@ export function SiteHeader() {
               left-1/2
               top-[62px]
               hidden
-              w-[calc(100%-48px)]
-              max-w-[1240px]
+              w-[calc(100%-28px)]
+              max-w-[1280px]
               -translate-x-1/2
               overflow-hidden
-              rounded-[14px]
+              rounded-[18px]
               border
-              border-[#DDE2E8]
+              border-[#D9DEE7]
               bg-white
-              shadow-[0_18px_50px_rgba(15,23,42,0.14)]
+              shadow-[0_24px_60px_rgba(15,23,42,0.12)]
               lg:block
             "
           >
-            <div className="grid grid-cols-[1fr_172px] gap-2 p-3">
+            <div className="grid grid-cols-[1fr_168px] gap-3 p-3.5">
               {/* CATEGORY CARDS */}
 
               <div
                 className="
                   grid
-                  gap-4
-                  p-2
+                  gap-x-3.5
+                  gap-y-4
+                  p-1
                 "
                 style={{
-                  gridTemplateColumns: `repeat(${Math.min(
+                  gridTemplateColumns: `repeat(${getMegaGridColumns(
                     activeMegaMenu.mega_menu_groups.length,
-                    4,
                   )}, minmax(0, 1fr))`,
                 }}
               >
@@ -734,13 +762,14 @@ export function SiteHeader() {
                         <div
                           className="
                             relative
-                            mb-3
-                            aspect-[2.2/1]
-                            w-full
+                            mb-2.5
+                            aspect-[2.85/1]
+                            w-[76%]
                             overflow-hidden
-                            rounded-[9px]
+                            rounded-[11px]
                             border
-                            border-[#E5E7EB]
+                            border-[#E1E5EA]
+                            shadow-[0_5px_16px_rgba(15,23,42,0.10)]
                             bg-[#F1F3F5]
                           "
                         >
@@ -751,6 +780,7 @@ export function SiteHeader() {
                               h-full
                               w-full
                               object-cover
+                              drop-shadow-[0_3px_8px_rgba(15,23,42,0.08)]
                               transition-transform
                               duration-500
                               group-hover:scale-[1.04]
@@ -763,9 +793,10 @@ export function SiteHeader() {
                             flex
                             items-center
                             gap-1
-                            text-[10px]
+                            text-[12px]
                             font-semibold
-                            text-[#111827]
+                            tracking-[-0.02em]
+                            text-[#171A1F]
                             transition-colors
                             group-hover:text-[#0877E8]
                           "
@@ -806,11 +837,16 @@ export function SiteHeader() {
                               onClick={() => setActiveMenu(null)}
                               className="
                                 w-fit
-                                text-[9px]
+                                rounded-[6px]
+                                py-0.5
+                                text-[10px]
                                 font-medium
-                                text-[#64748B]
-                                transition-colors
-                                hover:text-[#0877E8]
+                                leading-5
+                                text-[#667085]
+                                transition-all
+                                hover:bg-[#F5F7FA]
+                                hover:px-1.5
+                                hover:text-[#111827]
                               "
                             >
                               {itemLabel}
@@ -835,17 +871,15 @@ export function SiteHeader() {
                           )
                         }
                         className="
-                          mt-4
+                          mt-3
                           inline-flex
                           items-center
-                          gap-1
-                          text-[8px]
-                          font-medium
-                          text-[#64748B]
-                          underline
-                          underline-offset-2
+                          gap-1.5
+                          text-[9px]
+                          font-semibold
+                          text-[#475467]
                           transition
-                          hover:text-[#0877E8]
+                          hover:text-[#111827]
                         "
                       >
                         View all
@@ -875,10 +909,13 @@ export function SiteHeader() {
                 className="
                   group
                   relative
-                  min-h-[250px]
+                  min-h-[218px]
                   overflow-hidden
-                  rounded-[10px]
+                  rounded-[14px]
+                  border
+                  border-[#E3E7EC]
                   bg-[#E9EEF3]
+                  shadow-[0_8px_22px_rgba(15,23,42,0.12)]
                 "
               >
                 <img
@@ -914,15 +951,15 @@ export function SiteHeader() {
                     absolute
                     inset-x-0
                     bottom-0
-                    p-3.5
+                    p-3
                   "
                 >
                   <p
                     className="
-                      text-[7px]
-                      font-medium
+                      text-[8px]
+                      font-semibold
                       uppercase
-                      tracking-[0.12em]
+                      tracking-[0.14em]
                       text-white/75
                     "
                   >
@@ -932,9 +969,9 @@ export function SiteHeader() {
                   <h3
                     className="
                       mt-1
-                      text-[15px]
+                      text-[16px]
                       font-semibold
-                      tracking-[-0.03em]
+                      tracking-[-0.035em]
                       text-white
                     "
                   >
@@ -943,15 +980,15 @@ export function SiteHeader() {
 
                   <span
                     className="
-                      mt-3
+                      mt-2.5
                       inline-flex
-                      h-7
+                      h-8
                       items-center
                       gap-2
-                      rounded-[6px]
+                      rounded-full
                       bg-white
-                      px-3
-                      text-[8px]
+                      px-3.5
+                      text-[9px]
                       font-semibold
                       text-[#111827]
                     "

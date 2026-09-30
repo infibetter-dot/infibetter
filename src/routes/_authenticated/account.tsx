@@ -17,6 +17,7 @@ import {
   BarChart3,
   Boxes,
   ClipboardList,
+  Star,
   FolderTree,
   Flame,
   LayoutDashboard,
@@ -71,53 +72,36 @@ type ChartPoint = {
 ========================================================= */
 
 const navigationGroups = [
-  {
-    label: "OVERVIEW",
-    items: [
-      {
-        label: "Dashboard",
-        href: "/account",
-        icon: LayoutDashboard,
-      },
-    ],
-  },
-
-  {
-    label: "SALES",
-    items: [
-      {
-        label: "Đơn hàng",
-        href: "/admin/orders",
-        icon: ClipboardList,
-      },
-    ],
-  },
-
-  {
-    label: "CATALOG",
-    items: [
-      {
-        label: "Sản phẩm",
-        href: "/admin/products",
-        icon: Package,
-      },
-      {
-        label: "Danh mục",
-        href: "/admin/categories",
-        icon: FolderTree,
-      },
-      {
-        label: "Mega Menu",
-        href: "/admin/mega-menu",
-        icon: Menu,
-      },
-      {
-        label: "Phụ kiện",
-        href: "/admin/accessories",
-        icon: Boxes,
-      },
-    ],
-  },
+{
+  label: "CATALOG",
+  items: [
+    {
+      label: "Sản phẩm",
+      href: "/admin/products",
+      icon: Package,
+    },
+    {
+      label: "Danh mục",
+      href: "/admin/categories",
+      icon: FolderTree,
+    },
+    {
+      label: "Mega Menu",
+      href: "/admin/mega-menu",
+      icon: Menu,
+    },
+    {
+      label: "Reviews",
+      href: "/admin/reviews",
+      icon: Star,
+    },
+    {
+      label: "Phụ kiện",
+      href: "/admin/accessories",
+      icon: Boxes,
+    },
+  ],
+},
 
   {
     label: "CUSTOMERS",
@@ -1789,6 +1773,13 @@ function AccountPage() {
               description="Chỉnh menu Header"
               href="/admin/mega-menu"
             />
+
+            <QuickAccess
+  icon={Star}
+  title="Reviews"
+  description="Quản lý đánh giá sản phẩm"
+  href="/admin/reviews"
+/>
 
             <QuickAccess
               icon={TicketPercent}
