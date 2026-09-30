@@ -1,7 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { Star, ShoppingBag, Heart } from "lucide-react";
+import { useEffect, useState } from "react";
 
-import { formatUSDFromVND } from "@/lib/format";
+import {
+  getCurrency,
+  subscribeToCurrencyChange,
+  type CurrencyCode,
+} from "@/lib/currency-system";
+
 import { getImageUrl } from "@/lib/storage";
 
 export interface ProductCardProduct {
@@ -20,11 +26,160 @@ export interface ProductCardProduct {
 
   rating?: number;
 
+  review_count?: number;
+
   sold?: number;
 
   likes?: number;
 
   badge?: string;
+}
+
+/**
+ * INFIBETTER PRICE SYSTEM
+ * -----------------------
+ * Database/base price = USD.
+ *
+ * ProductCard does NOT use:
+ *   - formatUSDFromVND()
+ *   - formatVND()
+ *   - old VND conversion helpers
+ *
+ * This component formats the USD database price directly.
+ */
+
+const USD_RATES: Record<CurrencyCode, number> = {
+  USD: 1,
+  VND: 25500,
+  CAD: 1.38,
+  AUD: 1.52,
+  EUR: 0.88,
+  GBP: 0.75,
+  SGD: 1.28,
+};
+
+const CURRENCY_LOCALES: Record<CurrencyCode, string> = {
+  USD: "en-US",
+  VND: "vi-VN",
+  CAD: "en-CA",
+  AUD: "en-AU",
+  EUR: "de-DE",
+  GBP: "en-GB",
+  SGD: "en-SG",
+};
+
+function parseUSD(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const cleaned = value
+    .trim()
+    .replace(/USD/gi, "")
+    .replace(/[$€£₫]/g, "")
+    .replace(/\s/g, "");
+
+  if (!cleaned) {
+    return null;
+  }
+
+  let normalized = cleaned;
+
+  // Supports:
+  // 40.78
+  // 40,78
+  // 1,299.99
+  if (normalized.includes(",") && !normalized.includes(".")) {
+    normalized = normalized.replace(",", ".");
+  } else {
+    normalized = normalized.replace(/,/g, "");
+  }
+
+  const parsed = Number(normalized);
+
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatProductPrice(
+  value: unknown,
+  currency: CurrencyCode,
+): string {
+  const usd = parseUSD(value);
+
+  if (usd === null) {
+    return "—";
+  }
+
+  const safeCurrency: CurrencyCode =
+    currency in USD_RATES ? currency : "USD";
+
+  const rate = USD_RATES[safeCurrency];
+
+  if (!Number.isFinite(rate)) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(usd);
+  }
+
+  const converted = usd * rate;
+
+  if (!Number.isFinite(converted)) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(usd);
+  }
+
+  const fractionDigits = safeCurrency === "VND" ? 0 : 2;
+
+  return new Intl.NumberFormat(CURRENCY_LOCALES[safeCurrency], {
+    style: "currency",
+    currency: safeCurrency,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(converted);
+}
+
+function getProductStats(product: ProductCardProduct) {
+  const seedSource = `${product.id}-${product.slug}-${product.name}`;
+  let hash = 2166136261;
+
+  for (let i = 0; i < seedSource.length; i++) {
+    hash ^= seedSource.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  const random = (min: number, max: number) => {
+    hash = Math.imul(hash ^ (hash >>> 16), 2246822507);
+    hash = Math.imul(hash ^ (hash >>> 13), 3266489909);
+    hash ^= hash >>> 16;
+
+    const normalized = (hash >>> 0) / 4294967295;
+    return Math.floor(min + normalized * (max - min + 1));
+  };
+
+  const likes = product.likes ?? random(48, 185);
+  const reviewCount = product.review_count ?? random(28, 148);
+  const sold = product.sold ?? random(24, 125);
+  const rating =
+    product.rating ??
+    Number((4.7 + random(0, 3) * 0.1).toFixed(1));
+
+  return {
+    likes,
+    reviewCount,
+    sold,
+    rating,
+  };
 }
 
 export function ProductCard({
@@ -34,17 +189,34 @@ export function ProductCard({
   product: ProductCardProduct;
   variant?: "default" | "best-seller";
 }) {
-  const oldPrice = Number(product.old_price ?? 0);
-  const price = Number(product.price);
+  const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
+    getCurrency(),
+  );
 
-  const rating = product.rating ?? 4.9;
-  const sold = product.sold ?? 0;
+  useEffect(() => {
+    return subscribeToCurrencyChange(setCurrencyState);
+  }, []);
+
+  const price = parseUSD(product.price);
+  const oldPrice = parseUSD(product.old_price);
+
+  const { rating, reviewCount, sold } = getProductStats(product);
+
+  const displayPrice = formatProductPrice(
+    product.price,
+    currency,
+  );
+
+  const displayOldPrice =
+    oldPrice !== null
+      ? formatProductPrice(product.old_price, currency)
+      : null;
 
   return (
     <Link
       to="/products/$slug"
       params={{ slug: product.slug }}
-      className={`
+      className="
         group
         relative
         block
@@ -55,21 +227,21 @@ export function ProductCard({
         duration-300
         hover:-translate-y-[2px]
         hover:shadow-md
-      `}
+      "
     >
       {/* =================================================
           IMAGE
       ================================================== */}
 
       <div
-  className="
-    relative
-    aspect-square
-    overflow-hidden
-    rounded-t-[10px]
-    bg-white
-  "
->
+        className="
+          relative
+          aspect-square
+          overflow-hidden
+          rounded-t-[10px]
+          bg-white
+        "
+      >
         {/* BEST SELLER */}
         {variant === "best-seller" && (
           <span
@@ -117,7 +289,7 @@ export function ProductCard({
             />
 
             <span className="text-[9px] font-medium text-neutral-700">
-              {product.likes ?? 128}
+              {getProductStats(product).likes}
             </span>
           </div>
         )}
@@ -166,10 +338,7 @@ export function ProductCard({
           </span>
         )}
 
-        {/* PRODUCT IMAGE
-            Larger inside the same card frame.
-            object-contain prevents cropping.
-        */}
+        {/* PRODUCT IMAGE */}
         {product.image_url ? (
           <img
             src={getImageUrl(product.image_url, "card")}
@@ -226,21 +395,23 @@ export function ProductCard({
           </span>
 
           <span className="text-[9px] text-neutral-400">
-            · 94 reviews
+            · {reviewCount} reviews
           </span>
         </div>
 
         {/* SOLD */}
         <p className="mt-0.5 text-[9px] text-neutral-500">
-          {sold > 0 ? `${sold} sold` : "64 sold"}
+          {sold} sold
         </p>
 
         {/* OLD PRICE */}
-        {oldPrice > price && (
-          <p className="mt-1 text-[9px] text-neutral-400 line-through">
-            {formatUSDFromVND(oldPrice)}
-          </p>
-        )}
+        {price !== null &&
+          oldPrice !== null &&
+          oldPrice > price && (
+            <p className="mt-1 text-[9px] text-neutral-400 line-through">
+              {displayOldPrice}
+            </p>
+          )}
 
         {/* CURRENT PRICE */}
         <p
@@ -253,7 +424,7 @@ export function ProductCard({
             text-[#1D1D1F]
           "
         >
-          {formatUSDFromVND(price)}
+          {displayPrice}
         </p>
 
         {/* ACTION */}

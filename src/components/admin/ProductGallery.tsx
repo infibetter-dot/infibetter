@@ -218,7 +218,7 @@ export default function ProductGallery({
   ========================================================= */
 
   async function makeFeatured(imageUrl: string) {
-    console.log("⭐ FEATURE CLICK");
+    console.log("FEATURE CLICK");
     console.log("productId:", productId);
     console.log("imageUrl:", imageUrl);
 
@@ -310,7 +310,7 @@ export default function ProductGallery({
         }
 
         console.log("=================================");
-        console.log("☁️ R2 UPLOAD START");
+        console.log("R2 UPLOAD START");
         console.log("File:", file.name);
         console.log("Type:", file.type);
         console.log("Size:", file.size);
@@ -383,9 +383,9 @@ export default function ProductGallery({
 
         const imageUrl = result.url;
 
-        console.log("✅ R2 UPLOAD SUCCESS");
-        console.log("📦 R2 KEY:", result.key);
-        console.log("🖼️ R2 URL:", imageUrl);
+        console.log(" R2 UPLOAD SUCCESS");
+        console.log(" R2 KEY:", result.key);
+        console.log("R2 URL:", imageUrl);
 
         /*
          * -------------------------------------------------
@@ -404,7 +404,7 @@ export default function ProductGallery({
           )
         ) {
           console.warn(
-            "⚠️ URL không giống R2 URL:",
+            "️ URL không giống R2 URL:",
             imageUrl,
           );
         }
@@ -458,7 +458,7 @@ export default function ProductGallery({
 
         if (insertError) {
           console.error(
-            "❌ PRODUCT_IMAGES INSERT ERROR:",
+            " PRODUCT_IMAGES INSERT ERROR:",
             insertError,
           );
 
@@ -466,7 +466,7 @@ export default function ProductGallery({
         }
 
         console.log(
-          "✅ product_images INSERT SUCCESS:",
+          " product_images INSERT SUCCESS:",
           imageUrl,
         );
       }
@@ -489,7 +489,7 @@ export default function ProductGallery({
       input.value = "";
     } catch (err: any) {
       console.error(
-        "❌ CLOUDFLARE R2 UPLOAD ERROR:",
+        " CLOUDFLARE R2 UPLOAD ERROR:",
         err,
       );
 
@@ -509,15 +509,15 @@ export default function ProductGallery({
   ========================================================= */
 
   return (
-    <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+    <section className="h-full rounded-2xl border border-stone-200 bg-white p-4 shadow-sm flex flex-col">
       {/* =====================================================
           HEADER
       ===================================================== */}
 
-      <div className="mb-4 flex items-center justify-between gap-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-50 ring-1 ring-stone-200">
               <ImagePlus
                 size={17}
                 strokeWidth={1.8}
@@ -525,7 +525,7 @@ export default function ProductGallery({
               />
             </div>
 
-            <h3 className="text-[15px] font-semibold text-stone-900">
+            <h3 className="text-sm font-semibold text-stone-900">
               Thư viện ảnh
             </h3>
           </div>
@@ -559,7 +559,7 @@ export default function ProductGallery({
   className="
     group
     flex
-    h-[68px]
+    h-[62px]
     cursor-pointer
     items-center
     justify-center
@@ -608,7 +608,7 @@ export default function ProductGallery({
         </div>
 
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-stone-800">
+          <div className="text-[12px] font-semibold text-stone-800">
             {uploading
               ? "Đang tải ảnh lên Cloudflare R2..."
               : "Chọn ảnh để tải lên"}
@@ -619,7 +619,7 @@ export default function ProductGallery({
           </div>
 
           <div className="mt-1 text-[10px] font-medium text-emerald-600">
-            ✓ File ảnh được lưu trên Cloudflare R2
+             File ảnh được lưu trên Cloudflare R2
           </div>
         </div>
       </label>
@@ -629,7 +629,7 @@ export default function ProductGallery({
       ===================================================== */}
 
       {colors.length > 0 && (
-        <div className="mt-4 flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50/60 px-3 py-2.5">
+        <div className="mt-3 flex items-center gap-2.5 rounded-lg border border-stone-200 bg-stone-50/60 px-2.5 py-2">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-stone-200">
             <Palette
               size={14}
@@ -685,11 +685,11 @@ export default function ProductGallery({
       {images.length > 0 ? (
         <div
   className="
-    mt-4
+    mt-3
     grid
     grid-cols-2
-    gap-3
-    md:grid-cols-4
+    gap-2
+    md:grid-cols-3
   "
 >
           {images.map((img) => {
@@ -716,7 +716,7 @@ export default function ProductGallery({
                 className="
                   group
                   overflow-hidden
-                  rounded-xl
+                  rounded-lg
                   border
                   border-stone-200
                   bg-white
@@ -746,13 +746,13 @@ export default function ProductGallery({
                     loading="lazy"
                     onLoad={() => {
                       console.log(
-                        "✅ GALLERY IMAGE LOADED:",
+                        " GALLERY IMAGE LOADED:",
                         img.image_url,
                       );
                     }}
                     onError={() => {
                       console.error(
-                        "❌ GALLERY IMAGE LOAD ERROR:",
+                        " GALLERY IMAGE LOAD ERROR:",
                         img.image_url,
                       );
                     }}
@@ -761,9 +761,7 @@ export default function ProductGallery({
                   {/* STORAGE BADGE */}
 
                   <div className="absolute left-2 top-2 rounded-md bg-black/65 px-2 py-1 text-[9px] font-medium text-white backdrop-blur-sm">
-                    {isR2Image
-                      ? "☁ R2"
-                      : "⚠ Storage cũ"}
+                    {isR2Image ? "R2" : "Storage cũ"}
                   </div>
 
                   {/* FEATURED */}
@@ -791,7 +789,7 @@ export default function ProductGallery({
                     CONTENT
                 ========================================== */}
 
-                <div className="p-2.5">
+                <div className="p-2">
                   {/* COLOR */}
 
                   <div className="mb-2">

@@ -4,11 +4,7 @@ import {
   Camera,
   CheckCircle2,
   ChevronRight,
-  Headphones,
-  LockKeyhole,
-  Package,
   Play,
-  RotateCcw,
   ShieldCheck,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -450,56 +446,7 @@ export default function DesignedForRealLife({
         </button>
       </div>
 
-      {/* =====================================================
-          TRUST BAR
-      ====================================================== */}
-
-      <div
-        className="
-          mt-8
-          grid
-          overflow-hidden
-          rounded-[10px]
-          border
-          border-[#DCDCDC]
-          bg-white
-          sm:grid-cols-4
-        "
-      >
-        {/* FREE SHIPPING */}
-
-        <TrustBarItem
-          icon={<Package size={18} strokeWidth={1.5} />}
-          title="Free tracked shipping"
-          link="Shipping details"
-        />
-
-        {/* SUPPORT */}
-
-        <TrustBarItem
-          icon={<Headphones size={18} strokeWidth={1.5} />}
-          title="Here to help"
-          link="Product help & support"
-        />
-
-        {/* RETURNS */}
-
-        <TrustBarItem
-          icon={<RotateCcw size={18} strokeWidth={1.5} />}
-          title="30-day returns"
-          link="Returns explained"
-        />
-
-        {/* PAYMENTS */}
-
-        <TrustBarItem
-          icon={<LockKeyhole size={18} strokeWidth={1.5} />}
-          title="Secure payments"
-          link="Payment methods"
-          last
-        />
-      </div>
-    </section>
+      </section>
   );
 }
 
@@ -908,72 +855,6 @@ function TrustItem({
       </span>
 
       {label}
-    </div>
-  );
-}
-
-/* =========================================================
-   TRUST BAR ITEM
-========================================================= */
-
-function TrustBarItem({
-  icon,
-  title,
-  link,
-  last = false,
-}: {
-  icon: ReactNode;
-  title: string;
-  link: string;
-  last?: boolean;
-}) {
-  return (
-    <div
-      className={`
-        flex
-        min-h-[88px]
-        flex-col
-        items-center
-        justify-center
-        px-4
-        py-4
-        text-center
-        ${
-          !last
-            ? "border-b border-[#E5E5E5] sm:border-b-0 sm:border-r sm:border-[#E5E5E5]"
-            : ""
-        }
-      `}
-    >
-      <span className="text-[#171717]">
-        {icon}
-      </span>
-
-      <p
-        className="
-          mt-2
-          text-[9px]
-          font-semibold
-          text-[#171717]
-        "
-      >
-        {title}
-      </p>
-
-      <Link
-        to="/shop"
-        className="
-          mt-1.5
-          text-[8px]
-          text-neutral-500
-          underline
-          underline-offset-2
-          transition-colors
-          hover:text-[#0066E6]
-        "
-      >
-        {link}
-      </Link>
     </div>
   );
 }

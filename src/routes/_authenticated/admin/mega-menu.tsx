@@ -15,6 +15,7 @@ import {
   Save,
   Settings2,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -509,6 +510,76 @@ function MegaMenuAdminPage() {
     );
 
     emitUpdated();
+  }
+
+  async function uploadGroupImage(groupId: string, file: File) {
+    const MAX_SIZE = 5 * 1024 * 1024;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file hình ảnh.");
+      return;
+    }
+
+    if (file.size > MAX_SIZE) {
+      toast.error("Ảnh không được vượt quá 5MB.");
+      return;
+    }
+
+    const R2_WORKER_URL =
+      "https://nova-deal-spot-upload.97protech-work.workers.dev";
+
+    const safeFileName = file.name
+      .replace(/[^\w.\-() ]/g, "_")
+      .replace(/\s+/g, "-");
+
+    const fileName =
+      `${Date.now()}-${Math.random().toString(36).slice(2)}-${safeFileName}`;
+
+    // INFIBETTER dùng Cloudflare R2 / bucket: infibetter-assets.
+    const filePath =
+      `mega-menu/groups/${groupId}/${fileName}`;
+
+    const uploadUrl =
+      `${R2_WORKER_URL}/${filePath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/")}`;
+
+    try {
+      setSavingId(groupId);
+
+      const response = await fetch(uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        throw new Error(
+          `R2 upload failed: ${response.status} ${errorText}`,
+        );
+      }
+
+      // Hiển thị ngay ảnh vừa upload trong UI.
+      // Người dùng vẫn bấm "Lưu nhóm" để ghi URL vào Supabase.
+      updateGroup(groupId, {
+        image_url: uploadUrl,
+      });
+
+      toast.success("Đã upload ảnh nhóm lên R2. Bấm “Lưu nhóm” để lưu.");
+    } catch (error: any) {
+      console.error("UPLOAD MEGA MENU GROUP IMAGE ERROR:", error);
+
+      toast.error(
+        error?.message || "Upload ảnh nhóm lên R2 thất bại.",
+      );
+    } finally {
+      setSavingId(null);
+    }
   }
 
   function updateGroup(
@@ -1243,11 +1314,80 @@ function MegaMenuAdminPage() {
                                     <div className="mt-2 space-y-2 rounded-lg bg-white p-2">
                                       <div>
                                         <label className="mb-1 flex items-center gap-1 text-[9px] font-semibold text-slate-400">
-                                          <ImageIcon
-                                            size={10}
-                                          />
+                                          <ImageIcon size={10} />
                                           Ảnh nhóm
                                         </label>
+
+                                        {group.image_url ? (
+                                          <div className="mb-2 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                            <img
+                                              src={group.image_url}
+                                              alt={group.title}
+                                              className="h-20 w-full object-cover"
+                                              onError={(e) => {
+                                                e.currentTarget.style.display =
+                                                  "none";
+                                              }}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <div className="mb-2 flex h-20 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-[9px] text-slate-400">
+                                            Chưa có ảnh nhóm
+                                          </div>
+                                        )}
+
+                                        <div className="flex gap-1.5">
+                                          <input
+                                            id={`mega-menu-group-image-${group.id}`}
+                                            type="file"
+                                            accept="image/png,image/jpeg,image/webp,image/avif"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                              const file =
+                                                e.target.files?.[0];
+
+                                              if (file) {
+                                                void uploadGroupImage(
+                                                  group.id,
+                                                  file,
+                                                );
+                                              }
+
+                                              e.target.value = "";
+                                            }}
+                                          />
+
+                                          <label
+                                            htmlFor={`mega-menu-group-image-${group.id}`}
+                                            className="inline-flex h-7 cursor-pointer items-center justify-center gap-1 rounded-md bg-blue-600 px-2.5 text-[9px] font-bold text-white transition hover:bg-blue-700"
+                                          >
+                                            <Upload size={10} />
+                                            Upload R2
+                                          </label>
+
+                                          {group.image_url && (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                updateGroup(
+                                                  group.id,
+                                                  {
+                                                    image_url: "",
+                                                  },
+                                                )
+                                              }
+                                              className="inline-flex h-7 items-center justify-center rounded-md border border-slate-200 bg-white px-2 text-[9px] font-semibold text-slate-500 hover:bg-slate-50"
+                                            >
+                                              Xóa
+                                            </button>
+                                          )}
+                                        </div>
+
+                                        <p className="mt-1 text-[8px] leading-4 text-slate-400">
+                                          JPG, PNG, WEBP, AVIF · tối đa 5MB ·
+                                          lưu trên Cloudflare R2.
+                                        </p>
+
                                         <input
                                           value={
                                             group.image_url ??
@@ -1258,14 +1398,12 @@ function MegaMenuAdminPage() {
                                               group.id,
                                               {
                                                 image_url:
-                                                  e
-                                                    .target
-                                                    .value,
+                                                  e.target.value,
                                               },
                                             )
                                           }
-                                          placeholder="https://..."
-                                          className="h-7 w-full rounded-md border border-slate-200 px-2 text-[9px] outline-none focus:border-blue-300"
+                                          placeholder="Hoặc dán URL ảnh..."
+                                          className="mt-1 h-7 w-full rounded-md border border-slate-200 px-2 text-[9px] outline-none focus:border-blue-300"
                                         />
                                       </div>
 

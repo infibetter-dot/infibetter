@@ -292,38 +292,122 @@ function ShopPage() {
       let categoryIds: string[] | null = null;
 
       if (sp.category && sp.category !== "all") {
+        /*
+         * CATEGORY SLUG ALIASES
+         * ---------------------
+         * Some existing Mega Menu links use "wireless-chargers",
+         * while the actual DB slug is "wireless-charging".
+         * Normalize these aliases before querying Supabase.
+         */
+        const CATEGORY_SLUG_ALIASES: Record<string, string> = {
+          "wireless-chargers": "wireless-charging",
+        };
+
+        const resolvedCategorySlug =
+          CATEGORY_SLUG_ALIASES[sp.category] ??
+          sp.category;
+
+        /*
+         * REAL CATEGORY TREE FILTER
+         * --------------------------
+         * Every category selected from the Mega Menu represents a
+         * collection, not necessarily a leaf product category.
+         *
+         * Therefore we always include:
+         *   1. The selected category itself
+         *   2. Every descendant category below it
+         *
+         * Example:
+         *   Wireless Charging
+         *   ├── MagFold Qi2
+         *   ├── MagBank Qi2
+         *   └── 3-in-1 Chargers
+         *
+         * Clicking Wireless Charging must show all products assigned
+         * to Wireless Charging OR any of its child categories.
+         *
+         * We intentionally load the category tree instead of assuming
+         * that only parent categories are aggregate collections. This
+         * also keeps the logic working if a child later gets its own
+         * children.
+         */
+        // Resolve the slug to the real category first.
         const { data: selectedCategory, error: categoryError } =
           await supabase
             .from("categories")
             .select("id,name,slug,parent_id")
-            .eq("slug", sp.category)
+            .eq("slug", resolvedCategorySlug)
             .maybeSingle();
 
         if (categoryError) {
+          console.error(
+            "INFIBETTER CATEGORY LOOKUP ERROR:",
+            categoryError,
+          );
           throw categoryError;
         }
 
         if (selectedCategory) {
-          if (selectedCategory.parent_id) {
-            // Subcategory: exact match only.
-            categoryIds = [selectedCategory.id];
-          } else {
-            // Parent category: parent + direct children.
-            const { data: children, error: childrenError } =
-              await supabase
-                .from("categories")
-                .select("id")
-                .eq("parent_id", selectedCategory.id);
+          /*
+           * Do the tree expansion directly from the categories table.
+           *
+           * This intentionally does NOT depend on a Supabase RPC.
+           * It avoids failures caused by RPC permissions, PostgREST
+           * schema cache, or function exposure.
+           */
+          const { data: allCategories, error: treeError } =
+            await supabase
+              .from("categories")
+              .select("id,parent_id");
 
-            if (childrenError) {
-              throw childrenError;
-            }
-
-            categoryIds = [
-              selectedCategory.id,
-              ...(children ?? []).map((item: any) => item.id),
-            ];
+          if (treeError) {
+            console.error(
+              "INFIBETTER CATEGORY TREE ERROR:",
+              treeError,
+            );
+            throw treeError;
           }
+
+          const ids = new Set<string>([
+            selectedCategory.id,
+          ]);
+
+          let changed = true;
+
+          while (changed) {
+            changed = false;
+
+            for (const category of allCategories ?? []) {
+              if (
+                category.parent_id &&
+                ids.has(category.parent_id) &&
+                !ids.has(category.id)
+              ) {
+                ids.add(category.id);
+                changed = true;
+              }
+            }
+          }
+
+          categoryIds = Array.from(ids);
+
+          console.log(
+            "INFIBETTER SHOP CATEGORY:",
+            {
+              slug: sp.category,
+              resolvedCategorySlug,
+              selectedCategory,
+              categoryIds,
+            },
+          );
+        } else {
+          console.warn(
+            "INFIBETTER SHOP: category slug not found:",
+            {
+              requestedSlug: sp.category,
+              resolvedCategorySlug,
+            },
+          );
         }
       }
 
@@ -344,8 +428,17 @@ function ShopPage() {
 
       // Only use real category_id filtering when the URL contains
       // an actual category slug from the categories table.
-      if (categoryIds && categoryIds.length > 0) {
-        query = query.in("category_id", categoryIds);
+      if (sp.category && sp.category !== "all") {
+        if (categoryIds && categoryIds.length > 0) {
+          query = query.in(
+            "category_id",
+            categoryIds,
+          );
+        } else {
+          // A requested real category that cannot be resolved must not
+          // accidentally show every product.
+          return [];
+        }
       }
 
       /* -----------------------------------------------
@@ -406,8 +499,22 @@ function ShopPage() {
       );
 
       if (error) {
+        console.error(
+          "INFIBETTER SHOP PRODUCTS ERROR:",
+          error,
+        );
         throw error;
       }
+
+      console.log(
+        "INFIBETTER SHOP RESULT:",
+        {
+          category: sp.category,
+          categoryIds,
+          count: data?.length ?? 0,
+          products: data ?? [],
+        },
+      );
 
       return (
         data?.map(
@@ -454,15 +561,24 @@ function ShopPage() {
            * ...
            * are already filtered at Supabase level by category_id.
            */
-          const isRealCategorySlug =
-            Boolean(sp.category) &&
-            sp.category !== "all" &&
-            sp.category.includes("-");
+          // Real category slugs are already filtered by Supabase
+          // using category_id + the complete descendant tree.
+          //
+          // Only apply the legacy device keyword filter when the URL
+          // is actually one of the legacy device filters.
+          const isLegacyDevice =
+            DEVICE_FILTERS.some(
+              (item) =>
+                item.id === sp.category,
+            );
 
           if (
-            !isRealCategorySlug &&
+            isLegacyDevice &&
             activeDevice !== "all" &&
-            !matchesDevice(product, activeDevice)
+            !matchesDevice(
+              product,
+              activeDevice,
+            )
           ) {
             return false;
           }

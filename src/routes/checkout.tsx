@@ -107,7 +107,6 @@ const REST_OF_WORLD: CountryOption = {
 };
 
 const PROCESSING_DAYS: [number, number] = [1, 2];
-const VND_TO_USD = 25500;
 const OFFER_DISCOUNT = 0.15;
 
 const schema = z.object({
@@ -170,7 +169,7 @@ function usd(value: number) {
 }
 
 function CheckoutPage() {
-  const { items, subtotal: subtotalVnd, clear, count, add } = useCart();
+  const { items, clear, count, add } = useCart();
   const navigate = useNavigate();
 
   const [countryCode, setCountryCode] = useState("US");
@@ -182,6 +181,19 @@ function CheckoutPage() {
   const [faqOpen, setFaqOpen] = useState<string | null>(null);
   const [paypalReady, setPaypalReady] = useState(false);
 
+  // Keep the PayPal SDK options stable so the script is not unnecessarily
+  // reconsidered/reloaded on checkout re-renders. Only load the Buttons component
+  // because this checkout does not use any other PayPal SDK components.
+  const paypalOptions = useMemo(
+    () => ({
+      "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
+      currency: "USD",
+      intent: "capture",
+      components: "buttons",
+    }),
+    [],
+  );
+
   const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   const [offerIndex, setOfferIndex] = useState(0);
   const [offerLoading, setOfferLoading] = useState(true);
@@ -191,7 +203,12 @@ function CheckoutPage() {
   const country = getCountry(countryCode);
   const shippingFeeUsd =
     shippingMethod === "express" ? country.express : 0;
-  const subtotalUsd = subtotalVnd / VND_TO_USD;
+  // INFIBETTER product prices are stored in USD.
+  // Calculate checkout totals directly from cart line prices.
+  const subtotalUsd = items.reduce(
+    (sum, item) => sum + Number(item.price) * Number(item.quantity),
+    0,
+  );
   const totalUsd = subtotalUsd + shippingFeeUsd;
 
   const deliveryRange = useMemo(
@@ -311,11 +328,11 @@ function CheckoutPage() {
       ].join(" | "),
       payment_method: "paypal",
       payment_status: paymentStatus,
-      subtotal: Math.round(subtotalVnd),
-      shipping_fee: Math.round(shippingFeeUsd * VND_TO_USD),
+      subtotal: Number(subtotalUsd.toFixed(2)),
+      shipping_fee: Number(shippingFeeUsd.toFixed(2)),
       shipping_discount: 0,
       discount_amount: 0,
-      total: Math.round(totalUsd * VND_TO_USD),
+      total: Number(totalUsd.toFixed(2)),
     };
 
     const { data: order, error } = await supabase
@@ -362,9 +379,9 @@ function CheckoutPage() {
         postal_code: parsed.data.postal_code,
         payment_method: "paypal",
         payment_status: paymentStatus,
-        subtotal: subtotalVnd,
-        shipping: Math.round(shippingFeeUsd * VND_TO_USD),
-        total: Math.round(totalUsd * VND_TO_USD),
+        subtotal: Number(subtotalUsd.toFixed(2)),
+        shipping: Number(shippingFeeUsd.toFixed(2)),
+        total: Number(totalUsd.toFixed(2)),
         shipping_method: shippingMethod,
         estimated_delivery: deliveryRange,
         items: insertedItems ?? [],
@@ -432,10 +449,10 @@ function CheckoutPage() {
         </div>
       </div>
 
-      <main className="mx-auto max-w-[1180px] px-5 py-8 lg:px-8">
+      <main className="mx-auto w-full max-w-[1180px] px-4 py-8 sm:px-5 lg:px-8">
         <form
           onSubmit={handleSubmit}
-          className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_390px]"
+          className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_390px] xl:gap-10"
         >
           <div className="space-y-6">
             <section className="rounded-2xl border border-[#e2e2e2] p-5 sm:p-6">
@@ -452,13 +469,7 @@ function CheckoutPage() {
               </div>
 
               <div className="mt-5">
-                <PayPalScriptProvider
-                  options={{
-                    "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
-                    currency: "USD",
-                    intent: "capture",
-                  }}
-                >
+                <PayPalScriptProvider options={paypalOptions}>
                   <PayPalButtons
                     fundingSource={FUNDING.PAYPAL}
                     disabled={submitting}
@@ -679,8 +690,8 @@ function CheckoutPage() {
                 }
                 onNoThanks={() => setOfferDismissed(true)}
                 onAdd={(product) => {
-                  const discountedPrice = Math.round(
-                    Number(product.price) * (1 - OFFER_DISCOUNT),
+                  const discountedPrice = Number(
+                    (Number(product.price) * (1 - OFFER_DISCOUNT)).toFixed(2),
                   );
 
                   const alreadyInCart = items.some(
@@ -710,7 +721,7 @@ function CheckoutPage() {
               />
             )}
 
-            <section className="rounded-2xl border border-[#e2e2e2]">
+            <section className="hidden rounded-2xl border border-[#e2e2e2] lg:block">
               <button
                 type="button"
                 onClick={() => setArrivalOpen((value) => !value)}
@@ -767,27 +778,9 @@ function CheckoutPage() {
               )}
             </section>
 
-            <div className="pt-1">
-              <nav
-                aria-label="Checkout legal information"
-                className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs"
-              >
-                <LegalLink label="Refund policy" onClick={() => setLegalModal("refund")} />
-                <LegalLink label="Shipping" onClick={() => setLegalModal("shipping")} />
-                <LegalLink label="Privacy policy" onClick={() => setLegalModal("privacy")} />
-                <LegalLink label="Terms of service" onClick={() => setLegalModal("terms")} />
-                <LegalLink label="Legal notice" onClick={() => setLegalModal("legal")} />
-                <LegalLink label="Cancellations" onClick={() => setLegalModal("cancellations")} />
-                <LegalLink label="Contact" onClick={() => setLegalModal("contact")} />
-              </nav>
-
-              <p className="mt-4 px-1 text-center text-xs leading-5 text-neutral-500">
-                By placing your order, you agree to our terms and privacy policy.
-              </p>
-            </div>
           </div>
 
-          <aside className="lg:sticky lg:top-6">
+          <aside className="min-w-0 lg:sticky lg:top-6">
             <div className="rounded-2xl border border-[#e2e2e2] bg-white p-5 sm:p-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold tracking-[-0.02em]">
@@ -822,10 +815,7 @@ function CheckoutPage() {
                         {item.colorName ? ` · ${item.colorName}` : ""}
                       </p>
                       <p className="mt-1 text-sm font-semibold">
-                        {usd(
-                          (item.price * item.quantity) /
-                            VND_TO_USD,
-                        )}
+                        {usd(Number(item.price) * Number(item.quantity))}
                       </p>
                     </div>
                   </div>
@@ -1004,6 +994,25 @@ function CheckoutPage() {
                 unsure, check the compatibility information on the product page
                 or contact INFIBETTER before ordering.
               </Faq>
+            </div>
+
+            <div className="mt-5 border-t border-[#e8e8e8] pt-4 pb-1">
+              <nav
+                aria-label="Checkout legal information"
+                className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[11px] leading-5 sm:gap-x-4 sm:text-xs"
+              >
+                <LegalLink label="Refund policy" onClick={() => setLegalModal("refund")} />
+                <LegalLink label="Shipping" onClick={() => setLegalModal("shipping")} />
+                <LegalLink label="Privacy policy" onClick={() => setLegalModal("privacy")} />
+                <LegalLink label="Terms of service" onClick={() => setLegalModal("terms")} />
+                <LegalLink label="Legal notice" onClick={() => setLegalModal("legal")} />
+                <LegalLink label="Cancellations" onClick={() => setLegalModal("cancellations")} />
+                <LegalLink label="Contact" onClick={() => setLegalModal("contact")} />
+              </nav>
+
+              <p className="mx-auto mt-3 max-w-[330px] text-center text-[11px] leading-5 text-neutral-500 sm:text-xs">
+                By placing your order, you agree to our terms and privacy policy.
+              </p>
             </div>
           </aside>
         </form>
@@ -2130,14 +2139,13 @@ function CheckoutOffer({
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <span className="text-sm font-bold text-[#d71920]">
                   {usd(
-                    (Number(product.price) * (1 - OFFER_DISCOUNT)) /
-                      25500,
+                    Number(product.price) * (1 - OFFER_DISCOUNT),
                   )}
                 </span>
 
                 {Number(product.price) > 0 && (
                   <span className="text-xs text-neutral-400 line-through">
-                    {usd(Number(product.price) / 25500)}
+                    {usd(Number(product.price))}
                   </span>
                 )}
 
@@ -2149,7 +2157,7 @@ function CheckoutOffer({
               {Number(product.compare_at_price) > Number(product.price) && (
                 <p className="mt-1 text-[10px] text-neutral-400">
                   Regular price:{" "}
-                  {usd(Number(product.compare_at_price) / 25500)}
+                  {usd(Number(product.compare_at_price))}
                 </p>
               )}
             </div>
@@ -2164,8 +2172,7 @@ function CheckoutOffer({
                 <span className="mt-0.5 block text-[11px] font-bold">
                   —{" "}
                   {usd(
-                    (Number(product.price) * (1 - OFFER_DISCOUNT)) /
-                      25500,
+                    Number(product.price) * (1 - OFFER_DISCOUNT),
                   )}
                 </span>
               </button>
@@ -2179,7 +2186,7 @@ function CheckoutOffer({
             <span className="text-xs font-semibold text-emerald-600">
               Save{" "}
               {usd(
-                (Number(product.price) * OFFER_DISCOUNT) / 25500,
+                (Number(product.price) * OFFER_DISCOUNT),
               )}
             </span>
           </div>

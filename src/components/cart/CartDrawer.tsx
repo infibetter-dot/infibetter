@@ -7,8 +7,6 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { useCart } from "@/lib/cart";
-import { formatUSDFromVND } from "@/lib/format";
-
 interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
@@ -19,232 +17,28 @@ interface CartDrawerProps {
    PAYMENT LOGOS
 ============================================================ */
 
-function VisaLogo() {
-  return (
-    <svg
-      viewBox="0 0 42 26"
-      className="h-[22px] w-[36px]"
-      aria-label="Visa"
-    >
-      <rect width="42" height="26" rx="2.5" fill="#1434CB" />
 
-      <text
-        x="21"
-        y="17"
-        textAnchor="middle"
-        fontSize="11"
-        fontWeight="800"
-        fontFamily="Arial, sans-serif"
-        fill="white"
-        fontStyle="italic"
-      >
-        VISA
-      </text>
-    </svg>
-  );
+import {
+  AmericanExpressFlatIcon,
+  MastercardFlatIcon,
+  VisaFlatIcon,
+} from "react-svg-credit-card-payment-icons";
+
+function formatUSD(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
 }
 
-function MastercardLogo() {
-  return (
-    <svg
-      viewBox="0 0 42 26"
-      className="h-[22px] w-[36px]"
-      aria-label="Mastercard"
-    >
-      <rect
-        x="0.5"
-        y="0.5"
-        width="41"
-        height="25"
-        rx="2.5"
-        fill="#111111"
-        stroke="#D7D7D7"
-      />
 
-      <circle
-        cx="17"
-        cy="13"
-        r="7"
-        fill="#EB001B"
-      />
 
-      <circle
-        cx="25"
-        cy="13"
-        r="7"
-        fill="#F79E1B"
-        fillOpacity="0.95"
-      />
-    </svg>
-  );
-}
 
-function AmexLogo() {
-  return (
-    <svg
-      viewBox="0 0 42 26"
-      className="h-[22px] w-[36px]"
-      aria-label="American Express"
-    >
-      <rect width="42" height="26" rx="2.5" fill="#1677B8" />
 
-      <text
-        x="21"
-        y="16.5"
-        textAnchor="middle"
-        fontSize="8.5"
-        fontWeight="800"
-        fontFamily="Arial, sans-serif"
-        fill="white"
-      >
-        AMEX
-      </text>
-    </svg>
-  );
-}
 
-function ApplePayLogo() {
-  return (
-    <svg
-      viewBox="0 0 42 26"
-      className="h-[22px] w-[36px]"
-      aria-label="Apple Pay"
-    >
-      <rect
-        x="0.5"
-        y="0.5"
-        width="41"
-        height="25"
-        rx="2.5"
-        fill="white"
-        stroke="#BDBDBD"
-      />
 
-      {/* Apple */}
-      <path
-        d="
-          M14.3 9.1
-          C13.2 9.1 12.1 10.1 12.1 11.9
-          C12.1 14.1 13.7 16.9 15.1 16.9
-          C15.8 16.9 16.2 16.4 17.1 16.4
-          C17.9 16.4 18.2 16.9 19 16.9
-          C20.5 16.9 21.5 14.5 21.5 14.4
-          C21.5 14.4 20.2 13.8 20.2 12.2
-          C20.2 10.9 21.2 10.2 21.3 10.1
-          C20.7 9.2 19.7 9.1 19.3 9.1
-          C18.3 9 17.4 9.7 16.9 9.7
-          C16.4 9.7 15.6 9.1 14.3 9.1
-          Z
-        "
-        fill="#111111"
-      />
-
-      <path
-        d="
-          M17.1 8.1
-          C17.6 7.5 18 6.7 17.9 6
-          C17.1 6 16.3 6.4 15.8 7
-          C15.3 7.5 14.9 8.3 15 9
-          C15.8 9.1 16.6 8.7 17.1 8.1
-          Z
-        "
-        fill="#111111"
-      />
-
-      <text
-        x="31"
-        y="16"
-        textAnchor="middle"
-        fontSize="7"
-        fontWeight="700"
-        fontFamily="Arial, sans-serif"
-        fill="#111111"
-      >
-        Pay
-      </text>
-    </svg>
-  );
-}
-
-function GooglePayLogo() {
-  return (
-    <svg
-      viewBox="0 0 42 26"
-      className="h-[22px] w-[36px]"
-      aria-label="Google Pay"
-    >
-      <rect
-        x="0.5"
-        y="0.5"
-        width="41"
-        height="25"
-        rx="2.5"
-        fill="white"
-        stroke="#E0E0E0"
-      />
-
-      <text
-        x="21"
-        y="16.5"
-        textAnchor="middle"
-        fontSize="7.5"
-        fontWeight="700"
-        fontFamily="Arial, sans-serif"
-        fill="#4285F4"
-      >
-        G Pay
-      </text>
-    </svg>
-  );
-}
-
-function KlarnaLogo() {
-  return (
-    <svg
-      viewBox="0 0 42 26"
-      className="h-[22px] w-[36px]"
-      aria-label="Klarna"
-    >
-      <rect width="42" height="26" rx="2.5" fill="#FFB3C7" />
-
-      <text
-        x="21"
-        y="16.5"
-        textAnchor="middle"
-        fontSize="7.5"
-        fontWeight="800"
-        fontFamily="Arial, sans-serif"
-        fill="#111111"
-      >
-        Klarna.
-      </text>
-    </svg>
-  );
-}
-
-function ShopPayLogo() {
-  return (
-    <svg
-      viewBox="0 0 42 26"
-      className="h-[22px] w-[36px]"
-      aria-label="Shop Pay"
-    >
-      <rect width="42" height="26" rx="2.5" fill="#5A31F4" />
-
-      <text
-        x="21"
-        y="16.5"
-        textAnchor="middle"
-        fontSize="7.5"
-        fontWeight="800"
-        fontFamily="Arial, sans-serif"
-        fill="white"
-      >
-        shop
-      </text>
-    </svg>
-  );
-}
 
 /* ============================================================
    CART DRAWER
@@ -751,7 +545,7 @@ export default function CartDrawer({
                             text-[#111111]
                           "
                         >
-                          {formatUSDFromVND(
+                          {formatUSD(
                             item.price *
                               item.quantity,
                           )}
@@ -803,7 +597,7 @@ export default function CartDrawer({
                 </span>
 
                 <span className="font-medium text-[#111111]">
-                  {formatUSDFromVND(subtotal)}
+                  {formatUSD(subtotal)}
                 </span>
               </div>
 
@@ -867,7 +661,7 @@ export default function CartDrawer({
                     text-[#E11D48]
                   "
                 >
-                  Save 20% overall
+                  Final price
                 </span>
 
               </div>
@@ -880,7 +674,7 @@ export default function CartDrawer({
                   text-[#111111]
                 "
               >
-                {formatUSDFromVND(subtotal)}
+                {formatUSD(subtotal)}
               </p>
 
             </div>
@@ -923,6 +717,9 @@ export default function CartDrawer({
 
             {/* ==================================================
                 PAYMENT LOGOS
+                react-svg-credit-card-payment-icons
+                Exact card-style UI:
+                American Express / Mastercard / Visa
             =================================================== */}
             <div
               className="
@@ -930,16 +727,27 @@ export default function CartDrawer({
                 flex
                 items-center
                 justify-center
-                gap-[5px]
+                gap-[6px]
+                overflow-hidden
               "
             >
-              <VisaLogo />
-              <MastercardLogo />
-              <AmexLogo />
-              <ApplePayLogo />
-              <GooglePayLogo />
-              <KlarnaLogo />
-              <ShopPayLogo />
+              <AmericanExpressFlatIcon
+                width={48}
+                height={31}
+                aria-label="American Express"
+              />
+
+              <MastercardFlatIcon
+                width={48}
+                height={31}
+                aria-label="Mastercard"
+              />
+
+              <VisaFlatIcon
+                width={48}
+                height={31}
+                aria-label="Visa"
+              />
             </div>
 
             {/* ==================================================

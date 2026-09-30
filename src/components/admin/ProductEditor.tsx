@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronUp, Eye, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ProductEditorRichText from "./ProductEditorRichText";
@@ -8,6 +9,28 @@ import ProductSpecification from "./ProductSpecification";
 import ProductUSP from "./ProductUSP";
 import ProductColors from "./ProductColors";
 import ProductFAQs from "./ProductFAQs";
+
+// INFIBETTER: giá gốc trong database luôn là USD.
+// VND chỉ dùng để hiển thị tham khảo cho admin.
+const USD_TO_VND = 25500;
+
+function formatUSD(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
+}
+
+function formatVND(value: number) {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format((Number(value) || 0) * USD_TO_VND);
+}
 
 interface Props {
   product: any;
@@ -89,30 +112,52 @@ useEffect(() => {
 async function uploadThumbnail(
   e: React.ChangeEvent<HTMLInputElement>
 ) {
-  const file = e.target.files?.[0];
+  const input = e.currentTarget;
+  const file = input.files?.[0];
 
   if (!file) return;
 
-  const ext = file.name.split(".").pop();
-
-  const fileName =
-    `thumbnail/${Date.now()}.${ext}`;
-
-  const { error } =
-    await supabase.storage
-      .from("website OLive")
-      .upload(fileName, file);
-
-  if (error) {
-    toast.error(error.message);
+  if (!file.type.startsWith("image/")) {
+    toast.error("Vui lòng chọn file hình ảnh.");
+    input.value = "";
     return;
   }
 
-const { data } = supabase.storage
-  .from("website OLive")
-  .getPublicUrl(fileName);
+  if (file.size > 10 * 1024 * 1024) {
+    toast.error("Ảnh không được vượt quá 10MB.");
+    input.value = "";
+    return;
+  }
 
-setImageUrl(data.publicUrl);
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("productId", product.id);
+
+    const response = await fetch("/api/upload-r2", {
+      method: "POST",
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success || !result.url) {
+      throw new Error(
+        result.error ||
+          result.detail ||
+          "Upload ảnh lên Cloudflare R2 thất bại."
+      );
+    }
+
+    setImageUrl(result.url);
+    toast.success("Đã tải ảnh lên Cloudflare R2.");
+  } catch (error: any) {
+    toast.error(
+      error?.message || "Upload ảnh thất bại."
+    );
+  } finally {
+    input.value = "";
+  }
 }
 
 async function loadCategories() {
@@ -442,7 +487,7 @@ if (error) throw error;
               {name || "Sản phẩm mới"}
             </h1>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-neutral-500">
-              <span>{price.toLocaleString()} đ</span>
+              <span>{formatUSD(price)}</span>
               <span>•</span>
               <span>Tồn: {stock}</span>
             </div>
@@ -455,7 +500,10 @@ if (error) throw error;
             onClick={previewProduct}
             className="h-9 rounded-lg border border-[#D7D3CB] bg-white px-3 text-sm font-medium transition hover:bg-[#F7F4EF]"
           >
-            👁 Xem
+            <span className="inline-flex items-center gap-1.5">
+              <Eye size={14} strokeWidth={1.8} />
+              Xem
+            </span>
           </button>
 
           <button
@@ -467,7 +515,10 @@ if (error) throw error;
             }}
             className="h-9 rounded-lg border border-[#D7D3CB] bg-white px-3 text-sm font-medium transition hover:bg-[#F7F4EF]"
           >
-            ▲ Thu gọn
+            <span className="inline-flex items-center gap-1.5">
+              <ChevronUp size={14} strokeWidth={1.8} />
+              Thu gọn
+            </span>
           </button>
 
           <button
@@ -476,7 +527,10 @@ if (error) throw error;
             disabled={loading}
             className="h-9 rounded-lg bg-[#2D6A4F] px-4 text-sm font-semibold text-white transition hover:bg-[#245640] disabled:opacity-50"
           >
-            {loading ? "Đang lưu..." : "💾 Lưu"}
+            <span className="inline-flex items-center gap-1.5">
+              <Save size={14} strokeWidth={1.8} />
+              {loading ? "Đang lưu..." : "Lưu"}
+            </span>
           </button>
         </div>
       </div>
@@ -919,37 +973,23 @@ if (error) throw error;
 
       {/* GALLERY + MÀU SẮC / BIẾN THỂ */}
       {product.id && (
-        <div className="grid items-start gap-5 xl:grid-cols-2">
-          {/* GALLERY */}
-          <section className="min-w-0 rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm md:p-5">
-            <div className="mb-4 border-b border-[#E8E4DE] pb-3">
-              
-            </div>
+        <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-2">
+          <div className="min-w-0 h-full">
+            <ProductGallery
+              key={imageUrl}
+              productId={product.id}
+              refresh={colorVersion}
+              onFeaturedChanged={setImageUrl}
+              onSaved={onSaved}
+            />
+          </div>
 
-            <div className="min-w-0">
-              <ProductGallery
-                key={imageUrl}
-                productId={product.id}
-                refresh={colorVersion}
-                onFeaturedChanged={setImageUrl}
-                onSaved={onSaved}
-              />
-            </div>
-          </section>
-
-          {/* MÀU SẮC / BIẾN THỂ */}
-          <section className="min-w-0 rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm md:p-5">
-            <div className="mb-4 border-b border-[#E8E4DE] pb-3">
-              
-            </div>
-
-            <div className="min-w-0">
-              <ProductColors
-                productId={product.id}
-                onSaved={() => setColorVersion((v) => v + 1)}
-              />
-            </div>
-          </section>
+          <div className="min-w-0 h-full">
+            <ProductColors
+              productId={product.id}
+              onSaved={() => setColorVersion((v) => v + 1)}
+            />
+          </div>
         </div>
       )}
 
@@ -991,64 +1031,75 @@ if (error) throw error;
           <div>
             <h3 className="text-xl font-bold text-[#2D2D2D]">Giá & tồn kho</h3>
             <p className="mt-0.5 text-xs text-neutral-500">
-              Giá bán, giá gốc và số lượng sản phẩm.
+              Giá bán, giá gốc và số lượng sản phẩm. Giá gốc hệ thống: USD.
             </p>
           </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
+          
           {/* GIÁ BÁN */}
           <div className="rounded-xl border border-[#DDD] bg-[#FAFAFA] p-4">
             <label className="mb-1.5 block text-sm font-semibold">
-              💰 Giá bán
+               Giá bán (USD)
             </label>
 
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-neutral-500">
-                ₫
+                $
               </span>
 
               <input
                 type="number"
+                step="0.01"
+                min="0"
                 value={price}
                 onChange={(e) => setPrice(Number(e.target.value))}
                 className="h-11 w-full rounded-xl border border-stone-200 bg-white pl-8 pr-3 text-base font-bold focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#EAF3EE]"
               />
             </div>
 
-            <p className="mt-2 text-[11px] text-neutral-500">
-              Giá khách thanh toán.
+            <p className="mt-2 text-[11px] font-medium text-neutral-700">
+              Giá khách thanh toán · USD
+            </p>
+            <p className="mt-0.5 text-[10px] text-neutral-400">
+              Tham khảo: {formatVND(price)}
             </p>
           </div>
 
           {/* GIÁ GỐC */}
           <div className="rounded-xl border border-[#DDD] bg-[#FAFAFA] p-4">
             <label className="mb-1.5 block text-sm font-semibold">
-              🏷 Giá gốc
+               Giá gốc
             </label>
 
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-neutral-500">
-                ₫
+                $
               </span>
 
               <input
                 type="number"
+                step="0.01"
+                min="0"
                 value={comparePrice}
                 onChange={(e) => setComparePrice(Number(e.target.value))}
                 className="h-11 w-full rounded-xl border border-stone-200 bg-white pl-8 pr-3 text-base font-bold focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#EAF3EE]"
               />
             </div>
 
-            <p className="mt-2 text-[11px] text-neutral-500">
-              Giá hiển thị gạch ngang.
+            <p className="mt-2 text-[11px] font-medium text-neutral-700">
+              Giá gốc · USD
+            </p>
+            <p className="mt-0.5 text-[10px] text-neutral-400">
+              Tham khảo: {formatVND(comparePrice)}
             </p>
           </div>
 
           {/* TỒN KHO */}
           <div className="rounded-xl border border-[#DDD] bg-[#FAFAFA] p-4">
             <label className="mb-1.5 block text-sm font-semibold">
-              📦 Tồn kho
+               Tồn kho
             </label>
 
             <input
@@ -1068,7 +1119,7 @@ if (error) throw error;
         {comparePrice > price && (
           <div className="mt-3 flex flex-col gap-3 rounded-xl border border-[#CFE7D6] bg-[#F2FBF6] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
-              <span>🎉</span>
+              <span></span>
               <span className="text-sm font-semibold text-[#2D6A4F]">
                 Khách đang tiết kiệm
               </span>
@@ -1076,7 +1127,7 @@ if (error) throw error;
 
             <div className="flex items-center gap-4">
               <div className="text-lg font-bold text-[#2D6A4F]">
-                ₫ {(comparePrice - price).toLocaleString()}
+                {formatUSD(comparePrice - price)}
               </div>
 
               <div className="rounded-full bg-[#2D6A4F] px-3 py-1 text-xs font-semibold text-white">
@@ -1187,7 +1238,7 @@ if (error) throw error;
           onClick={previewProduct}
           className="h-10 rounded-xl border border-[#D7D3CB] bg-white px-5 text-sm font-semibold transition hover:bg-[#F7F4EF]"
         >
-          👁 Xem sản phẩm
+          <span className="inline-flex items-center gap-1.5"><Eye size={14} strokeWidth={1.8} />Xem</span> sản phẩm
         </button>
 
         <button
@@ -1199,7 +1250,7 @@ if (error) throw error;
           }}
           className="h-10 rounded-xl border border-[#D7D3CB] bg-white px-5 text-sm font-semibold transition hover:bg-[#F7F4EF]"
         >
-          ▲ Thu gọn
+          <span className="inline-flex items-center gap-1.5"><ChevronUp size={14} strokeWidth={1.8} />Thu gọn</span>
         </button>
 
         <button
@@ -1208,7 +1259,7 @@ if (error) throw error;
           disabled={loading}
           className="h-10 rounded-xl bg-[#2D6A4F] px-6 text-sm font-semibold text-white transition hover:bg-[#245640] disabled:opacity-50"
         >
-          {loading ? "Đang lưu..." : "💾 Lưu sản phẩm"}
+          {loading ? "Đang lưu..." : " Lưu sản phẩm"}
         </button>
       </div>
     </div>
