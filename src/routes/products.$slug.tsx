@@ -20,10 +20,65 @@ import {
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { formatUSDFromVND } from "@/lib/format";
+import {
+  getCurrency,
+  subscribeToCurrencyChange,
+  type CurrencyCode,
+} from "@/lib/currency-system";
 import { useCart } from "@/lib/cart";
 import { getImageUrl } from "@/lib/storage";
 import ProductReviews from "@/components/ProductReviews";
+
+// Product prices in Supabase are USD. This page formats them locally so the
+// product-detail price cannot be affected by a broken/stale shared formatter.
+const PRODUCT_CURRENCY_RATES: Record<CurrencyCode, number> = {
+  USD: 1,
+  VND: 25500,
+  CAD: 1.38,
+  AUD: 1.52,
+  EUR: 0.88,
+  GBP: 0.75,
+  SGD: 1.28,
+};
+
+const PRODUCT_CURRENCY_LOCALES: Record<CurrencyCode, string> = {
+  USD: "en-US",
+  VND: "vi-VN",
+  CAD: "en-CA",
+  AUD: "en-AU",
+  EUR: "de-DE",
+  GBP: "en-GB",
+  SGD: "en-SG",
+};
+
+function formatProductPrice(
+  value: number | string | null | undefined,
+  currency: CurrencyCode,
+): string {
+  const usd = Number(value);
+  const activeCurrency = PRODUCT_CURRENCY_RATES[currency] !== undefined
+    ? currency
+    : "USD";
+
+  if (!Number.isFinite(usd)) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(0);
+  }
+
+  const converted = usd * PRODUCT_CURRENCY_RATES[activeCurrency];
+  const fractionDigits = activeCurrency === "VND" ? 0 : 2;
+
+  return new Intl.NumberFormat(PRODUCT_CURRENCY_LOCALES[activeCurrency], {
+    style: "currency",
+    currency: activeCurrency,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(converted);
+}
 
 const productOptions = (slug: string) =>
   queryOptions({
@@ -120,6 +175,17 @@ function ProductPage() {
   const navigate = useNavigate();
   const cart = useCart();
 
+  // INFIBETTER product prices are stored as USD in Supabase.
+  const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
+    getCurrency(),
+  );
+  const safeCurrency: CurrencyCode =
+    currency || getCurrency() || "USD";
+
+  useEffect(() => {
+    return subscribeToCurrencyChange(setCurrencyState);
+  }, []);
+
   const { data } = useSuspenseQuery(productOptions(slug));
   const { product, related } = data;
 
@@ -171,6 +237,19 @@ function ProductPage() {
 
   const price = Number(product.price) || 0;
   const comparePrice = Number(product.compare_at_price) || 0;
+
+  // TEMP DEBUG: confirms this page is receiving the Supabase USD price.
+  console.log("INFIBETTER PRICE CHECK:", {
+    slug: product.slug,
+    name: product.name,
+    price: product.price,
+    compare_at_price: product.compare_at_price,
+    parsedPrice: price,
+    parsedComparePrice: comparePrice,
+    currency: safeCurrency,
+    formattedPrice: formatProductPrice(price, safeCurrency),
+    formattedComparePrice: formatProductPrice(comparePrice, safeCurrency),
+  });
   const hasDiscount = comparePrice > price;
   const discountPercent = hasDiscount
     ? Math.round(((comparePrice - price) / comparePrice) * 100)
@@ -378,13 +457,13 @@ function ProductPage() {
               <div className="mt-6">
                 <div className="flex flex-wrap items-baseline gap-3">
                   <span className="text-[28px] font-semibold tracking-[-0.025em]">
-                    {formatUSDFromVND(price)}
+                    {formatProductPrice(price, safeCurrency)}
                   </span>
 
                   {hasDiscount && (
                     <>
                       <span className="text-[14px] text-[#86868B] line-through">
-                        {formatUSDFromVND(comparePrice)}
+                        {formatProductPrice(comparePrice, safeCurrency)}
                       </span>
                       <span className="text-[12px] font-medium text-[#6E6E73]">
                         -{discountPercent}%
@@ -821,12 +900,12 @@ function ProductPage() {
                     params={{ slug: item.slug }}
                     className="group min-w-0"
                   >
-                    <div className="aspect-square overflow-hidden rounded-[18px] bg-[#F5F5F7]">
+                    <div className="aspect-square w-full overflow-hidden rounded-[18px] bg-[#F5F5F7]">
                       {item.image_url ? (
                         <img
                           src={getImageUrl(item.image_url, "card") || item.image_url}
                           alt={item.name}
-                          className="h-full w-full object-contain p-5 transition-transform duration-500 group-hover:scale-[1.03]"
+                          className="h-full w-full object-contain p-0 transition-transform duration-500 group-hover:scale-[1.03]"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center text-xs text-[#86868B]">
@@ -839,7 +918,7 @@ function ProductPage() {
                       {item.name}
                     </h3>
                     <p className="mt-1 text-[13px] text-[#424245]">
-                      {formatUSDFromVND(relatedPrice)}
+                      {formatProductPrice(relatedPrice, safeCurrency)}
                     </p>
                   </Link>
                 );

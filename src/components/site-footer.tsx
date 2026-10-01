@@ -10,11 +10,6 @@
   ChevronDown,
   Check,
 } from "lucide-react";
-import {
-  AmericanExpressIcon,
-  MastercardIcon,
-  VisaIcon,
-} from "react-svg-credit-card-payment-icons";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   CURRENCIES,
@@ -23,6 +18,67 @@ import {
   subscribeToCurrencyChange,
   type CurrencyCode,
 } from "@/lib/currency-system";
+
+// Local inline SVG flags so the currency selector does not depend on an
+// external image/CDN request. These render reliably on localhost and Vercel.
+const svgData = (svg: string) =>
+  `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+
+const CURRENCY_FLAGS: Record<CurrencyCode, string> = {
+  VND: svgData(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16">
+      <rect width="24" height="16" fill="#da251d"/>
+      <path fill="#ff0" d="m12 2.7 1.05 3.25h3.42l-2.77 2.01 1.06 3.25L12 9.2l-2.76 2.01 1.06-3.25-2.77-2.01h3.42z"/>
+    </svg>`),
+  USD: svgData(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16">
+      <rect width="24" height="16" fill="#fff"/>
+      <path fill="#b22234" d="M0 0h24v1.23H0zm0 2.46h24v1.23H0zm0 2.46h24v1.23H0zm0 2.46h24v1.23H0zm0 2.46h24v1.23H0zm0 2.46h24v1.23H0zm0 2.46h24V16H0z"/>
+      <rect width="10.5" height="8.62" fill="#3c3b6e"/>
+      <g fill="#fff">
+        <circle cx="1.4" cy="1.3" r=".35"/><circle cx="3.5" cy="1.3" r=".35"/><circle cx="5.6" cy="1.3" r=".35"/><circle cx="7.7" cy="1.3" r=".35"/><circle cx="9.8" cy="1.3" r=".35"/>
+        <circle cx="2.45" cy="2.55" r=".35"/><circle cx="4.55" cy="2.55" r=".35"/><circle cx="6.65" cy="2.55" r=".35"/><circle cx="8.75" cy="2.55" r=".35"/>
+        <circle cx="1.4" cy="3.8" r=".35"/><circle cx="3.5" cy="3.8" r=".35"/><circle cx="5.6" cy="3.8" r=".35"/><circle cx="7.7" cy="3.8" r=".35"/><circle cx="9.8" cy="3.8" r=".35"/>
+        <circle cx="2.45" cy="5.05" r=".35"/><circle cx="4.55" cy="5.05" r=".35"/><circle cx="6.65" cy="5.05" r=".35"/><circle cx="8.75" cy="5.05" r=".35"/>
+        <circle cx="1.4" cy="6.3" r=".35"/><circle cx="3.5" cy="6.3" r=".35"/><circle cx="5.6" cy="6.3" r=".35"/><circle cx="7.7" cy="6.3" r=".35"/><circle cx="9.8" cy="6.3" r=".35"/>
+        <circle cx="2.45" cy="7.55" r=".35"/><circle cx="4.55" cy="7.55" r=".35"/><circle cx="6.65" cy="7.55" r=".35"/><circle cx="8.75" cy="7.55" r=".35"/>
+      </g>
+    </svg>`),
+  CAD: svgData(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16">
+      <rect width="24" height="16" fill="#fff"/><rect width="6" height="16" fill="#d52b1e"/><rect x="18" width="6" height="16" fill="#d52b1e"/>
+      <path fill="#d52b1e" d="m12 2 1 3h2l-1.4 1.2.5 2.1L12 7.2 9.9 8.3l.5-2.1L9 5h2z"/>
+    </svg>`),
+  AUD: svgData(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16">
+      <rect width="24" height="16" fill="#012169"/>
+      <path stroke="#fff" stroke-width="3" d="M0 0 12 8 0 16M24 0 12 8l12 8M12 0v16M0 8h24"/>
+      <path stroke="#c8102e" stroke-width="1.5" d="M0 0 12 8 0 16M24 0 12 8l12 8M12 0v16M0 8h24"/>
+      <path fill="#fff" d="m17 5 .5 1.7h1.8l-1.45 1.05.55 1.7L17 8.4l-1.4 1.05.55-1.7-1.45-1.05h1.8z"/>
+    </svg>`),
+  EUR: svgData(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16">
+      <rect width="24" height="16" fill="#003399"/>
+      <g fill="#ffcc00">
+        <circle cx="12" cy="2.6" r=".65"/><circle cx="16.7" cy="4" r=".65"/><circle cx="19.4" cy="8" r=".65"/><circle cx="16.7" cy="12" r=".65"/><circle cx="12" cy="13.4" r=".65"/><circle cx="7.3" cy="12" r=".65"/><circle cx="4.6" cy="8" r=".65"/><circle cx="7.3" cy="4" r=".65"/>
+      </g>
+    </svg>`),
+  GBP: svgData(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16">
+      <rect width="24" height="16" fill="#012169"/>
+      <path stroke="#fff" stroke-width="4" d="M0 0 24 16M24 0 0 16"/>
+      <path stroke="#c8102e" stroke-width="2" d="M0 0 24 16M24 0 0 16"/>
+      <path stroke="#fff" stroke-width="5" d="M12 0v16M0 8h24"/>
+      <path stroke="#c8102e" stroke-width="3" d="M12 0v16M0 8h24"/>
+    </svg>`),
+  SGD: svgData(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16">
+      <rect width="24" height="8" fill="#ed2939"/><rect y="8" width="24" height="8" fill="#fff"/>
+      <circle cx="6" cy="4" r="2.2" fill="#fff"/>
+      <circle cx="6.7" cy="4" r="1.8" fill="#ed2939"/>
+      <g fill="#fff"><circle cx="9.5" cy="2" r=".35"/><circle cx="10.5" cy="2.7" r=".35"/><circle cx="10.9" cy="4" r=".35"/><circle cx="10.5" cy="5.3" r=".35"/><circle cx="9.5" cy="6" r=".35"/></g>
+    </svg>`),
+};
 
 export function SiteFooter() {
   const [openSection, setOpenSection] = useState<string | null>(null);
@@ -72,20 +128,7 @@ export function SiteFooter() {
     setCurrencyOpen(false);
   };
 
-  const paymentMethods = [
-    {
-      name: "American Express",
-      icon: <AmericanExpressIcon format="flatRounded" width={48} aria-hidden="true" />,
-    },
-    {
-      name: "Mastercard",
-      icon: <MastercardIcon format="flatRounded" width={48} aria-hidden="true" />,
-    },
-    {
-      name: "Visa",
-      icon: <VisaIcon format="flatRounded" width={48} aria-hidden="true" />,
-    },
-  ];
+
 
   const exploreLinks = [
     { label: "About Us", href: "/about" },
@@ -212,51 +255,14 @@ export function SiteFooter() {
       </div>
 
       <div className="relative">
-        {/* TRUST BAR */}
-        <div className="mx-auto w-full max-w-[1320px] px-3 pt-4 sm:px-5 sm:pt-7 lg:px-8">
-          <div
-            className="
-              grid
-              overflow-hidden
-              rounded-[12px]
-              border
-              border-[#E1E5EA]
-              bg-white
-              grid-cols-2
-              lg:grid-cols-4
-            "
-          >
-            <TrustItem
-              icon={<Package size={15} strokeWidth={1.6} />}
-              title="Free tracked shipping"
-              description="Shipping details"
-            />
-            <TrustItem
-              icon={<Headphones size={15} strokeWidth={1.6} />}
-              title="Here to help"
-              description="Product help & support"
-            />
-            <TrustItem
-              icon={<RotateCcw size={15} strokeWidth={1.6} />}
-              title="30-day returns"
-              description="Returns explained"
-            />
-            <TrustItem
-              icon={<LockKeyhole size={15} strokeWidth={1.6} />}
-              title="Secure payments"
-              description="Payment methods"
-            />
-          </div>
-        </div>
-
         {/* MAIN FOOTER */}
         <div
           className="
             mx-auto
             w-full
             max-w-[1320px]
-            px-3
-            pb-5
+            px-4
+            pb-4
             pt-6
             sm:px-5
             sm:pb-8
@@ -265,7 +271,7 @@ export function SiteFooter() {
             lg:pt-10
           "
         >
-          <div className="grid gap-6 lg:grid-cols-[1.5fr_0.7fr_0.7fr] lg:gap-16">
+          <div className="grid gap-5 lg:grid-cols-[1.5fr_0.7fr_0.7fr] lg:gap-16">
             {/* BRAND + NEWSLETTER */}
             <div className="max-w-[470px]">
               <div className="text-[18px] font-bold tracking-[-0.04em] text-[#111827] sm:text-[21px]">
@@ -310,12 +316,12 @@ export function SiteFooter() {
                   event.preventDefault();
                 }}
                 className="
-                  mt-4
+                  mt-5
                   flex
-                  h-9
-                  max-w-[330px]
+                  h-[48px]
+                  max-w-[420px]
                   overflow-hidden
-                  rounded-[8px]
+                  rounded-[11px]
                   border
                   border-[#D9DEE5]
                   bg-white
@@ -330,8 +336,8 @@ export function SiteFooter() {
                     min-w-0
                     flex-1
                     bg-transparent
-                    px-3
-                    text-[10px]
+                    px-4
+                    text-[11px]
                     text-[#111827]
                     outline-none
                     placeholder:text-[#94A3B8]
@@ -342,8 +348,10 @@ export function SiteFooter() {
                   type="submit"
                   className="
                     flex
-                    w-[56px]
+                    m-1
+                    w-[42px]
                     shrink-0
+                    rounded-[8px]
                     items-center
                     justify-center
                     bg-[#111827]
@@ -374,7 +382,7 @@ export function SiteFooter() {
             </div>
 
             {/* MOBILE ACCORDION NAV */}
-            <div className="lg:hidden">
+            <div className="lg:hidden border-t border-[#E1E5EA]">
               <FooterAccordion
                 title="Explore"
                 links={exploreLinks}
@@ -391,59 +399,95 @@ export function SiteFooter() {
             </div>
           </div>
 
-          {/* SOCIAL + PAYMENT */}
+          {/* SOCIAL + PAYMENT — HORIZONTAL CARD */}
           <div
             className="
               mt-5
               flex
+              w-full
               items-center
               justify-between
-              border-t
+              gap-3
+              rounded-[12px]
+              border
               border-[#E1E5EA]
-              pt-4
+              bg-white
+              px-3
+              py-2.5
+              shadow-[0_2px_8px_rgba(15,23,42,0.03)]
               sm:mt-7
-              sm:pt-5
-              lg:justify-end
+              sm:px-4
+              sm:py-3
             "
           >
-            <div className="flex items-center gap-1.5">
+            {/* SOCIAL */}
+            <div className="flex shrink-0 items-center gap-1">
               <SocialButton
                 href="#"
                 label="Facebook"
-                icon={<Facebook size={13} strokeWidth={1.7} />}
+                icon={<Facebook size={17} strokeWidth={1.8} />}
               />
+
               <SocialButton
                 href="#"
                 label="Instagram"
-                icon={<Instagram size={13} strokeWidth={1.7} />}
+                icon={<Instagram size={17} strokeWidth={1.8} />}
               />
+
               <SocialButton
-                href="mailto:hello@infibetter.com"
-                label="Email"
-                icon={<Mail size={13} strokeWidth={1.7} />}
+                href="#"
+                label="TikTok"
+                icon={
+                  <img
+                    src="https://cdn.simpleicons.org/tiktok/111827"
+                    alt=""
+                    aria-hidden="true"
+                    className="h-[17px] w-[17px]"
+                  />
+                }
               />
             </div>
 
+            {/* PAYMENT */}
             <div
-              className="flex items-center gap-1"
-              aria-label="Accepted payment methods"
+              className="flex min-w-0 items-center justify-end gap-1.5 overflow-hidden"
+              aria-label="Accepted card payment methods"
             >
-              {paymentMethods.map((payment) => (
+              {[
+                {
+                  name: "American Express",
+                  src: "/payment-methods/american-express.png",
+                },
+                {
+                  name: "Mastercard",
+                  src: "/payment-methods/mastercard.png",
+                },
+                {
+                  name: "Visa",
+                  src: "/payment-methods/visa.png",
+                },
+              ].map((payment) => (
                 <div
                   key={payment.name}
-                  title={payment.name}
-                  aria-label={payment.name}
                   className="
                     flex
-                    h-[32px]
-                    w-[48px]
+                    h-[25px]
+                    shrink-0
                     items-center
                     justify-center
-                    sm:h-[34px]
-                    sm:w-[50px]
+                    overflow-hidden
+                    rounded-[4px]
+                    bg-white
                   "
+                  title={payment.name}
                 >
-                  {payment.icon}
+                  <img
+                    src={payment.src}
+                    alt={payment.name}
+                    className="block h-[25px] w-auto max-w-none object-contain"
+                    draggable={false}
+                    loading="eager"
+                  />
                 </div>
               ))}
             </div>
@@ -460,7 +504,7 @@ export function SiteFooter() {
               max-w-[1320px]
               flex-col
               gap-2
-              px-3
+              px-4
               py-3
               text-[8px]
               text-[#64748B]
@@ -472,11 +516,18 @@ export function SiteFooter() {
               lg:px-8
             "
           >
-            <p>
+            <p className="order-2 text-[8px] text-[#64748B] sm:order-1">
               © {new Date().getFullYear()} INFIBETTER. All rights reserved.
             </p>
 
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <div className="order-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:order-2">
+              <button
+                type="button"
+                className="text-[8px] text-[#64748B] transition hover:text-[#111827]"
+              >
+                Manage cookies
+              </button>
+
               <div ref={currencyRef} className="relative">
                 <button
                   type="button"
@@ -488,17 +539,26 @@ export function SiteFooter() {
                     items-center
                     gap-1.5
                     rounded-md
-                    px-2
+                    px-0
                     py-1.5
-                    text-[8px]
+                    text-[9px]
                     text-[#64748B]
                     transition
                     hover:bg-white
                     hover:text-[#111827]
                   "
                 >
-                  <MapPin size={10} strokeWidth={1.6} />
-                  <span>{selectedCurrency.code}</span>
+                  <img
+                    src={CURRENCY_FLAGS[currency]}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-[14px] w-[21px] shrink-0 rounded-[2px] object-cover"
+                  />
+                  <span className="font-semibold text-[#111827]">
+                    {currency === "VND"
+                      ? "Vietnam (VND)"
+                      : `${selectedCurrency.name} (${selectedCurrency.code})`}
+                  </span>
                   <ChevronDown
                     size={10}
                     strokeWidth={1.5}
@@ -517,7 +577,7 @@ export function SiteFooter() {
                       bottom-[calc(100%+8px)]
                       left-0
                       z-50
-                      w-[220px]
+                      w-[245px]
                       overflow-hidden
                       rounded-xl
                       border
@@ -560,8 +620,29 @@ export function SiteFooter() {
                             }
                           `}
                         >
-                          <span className="flex h-6 w-7 items-center justify-center rounded-md border border-[#E5E7EB] bg-white text-[9px] font-semibold">
-                            {option.symbol}
+                          <span
+                            className="
+                              flex
+                              h-7
+                              w-8
+                              shrink-0
+                              items-center
+                              justify-center
+                              rounded-md
+                              border
+                              border-[#E5E7EB]
+                              bg-white
+                              text-[18px]
+                              leading-none
+                            "
+                            aria-hidden="true"
+                          >
+                            <img
+                              src={CURRENCY_FLAGS[option.code]}
+                              alt=""
+                              aria-hidden="true"
+                              className="h-[14px] w-[21px] rounded-[2px] object-cover"
+                            />
                           </span>
 
                           <span className="min-w-0 flex-1">
@@ -601,6 +682,36 @@ export function SiteFooter() {
             </div>
           </div>
         </div>
+
+        {/* FLOATING SUPPORT */}
+        <button
+          type="button"
+          aria-label="Customer support"
+          className="
+            fixed
+            bottom-4
+            right-4
+            z-40
+            flex
+            h-14
+            w-14
+            items-center
+            justify-center
+            rounded-full
+            border-4
+            border-white
+            bg-[#0066E6]
+            text-white
+            shadow-[0_8px_25px_rgba(0,102,230,0.28)]
+            transition-transform
+            active:scale-95
+          "
+        >
+          <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-white">
+            <span className="h-3.5 w-4.5 rounded-[5px] bg-[#0066E6]" />
+            <span className="absolute bottom-[4px] left-[7px] h-1.5 w-1.5 rotate-[25deg] rounded-[1px] bg-[#0066E6]" />
+          </span>
+        </button>
       </div>
     </footer>
   );

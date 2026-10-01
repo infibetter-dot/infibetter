@@ -81,6 +81,9 @@ export function SiteHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileMenuLevel, setMobileMenuLevel] = useState<
+    "root" | Exclude<MegaMenuKey, null>
+  >("root");
   const [megaMenus, setMegaMenus] = useState<MegaSection[]>([]);
 
   const loadMegaMenus = async () => {
@@ -153,6 +156,7 @@ export function SiteHeader() {
         setActiveMenu(null);
         setSearchOpen(false);
         setMobileOpen(false);
+        setMobileMenuLevel("root");
       }
     };
 
@@ -183,6 +187,7 @@ export function SiteHeader() {
         setActiveMenu(null);
         setSearchOpen(false);
         setMobileOpen(false);
+        setMobileMenuLevel("root");
         setCartOpen(false);
       }
     };
@@ -675,9 +680,11 @@ export function SiteHeader() {
             <button
               type="button"
               onClick={() => {
-                setMobileOpen(
-                  (value) => !value,
-                );
+                setMobileOpen((value) => {
+                  const next = !value;
+                  if (!next) setMobileMenuLevel("root");
+                  return next;
+                });
                 setActiveMenu(null);
               }}
               aria-label="Menu"
@@ -1003,8 +1010,7 @@ export function SiteHeader() {
           </div>
         )}
 
-        {/* MOBILE MENU */}
-
+        {/* MOBILE MENU — PARENT → CHILD, USING REAL SUPABASE MEGA MENU DATA */}
         {mobileOpen && (
           <div
             className="
@@ -1012,76 +1018,288 @@ export function SiteHeader() {
               left-0
               right-0
               top-[62px]
+              z-50
               overflow-hidden
-              rounded-[12px]
+              rounded-[14px]
               border
               border-[#DDE2E8]
               bg-white
-              shadow-[0_15px_45px_rgba(15,23,42,0.12)]
+              shadow-[0_18px_50px_rgba(15,23,42,0.14)]
               lg:hidden
             "
           >
-            <nav className="flex flex-col p-3">
-              {[
-                [
-                  "Shop Apple accessories",
-                  "/shop",
-                ],
-                [
-                  "Cases & Bands",
-                  "/shop",
-                ],
-                [
-                  "Charging",
-                  "/shop",
-                ],
-                [
-                  "Lifestyle Gear",
-                  "/shop",
-                ],
-              ].map(([label, to]) => (
+            {mobileMenuLevel === "root" ? (
+              <nav className="p-3">
                 <Link
-                  key={label}
-                  to={to}
-                  onClick={() =>
-                    setMobileOpen(
-                      false,
-                    )
-                  }
+                  to="/shop"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setMobileMenuLevel("root");
+                  }}
                   className="
-                    rounded-[8px]
-                    px-3
-                    py-3
-                    text-[11px]
-                    font-medium
-                    text-[#111827]
-                    hover:bg-[#F8FAFC]
+                    mb-1 flex min-h-[44px] items-center justify-between
+                    rounded-[9px] bg-[#F6F8FB] px-3 text-[11px]
+                    font-semibold text-[#111827] active:bg-[#EEF2F6]
                   "
                 >
-                  {label}
+                  <span>Shop Apple accessories</span>
+                  <ArrowRight size={13} strokeWidth={1.8} />
                 </Link>
-              ))}
 
-              <Link
-                to="/account"
-                onClick={() =>
-                  setMobileOpen(
-                    false,
-                  )
+                {([
+                  ["cases", "Cases & Bands"],
+                  ["charging", "Charging"],
+                  ["lifestyle", "Lifestyle Gear"],
+                ] as const).map(([menuKey, fallbackTitle]) => {
+                  const section = megaMenus.find(
+                    (menu) => menu.menu_key === menuKey,
+                  );
+                  const title = section?.title || fallbackTitle;
+                  const groupCount = section?.mega_menu_groups?.length ?? 0;
+
+                  return (
+                    <button
+                      key={menuKey}
+                      type="button"
+                      onClick={() => setMobileMenuLevel(menuKey)}
+                      className="
+                        flex min-h-[48px] w-full items-center justify-between
+                        border-b border-[#EEF1F4] px-3 text-left text-[11px]
+                        font-semibold text-[#1F2937] active:bg-[#F8FAFC]
+                      "
+                    >
+                      <span>{title}</span>
+                      <span className="flex items-center gap-2">
+                        {groupCount > 0 && (
+                          <span className="text-[8px] font-medium text-[#A0A8B3]">
+                            {groupCount}
+                          </span>
+                        )}
+                        <ChevronDown
+                          size={15}
+                          strokeWidth={1.8}
+                          className="-rotate-90 text-[#64748B]"
+                        />
+                      </span>
+                    </button>
+                  );
+                })}
+
+                <Link
+                  to="/account"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setMobileMenuLevel("root");
+                  }}
+                  className="
+                    mt-1 block border-t border-[#E5E7EB] px-3 pt-4
+                    text-[11px] font-medium text-[#94A3B8]
+                  "
+                >
+                  Account
+                </Link>
+              </nav>
+            ) : (
+              (() => {
+                const section = megaMenus.find(
+                  (menu) => menu.menu_key === mobileMenuLevel,
+                );
+
+                if (!section) {
+                  return (
+                    <div className="p-3">
+                      <button
+                        type="button"
+                        onClick={() => setMobileMenuLevel("root")}
+                        className="flex items-center gap-2 text-[11px] font-semibold text-[#111827]"
+                      >
+                        <ArrowRight size={14} className="rotate-180" />
+                        Back
+                      </button>
+                    </div>
+                  );
                 }
-                className="
-                  mt-1
-                  border-t
-                  border-[#E5E7EB]
-                  px-3
-                  py-3
-                  text-[11px]
-                  text-[#64748B]
-                "
-              >
-                Account
-              </Link>
-            </nav>
+
+                return (
+                  <div className="p-3">
+                    <div className="flex items-center gap-2 border-b border-[#E5E7EB] pb-3">
+                      <button
+                        type="button"
+                        onClick={() => setMobileMenuLevel("root")}
+                        aria-label="Back to categories"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F5F7FA] text-[#334155]"
+                      >
+                        <ArrowRight size={15} strokeWidth={1.8} className="rotate-180" />
+                      </button>
+                      <div className="min-w-0">
+                        <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-[#94A3B8]">
+                          Category
+                        </p>
+                        <h3 className="mt-0.5 truncate text-[14px] font-semibold tracking-[-0.025em] text-[#111827]">
+                          {section.title}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <Link
+                      to="/shop"
+                      onClick={() => {
+                        setMobileOpen(false);
+                        setMobileMenuLevel("root");
+                      }}
+                      className="mt-3 flex min-h-[42px] items-center justify-between rounded-[9px] bg-[#F6F8FB] px-3 text-[10px] font-semibold text-[#111827]"
+                    >
+                      <span>Shop all {section.title}</span>
+                      <ArrowRight size={13} strokeWidth={1.8} />
+                    </Link>
+
+                    <div className="mt-2 space-y-2">
+                      {section.mega_menu_groups.map((group, groupIndex) => {
+                        const childSlug = group.category?.slug;
+                        const childItems = group.mega_menu_items
+                          .map(
+                            (item) =>
+                              item.label_override ||
+                              item.categories?.name ||
+                              "",
+                          )
+                          .filter(Boolean);
+
+                        const groupImage =
+                          group.image_url ||
+                          getGroupFallback(section.menu_key, groupIndex);
+
+                        return (
+                          <Link
+                            key={group.id}
+                            to="/shop"
+                            search={
+                              childSlug
+                                ? ({ category: childSlug } as never)
+                                : undefined
+                            }
+                            onClick={() => {
+                              setMobileOpen(false);
+                              setMobileMenuLevel("root");
+                            }}
+                            className="
+                              group
+                              flex
+                              min-h-[68px]
+                              w-full
+                              items-center
+                              gap-3
+                              rounded-[11px]
+                              border
+                              border-[#E1E5EA]
+                              bg-white
+                              px-2.5
+                              py-2
+                              shadow-[0_2px_8px_rgba(15,23,42,0.04)]
+                              transition-all
+                              active:scale-[0.99]
+                              active:bg-[#F8FAFC]
+                            "
+                          >
+                            {/* IMAGE ALREADY SET IN ADMIN MEGA MENU */}
+                            <div
+                              className="
+                                h-[52px]
+                                w-[62px]
+                                shrink-0
+                                overflow-hidden
+                                rounded-[8px]
+                                border
+                                border-[#E8EBEF]
+                                bg-[#F5F7F9]
+                              "
+                            >
+                              <img
+                                src={groupImage}
+                                alt={group.title}
+                                className="
+                                  h-full
+                                  w-full
+                                  object-cover
+                                  transition-transform
+                                  duration-300
+                                  group-active:scale-[1.03]
+                                "
+                                loading="lazy"
+                              />
+                            </div>
+
+                            {/* CATEGORY CONTENT */}
+                            <div className="min-w-0 flex-1 pr-1">
+                              <p className="text-[12px] font-semibold tracking-[-0.01em] text-[#111827]">
+                                {group.title}
+                              </p>
+
+                              {childItems.length > 0 && (
+                                <p className="mt-0.5 line-clamp-1 text-[9px] leading-4 text-[#98A2B3]">
+                                  {childItems.slice(0, 3).join(" · ")}
+                                </p>
+                              )}
+
+                              <span className="mt-1 inline-flex items-center text-[8px] font-semibold text-[#64748B]">
+                                Shop category
+                              </span>
+                            </div>
+
+                            <ChevronDown
+                              size={15}
+                              strokeWidth={1.8}
+                              className="-rotate-90 shrink-0 text-[#64748B]"
+                            />
+                          </Link>
+                        );
+                      })}
+                    </div>
+
+                    {section.mega_menu_groups.some(
+                      (group) => group.mega_menu_items.length > 0,
+                    ) && (
+                      <div className="mt-4 border-t border-[#E5E7EB] pt-3">
+                        <p className="px-1 text-[8px] font-semibold uppercase tracking-[0.1em] text-[#98A2B3]">
+                          Quick links
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {section.mega_menu_groups
+                            .flatMap((group) => group.mega_menu_items)
+                            .map((item) => ({
+                              ...item,
+                              label:
+                                item.label_override ||
+                                item.categories?.name ||
+                                "Category",
+                              slug: item.categories?.slug,
+                            }))
+                            .slice(0, 6)
+                            .map((item) => (
+                              <Link
+                                key={item.id}
+                                to="/shop"
+                                search={
+                                  item.slug
+                                    ? ({ category: item.slug } as never)
+                                    : undefined
+                                }
+                                onClick={() => {
+                                  setMobileOpen(false);
+                                  setMobileMenuLevel("root");
+                                }}
+                                className="rounded-full border border-[#E5E7EB] bg-[#FAFBFC] px-2.5 py-1.5 text-[8px] font-medium text-[#667085]"
+                              >
+                                {item.label}
+                              </Link>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            )}
           </div>
         )}
       </div>

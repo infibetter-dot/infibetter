@@ -18,12 +18,6 @@ interface CartDrawerProps {
 ============================================================ */
 
 
-import {
-  AmericanExpressFlatIcon,
-  MastercardFlatIcon,
-  VisaFlatIcon,
-} from "react-svg-credit-card-payment-icons";
-
 function formatUSD(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -716,10 +710,9 @@ export default function CartDrawer({
             </button>
 
             {/* ==================================================
-                PAYMENT LOGOS
-                react-svg-credit-card-payment-icons
-                Exact card-style UI:
-                American Express / Mastercard / Visa
+                PAYMENT CARDS
+                Pure HTML/CSS — no external SVG payment library.
+                Each card is independently rounded.
             =================================================== */}
             <div
               className="
@@ -727,27 +720,120 @@ export default function CartDrawer({
                 flex
                 items-center
                 justify-center
-                gap-[6px]
-                overflow-hidden
+                gap-2
               "
+              aria-label="Accepted card payments"
             >
-              <AmericanExpressFlatIcon
-                width={48}
-                height={31}
+              {/* AMERICAN EXPRESS */}
+              <div
+                className="
+                  flex
+                  h-[30px]
+                  w-[48px]
+                  shrink-0
+                  items-center
+                  justify-center
+                  overflow-hidden
+                  rounded-[8px]
+                  border
+                  border-[#D8DEE8]
+                  bg-[#1677B8]
+                  shadow-[0_1px_3px_rgba(15,23,42,0.10)]
+                "
                 aria-label="American Express"
-              />
+              >
+                <span
+                  className="
+                    text-center
+                    text-[5.5px]
+                    font-extrabold
+                    leading-[1.05]
+                    tracking-[-0.02em]
+                    text-white
+                  "
+                >
+                  AMERICAN
+                  <br />
+                  EXPRESS
+                </span>
+              </div>
 
-              <MastercardFlatIcon
-                width={48}
-                height={31}
+              {/* MASTERCARD */}
+              <div
+                className="
+                  flex
+                  h-[30px]
+                  w-[48px]
+                  shrink-0
+                  items-center
+                  justify-center
+                  overflow-hidden
+                  rounded-[8px]
+                  border
+                  border-[#D8DEE8]
+                  bg-white
+                  shadow-[0_1px_3px_rgba(15,23,42,0.10)]
+                "
                 aria-label="Mastercard"
-              />
+              >
+                <span className="relative flex h-[18px] w-[29px] items-center justify-center">
+                  <span
+                    className="
+                      absolute
+                      left-0
+                      top-1/2
+                      h-[17px]
+                      w-[17px]
+                      -translate-y-1/2
+                      rounded-full
+                      bg-[#EB001B]
+                    "
+                  />
+                  <span
+                    className="
+                      absolute
+                      right-0
+                      top-1/2
+                      h-[17px]
+                      w-[17px]
+                      -translate-y-1/2
+                      rounded-full
+                      bg-[#F79E1B]
+                    "
+                  />
+                </span>
+              </div>
 
-              <VisaFlatIcon
-                width={48}
-                height={31}
+              {/* VISA */}
+              <div
+                className="
+                  flex
+                  h-[30px]
+                  w-[48px]
+                  shrink-0
+                  items-center
+                  justify-center
+                  overflow-hidden
+                  rounded-[8px]
+                  border
+                  border-[#D8DEE8]
+                  bg-[#1434CB]
+                  shadow-[0_1px_3px_rgba(15,23,42,0.10)]
+                "
                 aria-label="Visa"
-              />
+              >
+                <span
+                  className="
+                    text-[12px]
+                    font-black
+                    italic
+                    tracking-[-0.08em]
+                    text-white
+                  "
+                >
+                  VISA
+                </span>
+              </div>
             </div>
 
             {/* ==================================================
@@ -883,7 +969,7 @@ export default function CartDrawer({
                   <span className="mr-1 text-[#00A86B]">
                     ✓
                   </span>
-                  30-day returns
+                  30-day returnss
                 </span>
 
                 <span

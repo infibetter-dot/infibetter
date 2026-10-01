@@ -2166,11 +2166,38 @@ function CheckoutOffer({
               <button
                 type="button"
                 onClick={() => onAdd(product)}
-                className="min-w-[118px] rounded-xl bg-[#0066e6] px-4 py-3 text-center text-xs font-semibold leading-4 text-white transition hover:bg-[#005bd1] active:scale-[0.98]"
+                aria-label={`Add ${product.name} to order for ${usd(
+                  Number(product.price) * (1 - OFFER_DISCOUNT),
+                )}`}
+                className="
+                  flex
+                  h-[38px]
+                  w-[92px]
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-[9px]
+                  bg-[#0066E6]
+                  px-2
+                  text-[9.5px]
+                  font-semibold
+                  leading-none
+                  tracking-[-0.01em]
+                  text-white
+                  shadow-[0_4px_12px_rgba(0,102,230,0.18)]
+                  transition-all
+                  duration-200
+                  hover:bg-[#0057C7]
+                  hover:shadow-[0_6px_16px_rgba(0,102,230,0.24)]
+                  active:scale-[0.97]
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-[#0066E6]/20
+                  focus:ring-offset-1
+                "
               >
-                Add to order
-                <span className="mt-0.5 block text-[11px] font-bold">
-                  —{" "}
+                <span className="whitespace-nowrap">
+                  Add ·{" "}
                   {usd(
                     Number(product.price) * (1 - OFFER_DISCOUNT),
                   )}
