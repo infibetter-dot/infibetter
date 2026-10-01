@@ -43,6 +43,25 @@ export const Route = createFileRoute("/checkout")({
         content: "Secure checkout at INFIBETTER.",
       },
     ],
+    links: [
+      {
+        rel: "preconnect",
+        href: "https://www.paypal.com",
+      },
+      {
+        rel: "preconnect",
+        href: "https://www.paypalobjects.com",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "dns-prefetch",
+        href: "https://www.paypal.com",
+      },
+      {
+        rel: "dns-prefetch",
+        href: "https://www.paypalobjects.com",
+      },
+    ],
   }),
   component: CheckoutPage,
 });
@@ -180,6 +199,7 @@ function CheckoutPage() {
   const [arrivalOpen, setArrivalOpen] = useState(true);
   const [faqOpen, setFaqOpen] = useState<string | null>(null);
   const [paypalReady, setPaypalReady] = useState(false);
+  const [paypalTimedOut, setPaypalTimedOut] = useState(false);
 
   // Keep the PayPal SDK options stable so the script is not unnecessarily
   // reconsidered/reloaded on checkout re-renders. Only load the Buttons component
@@ -193,6 +213,21 @@ function CheckoutPage() {
     }),
     [],
   );
+
+  // Give mobile users feedback if the external PayPal SDK takes unusually long.
+  // This does not cancel the SDK; it only changes the UI after 12 seconds.
+  useEffect(() => {
+    if (paypalReady) {
+      setPaypalTimedOut(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setPaypalTimedOut(true);
+    }, 12000);
+
+    return () => window.clearTimeout(timer);
+  }, [paypalReady]);
 
   const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   const [offerIndex, setOfferIndex] = useState(0);
@@ -542,10 +577,30 @@ function CheckoutPage() {
                 </PayPalScriptProvider>
               </div>
 
-              {!paypalReady && (
-                <p className="mt-2 text-center text-xs text-neutral-400">
+              {!paypalReady && !paypalTimedOut && (
+                <div className="mt-3 flex min-h-[42px] items-center justify-center rounded-xl bg-[#f7f9fc] px-3 text-center text-xs text-neutral-500">
+                  <span className="mr-2 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#d8dee8] border-t-[#0066e6]" />
                   Loading secure PayPal checkout…
-                </p>
+                </div>
+              )}
+
+              {paypalTimedOut && !paypalReady && (
+                <div className="mt-3 rounded-xl border border-[#e7ebf0] bg-[#f8fafc] px-4 py-3 text-center">
+                  <p className="text-xs font-medium text-[#374151]">
+                    PayPal is taking longer than usual to load.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaypalTimedOut(false);
+                      setPaypalReady(false);
+                      window.location.reload();
+                    }}
+                    className="mt-2 rounded-lg bg-[#0066e6] px-3 py-2 text-[11px] font-semibold text-white transition active:scale-[0.98]"
+                  >
+                    Reload PayPal
+                  </button>
+                </div>
               )}
 
               <p className="mt-3 text-center text-[11px] leading-5 text-neutral-500">
