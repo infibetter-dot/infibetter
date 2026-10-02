@@ -423,8 +423,10 @@ function ShopPage() {
           category_id,
           best_seller,
           created_at,
-          image_url
-        `);
+          image_url,
+          is_active
+        `)
+        .eq("is_active", true);
 
       // Only use real category_id filtering when the URL contains
       // an actual category slug from the categories table.

@@ -7,7 +7,13 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getImageUrl } from "@/lib/storage";
 import ProductEditor from "./ProductEditor";
-import { ChevronDown, Package, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Package,
+  Trash2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 interface ProductListItemProps {
   product: any;
@@ -35,8 +41,45 @@ export default function ProductListItem({
   onSaved,
   collapse,
 }: ProductListItemProps) {
+  const isActive = product.is_active !== false;
+
+  async function toggleVisibility() {
+    try {
+      const nextValue = !isActive;
+
+      const { error } = await supabase
+        .from("products")
+        .update({
+          is_active: nextValue,
+        })
+        .eq("id", product.id);
+
+      if (error) throw error;
+
+      toast.success(
+        nextValue
+          ? "Đã hiện sản phẩm"
+          : "Đã ẩn sản phẩm"
+      );
+
+      onSaved();
+    } catch (error: any) {
+      console.error("TOGGLE PRODUCT VISIBILITY ERROR:", error);
+
+      toast.error(
+        error?.message ||
+          "Không thể thay đổi trạng thái sản phẩm"
+      );
+    }
+  }
+
   async function deleteProduct() {
-    if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn XÓA VĨNH VIỄN sản phẩm "${product.name}"?\n\n` +
+        `Nếu sản phẩm đã có trong đơn hàng, hệ thống sẽ không cho phép xóa để bảo vệ lịch sử đơn hàng.`
+    );
+
+    if (!confirmed) return;
 
     try {
       const { error } = await supabase
@@ -44,12 +87,31 @@ export default function ProductListItem({
         .delete()
         .eq("id", product.id);
 
-      if (error) throw error;
+      if (error) {
+        if (
+          error.code === "23503" ||
+          error.message
+            ?.toLowerCase()
+            .includes("order_items_product_id_fkey")
+        ) {
+          throw new Error(
+            "Sản phẩm đã có trong đơn hàng nên không thể xóa. Hãy ẨN sản phẩm thay thế."
+          );
+        }
 
-      toast.success("Đã xóa sản phẩm");
+        throw error;
+      }
+
+      toast.success("Đã xóa sản phẩm vĩnh viễn");
+
       onSaved();
     } catch (error: any) {
-      toast.error(error?.message || "Không thể xóa sản phẩm");
+      console.error("DELETE PRODUCT ERROR:", error);
+
+      toast.error(
+        error?.message ||
+          "Không thể xóa sản phẩm"
+      );
     }
   }
 
@@ -66,7 +128,7 @@ export default function ProductListItem({
           className: "bg-red-50 text-red-700",
           dot: "bg-red-500",
         }
-      : product.status === "hidden"
+      : !isActive
         ? {
             label: "Tạm ẩn",
             className: "bg-amber-50 text-amber-700",
@@ -88,9 +150,14 @@ export default function ProductListItem({
       value={product.id}
       className="border-b border-neutral-100 last:border-b-0"
     >
-      <div className="grid min-h-[72px] grid-cols-[minmax(0,1fr)_130px_90px_110px_42px] items-center gap-4 px-4 py-2.5 hover:bg-[#FAFAF8]">
-        <AccordionTrigger className="min-w-0 p-0 text-left hover:no-underline [&>svg]:hidden">
+      <div className="grid min-h-[72px] grid-cols-[minmax(0,1fr)_130px_90px_110px_120px] items-center gap-4 px-4 py-2.5 hover:bg-[#FAFAF8]">
+
+        {/* PRODUCT */}
+        <AccordionTrigger
+          className="min-w-0 p-0 text-left hover:no-underline [&>svg]:hidden"
+        >
           <div className="flex min-w-0 items-center gap-3">
+
             <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-[#F7F7F5]">
               {imageUrl ? (
                 <img
@@ -109,43 +176,93 @@ export default function ProductListItem({
               </p>
 
               <div className="mt-0.5 flex items-center gap-2 text-[10px] text-neutral-400">
-                <span className="truncate">{categoryName}</span>
+                <span className="truncate">
+                  {categoryName}
+                </span>
+
                 <span className="h-1 w-1 shrink-0 rounded-full bg-neutral-300" />
+
                 <span className="shrink-0">
                   ID {String(product.id).slice(0, 8)}
                 </span>
               </div>
             </div>
+
           </div>
         </AccordionTrigger>
 
+        {/* PRICE */}
         <div className="hidden lg:block">
           <span className="text-[12px] font-semibold tabular-nums text-neutral-900">
             {formatPrice(product.price)}
           </span>
         </div>
 
+        {/* STOCK */}
         <div className="hidden lg:block">
           <span
             className={`text-[12px] font-medium tabular-nums ${
-              stock <= 0 ? "text-red-600" : "text-neutral-800"
+              stock <= 0
+                ? "text-red-600"
+                : "text-neutral-800"
             }`}
           >
             {stock}
           </span>
-          <span className="ml-1 text-[9px] text-neutral-400">SP</span>
+
+          <span className="ml-1 text-[9px] text-neutral-400">
+            SP
+          </span>
         </div>
 
+        {/* STATUS */}
         <div className="hidden lg:block">
           <span
             className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[9px] font-semibold ${status.className}`}
           >
-            <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${status.dot}`}
+            />
+
             {status.label}
           </span>
         </div>
 
-        <div className="flex items-center justify-end">
+        {/* ACTIONS */}
+        <div className="flex items-center justify-end gap-1.5">
+
+          {/* HIDE / SHOW */}
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              toggleVisibility();
+            }}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
+              isActive
+                ? "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
+                : "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+            }`}
+            title={
+              isActive
+                ? "Ẩn sản phẩm"
+                : "Hiện sản phẩm"
+            }
+            aria-label={
+              isActive
+                ? "Ẩn sản phẩm"
+                : "Hiện sản phẩm"
+            }
+          >
+            {isActive ? (
+              <EyeOff className="h-3.5 w-3.5" />
+            ) : (
+              <Eye className="h-3.5 w-3.5" />
+            )}
+          </button>
+
+          {/* DELETE */}
           <button
             type="button"
             onClick={(event) => {
@@ -154,25 +271,32 @@ export default function ProductListItem({
               deleteProduct();
             }}
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500 text-white transition hover:bg-red-600"
-            title="Xóa sản phẩm"
-            aria-label="Xóa sản phẩm"
+            title="Xóa sản phẩm vĩnh viễn"
+            aria-label="Xóa sản phẩm vĩnh viễn"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
+
         </div>
 
         <div className="pointer-events-none absolute right-3 hidden">
           <ChevronDown />
         </div>
+
       </div>
 
+      {/* EDITOR */}
       <AccordionContent className="border-t border-neutral-100 bg-[#FAFAF8] px-4 py-5">
+
         <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+
           <div className="mb-4 flex items-center justify-between">
+
             <div>
               <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-neutral-400">
                 Product editor
               </p>
+
               <p className="mt-1 text-sm font-semibold text-neutral-900">
                 {product.name}
               </p>
@@ -185,6 +309,7 @@ export default function ProductListItem({
             >
               Đóng
             </button>
+
           </div>
 
           <ProductEditor
@@ -192,8 +317,11 @@ export default function ProductListItem({
             onSaved={onSaved}
             collapse={collapse}
           />
+
         </div>
+
       </AccordionContent>
+
     </AccordionItem>
   );
 }

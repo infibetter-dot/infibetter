@@ -1,5 +1,8 @@
 ﻿import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import {
+  useSuspenseQuery,
+  queryOptions,
+} from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 import Hero from "@/components/home/Hero";
@@ -9,9 +12,29 @@ import DesignedForRealLife from "@/components/home/DesignedForRealLife";
 const homeData = queryOptions({
   queryKey: ["infibetter-home-data"],
 
-  staleTime: 1000 * 60 * 10,
+  /*
+   * =====================================================
+   * CACHE / REFRESH
+   * =====================================================
+   *
+   * INFIBETTER:
+   *
+   * Product price/name can be edited from Admin.
+   * Homepage must always be able to receive the latest
+   * product data after an Admin update.
+   */
+
+  // Không giữ dữ liệu cũ trong trạng thái "fresh"
+  staleTime: 0,
+
+  // Có thể giữ cache trong 30 phút
   gcTime: 1000 * 60 * 30,
-  refetchOnWindowFocus: false,
+
+  // Khi quay lại tab/window → lấy dữ liệu mới
+  refetchOnWindowFocus: true,
+
+  // Khi Homepage mount lại → luôn kiểm tra dữ liệu mới
+  refetchOnMount: "always",
 
   queryFn: async () => {
     /*
@@ -30,24 +53,24 @@ const homeData = queryOptions({
      */
 
     const { data, error } = await supabase
-      .from("products")
-      .select(
-        `
-          id,
-          slug,
-          name,
-          price,
-          compare_at_price,
-          stock,
-          image_url,
-          color_preview,
-          featured,
-          best_seller,
-          top_seller
-        `
-      )
-      .order("created_at", { ascending: false })
-      .limit(50);
+  .from("products")
+  .select(`
+    id,
+    slug,
+    name,
+    price,
+    compare_at_price,
+    stock,
+    image_url,
+    color_preview,
+    featured,
+    best_seller,
+    top_seller,
+    is_active
+  `)
+  .eq("is_active", true)
+  .order("created_at", { ascending: false })
+  .limit(50);
 
     if (error) {
       console.error(
@@ -64,38 +87,35 @@ const homeData = queryOptions({
      * =====================================================
      */
 
-    const allProducts = (data ?? []).map((product) => {
-      const price = Number(product.price);
-      const compareAtPrice = Number(
-        product.compare_at_price
-      );
+   const allProducts = (data ?? []).map((product) => {
+  const price = Number(product.price);
+  const compareAtPrice = Number(product.compare_at_price);
 
-      return {
-        ...product,
+  return {
+    ...product,
 
-        // Giá chính
-        price: Number.isFinite(price) ? price : 0,
+    price: Number.isFinite(price) ? price : 0,
 
-        // Giá cũ
-        compare_at_price: Number.isFinite(compareAtPrice)
-          ? compareAtPrice
-          : 0,
+    compare_at_price: Number.isFinite(compareAtPrice)
+      ? compareAtPrice
+      : 0,
 
-        // Legacy aliases
-        priceOld: Number.isFinite(compareAtPrice)
-          ? compareAtPrice
-          : 0,
+    priceOld: Number.isFinite(compareAtPrice)
+      ? compareAtPrice
+      : 0,
 
-        old_price: Number.isFinite(compareAtPrice)
-          ? compareAtPrice
-          : 0,
+    old_price: Number.isFinite(compareAtPrice)
+      ? compareAtPrice
+      : 0,
 
-        // Boolean flags
-        featured: Boolean(product.featured),
-        best_seller: Boolean(product.best_seller),
-        top_seller: Boolean(product.top_seller),
-      };
-    });
+    featured: Boolean(product.featured),
+    best_seller: Boolean(product.best_seller),
+    top_seller: Boolean(product.top_seller),
+
+    // Giữ trạng thái sản phẩm
+    is_active: product.is_active === true,
+  };
+});
 
     /*
      * =====================================================
@@ -107,7 +127,9 @@ const homeData = queryOptions({
      */
 
     const newArrivals = allProducts
-      .filter((product) => product.featured === true)
+      .filter(
+        (product) => product.featured === true
+      )
       .slice(0, 12);
 
     /*
@@ -120,7 +142,9 @@ const homeData = queryOptions({
      */
 
     const bestSellers = allProducts
-      .filter((product) => product.best_seller === true)
+      .filter(
+        (product) => product.best_seller === true
+      )
       .slice(0, 12);
 
     /*
@@ -132,8 +156,16 @@ const homeData = queryOptions({
      */
 
     const topSellers = allProducts
-      .filter((product) => product.top_seller === true)
+      .filter(
+        (product) => product.top_seller === true
+      )
       .slice(0, 12);
+
+    /*
+     * DEBUG
+     *
+     * Kiểm tra chính xác giá đang lấy từ Supabase.
+     */
 
     console.log(
       "INFIBETTER HOME PRODUCTS:",
@@ -152,16 +184,20 @@ const homeData = queryOptions({
        * products    → Best Sellers
        * newArrivals → New Arrivals
        */
+
       products: bestSellers,
+
       newArrivals,
 
       /*
        * Giữ featured để các component cũ
        * vẫn có thể sử dụng nếu cần.
        */
+
       featured: newArrivals,
 
       bestSellers,
+
       topSellers,
     };
   },
@@ -174,16 +210,30 @@ export const Route = createFileRoute("/")({
         title:
           "INFIBETTER — Charge smarter. Stay connected.",
       },
+
       {
         name: "description",
+
         content:
           "Discover smart tech accessories designed for everyday life. Charge, carry and connect with INFIBETTER.",
       },
     ],
   }),
 
+  /*
+   * =====================================================
+   * ROUTE LOADER
+   * =====================================================
+   *
+   * IMPORTANT:
+   * Must return the Promise so TanStack Router waits
+   * for the latest homepage data.
+   */
+
   loader: ({ context }) => {
-    context.queryClient.ensureQueryData(homeData);
+    return context.queryClient.ensureQueryData(
+      homeData
+    );
   },
 
   component: HomePage,
@@ -199,7 +249,7 @@ function HomePage() {
 
       {/* =================================================
           FIND YOUR NEXT UPGRADE
-          
+
           Best Sellers:
           products = best_seller === true
 
@@ -214,7 +264,7 @@ function HomePage() {
 
       {/* =================================================
           DESIGNED FOR REAL LIFE
-          
+
           Keep using New Arrivals here because this
           section is based on the products currently
           marked as new in Admin.

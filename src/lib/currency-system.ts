@@ -1,13 +1,4 @@
-﻿/**
- * INFIBETTER Currency System
- *
- * Giá gốc của sản phẩm trong database: VND
- * Currency được khách chọn sẽ quyết định cách hiển thị giá.
- *
- * Lưu lựa chọn vào localStorage để reload trang vẫn giữ currency.
- */
-
-export type CurrencyCode =
+﻿export type CurrencyCode =
   | "VND"
   | "USD"
   | "CAD"
@@ -22,33 +13,25 @@ export interface CurrencyConfig {
   symbol: string;
   locale: string;
 
-  /**
-   * Số VND tương đương với 1 đơn vị currency.
-   *
-   * Ví dụ:
-   * 1 USD = 25,500 VND
-   */
+  // 1 currency = bao nhiêu VND
   vndPerUnit: number;
 }
 
 /**
- * Currency mặc định.
+ * INFIBETTER:
  *
- * INFIBETTER hiện mặc định USD cho khách quốc tế.
- * Nếu muốn mặc định VND chỉ cần đổi thành "VND".
+ * DATABASE BASE CURRENCY = USD
+ *
+ * Ví dụ:
+ * products.price = 42
+ * => $42.00
  */
+export const BASE_CURRENCY: CurrencyCode = "USD";
+
 export const DEFAULT_CURRENCY: CurrencyCode = "USD";
 
 export const CURRENCY_STORAGE_KEY = "infibetter_currency";
 
-/**
- * Tỷ giá hiển thị.
- *
- * Giá sản phẩm trong DB vẫn giữ nguyên VND.
- *
- * Có thể thay đổi các rate này sau khi bạn muốn dùng
- * tỷ giá riêng của INFIBETTER.
- */
 export const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
   VND: {
     code: "VND",
@@ -107,27 +90,20 @@ export const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
   },
 };
 
-/**
- * Kiểm tra currency có hợp lệ không.
- */
 export function isCurrencyCode(
   value: string | null | undefined,
 ): value is CurrencyCode {
   return Boolean(value && value in CURRENCIES);
 }
 
-/**
- * Lấy currency hiện tại.
- *
- * SSR-safe:
- * nếu window chưa tồn tại thì dùng DEFAULT_CURRENCY.
- */
 export function getCurrency(): CurrencyCode {
   if (typeof window === "undefined") {
     return DEFAULT_CURRENCY;
   }
 
-  const saved = window.localStorage.getItem(CURRENCY_STORAGE_KEY);
+  const saved = window.localStorage.getItem(
+    CURRENCY_STORAGE_KEY,
+  );
 
   if (isCurrencyCode(saved)) {
     return saved;
@@ -136,19 +112,17 @@ export function getCurrency(): CurrencyCode {
   return DEFAULT_CURRENCY;
 }
 
-/**
- * Đổi currency.
- *
- * Hàm này chỉ lưu lựa chọn.
- * Các component đang nghe event "infibetter:currency-change"
- * sẽ tự render lại.
- */
-export function setCurrency(currency: CurrencyCode): void {
+export function setCurrency(
+  currency: CurrencyCode,
+): void {
   if (typeof window === "undefined") {
     return;
   }
 
-  window.localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
+  window.localStorage.setItem(
+    CURRENCY_STORAGE_KEY,
+    currency,
+  );
 
   window.dispatchEvent(
     new CustomEvent("infibetter:currency-change", {
@@ -160,9 +134,6 @@ export function setCurrency(currency: CurrencyCode): void {
   );
 }
 
-/**
- * Lấy config currency hiện tại.
- */
 export function getCurrencyConfig(
   currency: CurrencyCode = getCurrency(),
 ): CurrencyConfig {
@@ -170,40 +141,42 @@ export function getCurrencyConfig(
 }
 
 /**
- * Convert VND -> currency đang chọn.
+ * USD -> currency đang chọn
+ *
+ * DATABASE = USD
  */
-export function convertFromVND(
+export function convertFromUSD(
   value: number | string | null | undefined,
   currency: CurrencyCode = getCurrency(),
 ): number {
-  const vnd = Number(value);
+  const usd = Number(value);
 
-  if (!Number.isFinite(vnd)) {
+  if (!Number.isFinite(usd)) {
     return 0;
   }
 
-  const config = CURRENCIES[currency];
+  const target = CURRENCIES[currency];
 
-  if (!config || config.vndPerUnit <= 0) {
+  if (!target) {
     return 0;
   }
 
-  return vnd / config.vndPerUnit;
+  const usdConfig = CURRENCIES.USD;
+
+  // USD -> USD
+  if (currency === "USD") {
+    return usd;
+  }
+
+  // USD -> VND -> target currency
+  const vnd = usd * usdConfig.vndPerUnit;
+
+  return vnd / target.vndPerUnit;
 }
 
 /**
- * Format giá từ VND sang currency đang chọn.
- *
- * Ví dụ:
- *
- * formatCurrency(1290000, "VND")
- * -> 1.290.000 ₫
- *
- * formatCurrency(1290000, "USD")
- * -> $50.59
- *
- * formatCurrency(1290000, "CAD")
- * -> CA$69.35
+ * Format giá DATABASE USD
+ * sang currency khách đang chọn.
  */
 export function formatCurrency(
   value: number | string | null | undefined,
@@ -212,30 +185,32 @@ export function formatCurrency(
   const config = CURRENCIES[currency];
 
   if (!config) {
-    return "0";
+    return "$0.00";
   }
 
-  const converted = convertFromVND(value, currency);
+  const converted = convertFromUSD(
+    value,
+    currency,
+  );
 
-  /**
-   * VND không cần số thập phân.
-   */
-  const maximumFractionDigits = currency === "VND" ? 0 : 2;
+  const digits =
+    currency === "VND" ? 0 : 2;
 
-  const minimumFractionDigits = currency === "VND" ? 0 : 2;
-
-  return new Intl.NumberFormat(config.locale, {
-    style: "currency",
-    currency: config.code,
-    minimumFractionDigits,
-    maximumFractionDigits,
-  }).format(converted);
+  return new Intl.NumberFormat(
+    config.locale,
+    {
+      style: "currency",
+      currency: config.code,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    },
+  ).format(converted);
 }
 
 /**
- * Convert trực tiếp VND -> một currency cụ thể.
+ * Alias tương thích với code cũ.
  */
-export function formatCurrencyFromVND(
+export function formatCurrencyFromUSD(
   value: number | string | null | undefined,
   currency: CurrencyCode,
 ): string {
@@ -243,14 +218,16 @@ export function formatCurrencyFromVND(
 }
 
 /**
- * Hook-free event listener helper.
- *
- * Dùng trong React component:
- *
- * useCurrencyChange(() => {
- *   // refresh UI
- * });
+ * Alias cũ nếu project còn dùng.
  */
+export function formatCurrencyFromVND(
+  value: number | string | null | undefined,
+  currency: CurrencyCode,
+): string {
+  // Giá sản phẩm INFIBETTER hiện tại là USD.
+  return formatCurrency(value, currency);
+}
+
 export function subscribeToCurrencyChange(
   callback: (currency: CurrencyCode) => void,
 ): () => void {
@@ -259,11 +236,13 @@ export function subscribeToCurrencyChange(
   }
 
   const handler = (event: Event) => {
-    const customEvent = event as CustomEvent<{
-      code?: CurrencyCode;
-    }>;
+    const customEvent =
+      event as CustomEvent<{
+        code?: CurrencyCode;
+      }>;
 
-    const code = customEvent.detail?.code;
+    const code =
+      customEvent.detail?.code;
 
     if (isCurrencyCode(code)) {
       callback(code);
@@ -283,7 +262,5 @@ export function subscribeToCurrencyChange(
   };
 }
 
-/**
- * Danh sách currency dùng cho selector/footer.
- */
-export const CURRENCY_LIST = Object.values(CURRENCIES);
+export const CURRENCY_LIST =
+  Object.values(CURRENCIES);

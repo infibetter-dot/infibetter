@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronUp, Eye, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -43,6 +44,7 @@ export default function ProductEditor({
   onSaved,
   collapse,
 }: Props) {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [colorVersion, setColorVersion] = useState(0);
   const [name, setName] = useState(product.name ?? "");
@@ -421,56 +423,70 @@ async function save() {
 
     setLoading(true);
 
-    const { error } = await supabase
+    const payload = {
+      name: name.trim(),
+      slug: createSlug(name),
+      price: Number(price),
+      compare_at_price: Number(comparePrice),
+      stock: Number(stock),
+      image_url: imageUrl,
+      short_description: shortDescription,
+      description,
+      seo_title: seoTitle,
+      seo_description: seoDescription,
+      seo_keywords: seoKeywords,
+      category_id: categoryId,
+      featured,
+      best_seller: bestSeller,
+      top_seller: topSeller,
+    };
+
+    console.log("PRODUCT SAVE ID:", product.id);
+    console.log("PRODUCT SAVE PAYLOAD:", payload);
+
+    const { data, error } = await supabase
       .from("products")
-      .update({
-  featured,
-  best_seller: bestSeller,
-  top_seller: topSeller,
-  name,
-  slug: createSlug(name),
+      .update(payload)
+      .eq("id", product.id)
+      .select("*")
+      .single();
 
-  image_url: imageUrl,
+    console.log("PRODUCT SAVE RESULT:", data);
+    console.log("PRODUCT SAVE ERROR:", error);
 
+    if (error) {
+      console.error("SUPABASE PRODUCT UPDATE ERROR:", error);
+      throw new Error(
+        `Không thể lưu sản phẩm: ${error.message}`
+      );
+    }
 
+    if (!data) {
+      throw new Error(
+        "Supabase không trả về sản phẩm sau khi lưu. Kiểm tra RLS UPDATE."
+      );
+    }
 
-  short_description: shortDescription,
+    // Đồng bộ object hiện tại để UI không quay về dữ liệu cũ
+    product.name = data.name;
+    product.price = data.price;
+    product.compare_at_price = data.compare_at_price;
+    product.stock = data.stock;
+    product.slug = data.slug;
 
-  compare_at_price: comparePrice,
-
-  description,
-
-  seo_title: seoTitle,
-  seo_description: seoDescription,
-  seo_keywords: seoKeywords,
-
-  category_id:
-  categoryId === ""
-    ? null
-    : categoryId,
-
-  price,
-  stock,
-})
-
-      .eq("id", product.id);
-
-if (error) throw error;
-    toast.success("Đã lưu sản phẩm");
+    toast.success(
+      `Đã lưu: ${data.name} — $${Number(data.price).toFixed(2)}`
+    );
 
     onSaved();
 
   } catch (err: any) {
-
-    toast.error(err.message);
-
+    console.error("PRODUCT SAVE FAILED:", err);
+    toast.error(err?.message || "Không thể lưu sản phẩm.");
   } finally {
-
     setLoading(false);
-
   }
 }
-
   
   return (
     <div className="space-y-5">

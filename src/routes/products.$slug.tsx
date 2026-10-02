@@ -805,7 +805,11 @@ function ProductPage() {
                             return (
                               <div
                                 key={item.id}
-                                className={`${
+                                className={`rounded-[6px] px-2.5 ${
+                                  faqIndex % 2 === 0
+                                    ? "bg-[#F7F7F8]"
+                                    : "bg-white"
+                                } ${
                                   faqIndex === productFaqs.length - 1
                                     ? ""
                                     : "border-b border-[#E5E5E7]"
