@@ -399,7 +399,7 @@ export function SiteFooter() {
             </div>
           </div>
 
-          {/* SOCIAL + PAYMENT — HORIZONTAL CARD */}
+          {/* SOCIAL + PAYMENT METHODS */}
           <div
             className="
               mt-5
@@ -407,31 +407,25 @@ export function SiteFooter() {
               w-full
               items-center
               justify-between
-              gap-3
-              rounded-[12px]
-              border
+              border-t
               border-[#E1E5EA]
-              bg-white
-              px-3
-              py-2.5
-              shadow-[0_2px_8px_rgba(15,23,42,0.03)]
+              pt-4
               sm:mt-7
-              sm:px-4
-              sm:py-3
+              sm:pt-5
             "
           >
             {/* SOCIAL */}
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex items-center gap-3">
               <SocialButton
                 href="#"
                 label="Facebook"
-                icon={<Facebook size={17} strokeWidth={1.8} />}
+                icon={<Facebook size={18} strokeWidth={1.8} />}
               />
 
               <SocialButton
                 href="#"
                 label="Instagram"
-                icon={<Instagram size={17} strokeWidth={1.8} />}
+                icon={<Instagram size={18} strokeWidth={1.8} />}
               />
 
               <SocialButton
@@ -442,54 +436,229 @@ export function SiteFooter() {
                     src="https://cdn.simpleicons.org/tiktok/111827"
                     alt=""
                     aria-hidden="true"
-                    className="h-[17px] w-[17px]"
+                    className="h-[18px] w-[18px]"
                   />
                 }
               />
             </div>
 
-            {/* PAYMENT */}
+            {/* PAYMENT METHODS — 4 CARD BRANDS, SHARP INLINE SVG */}
             <div
-              className="flex min-w-0 items-center justify-end gap-1.5 overflow-hidden"
+              className="
+                flex
+                shrink-0
+                items-center
+                gap-1.5
+              "
               aria-label="Accepted card payment methods"
             >
-              {[
-                {
-                  name: "American Express",
-                  src: "/payment-methods/american-express.png",
-                },
-                {
-                  name: "Mastercard",
-                  src: "/payment-methods/mastercard.png",
-                },
-                {
-                  name: "Visa",
-                  src: "/payment-methods/visa.png",
-                },
-              ].map((payment) => (
-                <div
-                  key={payment.name}
-                  className="
-                    flex
-                    h-[25px]
-                    shrink-0
-                    items-center
-                    justify-center
-                    overflow-hidden
-                    rounded-[4px]
-                    bg-white
-                  "
-                  title={payment.name}
+              {/* VISA */}
+              <div
+                title="Visa"
+                aria-label="Visa"
+                className="
+                  flex h-[27px] w-[42px] shrink-0
+                  items-center justify-center
+                  overflow-hidden rounded-[4px]
+                  bg-white
+                "
+              >
+                <svg
+                  viewBox="0 0 42 27"
+                  width="42"
+                  height="27"
+                  role="img"
+                  aria-label="Visa"
+                  className="block h-[27px] w-[42px]"
                 >
-                  <img
-                    src={payment.src}
-                    alt={payment.name}
-                    className="block h-[25px] w-auto max-w-none object-contain"
-                    draggable={false}
-                    loading="eager"
+                  <rect
+                    x="0.5"
+                    y="0.5"
+                    width="41"
+                    height="26"
+                    rx="3.5"
+                    fill="#1434CB"
+                    stroke="#D9DEE5"
                   />
-                </div>
-              ))}
+                  <text
+                    x="21"
+                    y="17"
+                    textAnchor="middle"
+                    fill="#FFFFFF"
+                    fontSize="10.5"
+                    fontWeight="900"
+                    fontStyle="italic"
+                    fontFamily="Arial, Helvetica, sans-serif"
+                    letterSpacing="-0.65"
+                  >
+                    VISA
+                  </text>
+                </svg>
+              </div>
+
+              {/* MASTERCARD */}
+              <div
+                title="Mastercard"
+                aria-label="Mastercard"
+                className="
+                  flex h-[27px] w-[42px] shrink-0
+                  items-center justify-center
+                  overflow-hidden rounded-[4px]
+                  bg-white
+                "
+              >
+                <svg
+                  viewBox="0 0 42 27"
+                  width="42"
+                  height="27"
+                  role="img"
+                  aria-label="Mastercard"
+                  className="block h-[27px] w-[42px]"
+                >
+                  <rect
+                    x="0.5"
+                    y="0.5"
+                    width="41"
+                    height="26"
+                    rx="3.5"
+                    fill="#111111"
+                    stroke="#D9DEE5"
+                  />
+                  <circle cx="17" cy="12.5" r="7" fill="#EB001B" />
+                  <circle cx="25" cy="12.5" r="7" fill="#F79E1B" />
+                  <path
+                    d="M21 7.1a7 7 0 0 1 0 10.8 7 7 0 0 1 0-10.8Z"
+                    fill="#FF5F00"
+                  />
+                  <text
+                    x="21"
+                    y="22"
+                    textAnchor="middle"
+                    fill="#FFFFFF"
+                    fontSize="3.1"
+                    fontWeight="700"
+                    fontFamily="Arial, Helvetica, sans-serif"
+                  >
+                    mastercard
+                  </text>
+                </svg>
+              </div>
+
+              {/* JCB */}
+              <div
+                title="JCB"
+                aria-label="JCB"
+                className="
+                  flex h-[27px] w-[42px] shrink-0
+                  items-center justify-center
+                  overflow-hidden rounded-[4px]
+                  bg-white
+                "
+              >
+                <svg
+                  viewBox="0 0 42 27"
+                  width="42"
+                  height="27"
+                  role="img"
+                  aria-label="JCB"
+                  className="block h-[27px] w-[42px]"
+                >
+                  <defs>
+                    <linearGradient id="jcb-red" x1="0" x2="1">
+                      <stop offset="0" stopColor="#D71920" />
+                      <stop offset="1" stopColor="#B51218" />
+                    </linearGradient>
+                    <linearGradient id="jcb-blue" x1="0" x2="1">
+                      <stop offset="0" stopColor="#1672C8" />
+                      <stop offset="1" stopColor="#0B4FA3" />
+                    </linearGradient>
+                    <linearGradient id="jcb-green" x1="0" x2="1">
+                      <stop offset="0" stopColor="#1B9A57" />
+                      <stop offset="1" stopColor="#087A43" />
+                    </linearGradient>
+                  </defs>
+
+                  <rect
+                    x="0.5"
+                    y="0.5"
+                    width="41"
+                    height="26"
+                    rx="3.5"
+                    fill="#FFFFFF"
+                    stroke="#D9DEE5"
+                  />
+
+                  <path
+                    d="M3 3.5h12v20H3z"
+                    fill="url(#jcb-red)"
+                  />
+                  <path
+                    d="M15 3.5h12v20H15z"
+                    fill="url(#jcb-blue)"
+                  />
+                  <path
+                    d="M27 3.5h12v20H27z"
+                    fill="url(#jcb-green)"
+                  />
+
+                  <text
+                    x="21"
+                    y="16.7"
+                    textAnchor="middle"
+                    fill="#FFFFFF"
+                    fontSize="7.4"
+                    fontWeight="900"
+                    fontFamily="Arial, Helvetica, sans-serif"
+                    letterSpacing="-0.35"
+                  >
+                    JCB
+                  </text>
+                </svg>
+              </div>
+
+              {/* AMERICAN EXPRESS */}
+              <div
+                title="American Express"
+                aria-label="American Express"
+                className="
+                  flex h-[27px] w-[42px] shrink-0
+                  items-center justify-center
+                  overflow-hidden rounded-[4px]
+                  bg-white
+                "
+              >
+                <svg
+                  viewBox="0 0 42 27"
+                  width="42"
+                  height="27"
+                  role="img"
+                  aria-label="American Express"
+                  className="block h-[27px] w-[42px]"
+                >
+                  <rect
+                    x="0.5"
+                    y="0.5"
+                    width="41"
+                    height="26"
+                    rx="3.5"
+                    fill="#2E77BC"
+                    stroke="#D9DEE5"
+                  />
+                  <text
+                    x="21"
+                    y="16.5"
+                    textAnchor="middle"
+                    fill="#FFFFFF"
+                    fontSize="7.2"
+                    fontWeight="800"
+                    fontFamily="Arial, Helvetica, sans-serif"
+                    letterSpacing="-0.25"
+                  >
+                    AMEX
+                  </text>
+                </svg>
+              </div>
+            </div>
             </div>
           </div>
         </div>
@@ -712,7 +881,6 @@ export function SiteFooter() {
             <span className="absolute bottom-[4px] left-[7px] h-1.5 w-1.5 rotate-[25deg] rounded-[1px] bg-[#0066E6]" />
           </span>
         </button>
-      </div>
     </footer>
   );
 }

@@ -81,6 +81,7 @@ export function SiteHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileExpandedMenu, setMobileExpandedMenu] = useState<MegaMenuKey>(null);
   const [megaMenus, setMegaMenus] = useState<MegaSection[]>([]);
 
   const loadMegaMenus = async () => {
@@ -675,10 +676,9 @@ export function SiteHeader() {
             <button
               type="button"
               onClick={() => {
-                setMobileOpen(
-                  (value) => !value,
-                );
+                setMobileOpen((value) => !value);
                 setActiveMenu(null);
+                setMobileExpandedMenu(null);
               }}
               aria-label="Menu"
               className="
@@ -1008,78 +1008,109 @@ export function SiteHeader() {
         {mobileOpen && (
           <div
             className="
-              absolute
-              left-0
-              right-0
-              top-[62px]
-              overflow-hidden
-              rounded-[12px]
-              border
-              border-[#DDE2E8]
-              bg-white
-              shadow-[0_15px_45px_rgba(15,23,42,0.12)]
+              absolute left-0 right-0 top-[62px]
+              overflow-hidden rounded-[14px]
+              border border-[#DDE2E8] bg-white
+              shadow-[0_18px_50px_rgba(15,23,42,0.14)]
               lg:hidden
             "
           >
-            <nav className="flex flex-col p-3">
-              {[
-                [
-                  "Shop Apple accessories",
-                  "/shop",
-                ],
-                [
-                  "Cases & Bands",
-                  "/shop",
-                ],
-                [
-                  "Charging",
-                  "/shop",
-                ],
-                [
-                  "Lifestyle Gear",
-                  "/shop",
-                ],
-              ].map(([label, to]) => (
-                <Link
-                  key={label}
-                  to={to}
-                  onClick={() =>
-                    setMobileOpen(
-                      false,
-                    )
-                  }
-                  className="
-                    rounded-[8px]
-                    px-3
-                    py-3
-                    text-[11px]
-                    font-medium
-                    text-[#111827]
-                    hover:bg-[#F8FAFC]
-                  "
-                >
-                  {label}
-                </Link>
-              ))}
-
+            <nav className="max-h-[calc(100vh-90px)] overflow-y-auto p-3">
               <Link
-                to="/account"
-                onClick={() =>
-                  setMobileOpen(
-                    false,
-                  )
-                }
-                className="
-                  mt-1
-                  border-t
-                  border-[#E5E7EB]
-                  px-3
-                  py-3
-                  text-[11px]
-                  text-[#64748B]
-                "
+                to="/shop"
+                onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
+                className="flex items-center justify-between rounded-[9px] px-3 py-3 text-[11px] font-semibold text-[#111827] hover:bg-[#F8FAFC]"
               >
-                Account
+                <span>Shop Apple accessories</span>
+                <ArrowRight size={13} className="text-[#94A3B8]" />
+              </Link>
+
+              {([
+                ["cases", "Cases & Bands"],
+                ["charging", "Charging"],
+                ["lifestyle", "Lifestyle Gear"],
+              ] as const).map(([menuKey, label]) => {
+                const section = megaMenus.find((menu) => menu.menu_key === menuKey);
+                const expanded = mobileExpandedMenu === menuKey;
+
+                if (!section) {
+                  return (
+                    <Link key={menuKey} to="/shop" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="flex items-center justify-between rounded-[9px] px-3 py-3 text-[11px] font-medium text-[#111827] hover:bg-[#F8FAFC]">
+                      <span>{label}</span><ArrowRight size={13} className="text-[#94A3B8]" />
+                    </Link>
+                  );
+                }
+
+                return (
+                  <div key={menuKey} className="overflow-hidden border-b border-[#E5E7EB]">
+                    <button type="button" onClick={() => setMobileExpandedMenu(expanded ? null : menuKey)} className="flex w-full items-center justify-between rounded-[9px] px-3 py-3 text-left text-[11px] font-medium text-[#111827] hover:bg-[#F8FAFC]">
+                      <span>{label}</span>
+                      <ChevronDown size={14} className={`text-[#64748B] transition-transform ${expanded ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {expanded && (
+                      <div className="px-2 pb-3">
+                        <Link
+                          to="/shop"
+                          search={section.mega_menu_groups[0]?.category?.slug ? ({ category: section.mega_menu_groups[0].category.slug } as never) : undefined}
+                          onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
+                          className="group relative mb-3 block h-[105px] overflow-hidden rounded-[10px] border border-[#E1E5EA] bg-[#F1F3F5]"
+                        >
+                          <img src={section.image_url || getSectionFallback(section.menu_key)} alt={section.title || label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                          <div className="absolute bottom-0 left-0 right-0 p-3">
+                            <div className="text-[8px] font-semibold uppercase tracking-[0.12em] text-white/75">Explore</div>
+                            <div className="mt-0.5 text-[14px] font-semibold text-white">{section.title || label}</div>
+                          </div>
+                        </Link>
+
+                        <div className="flex flex-col gap-3">
+                          {section.mega_menu_groups.map((group, groupIndex) => (
+                            <div key={group.id} className="overflow-hidden rounded-[10px] border border-[#E5E7EB] bg-[#FAFBFC]">
+                              <Link
+                                to="/shop"
+                                search={group.category?.slug ? ({ category: group.category.slug } as never) : undefined}
+                                onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
+                                className="flex items-center gap-3 p-2.5"
+                              >
+                                <div className="h-[52px] w-[72px] shrink-0 overflow-hidden rounded-[8px] border border-[#E1E5EA] bg-white">
+                                  <img src={group.image_url || getGroupFallback(section.menu_key, groupIndex)} alt={group.title} className="h-full w-full object-cover" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1 text-[11px] font-semibold text-[#171A1F]">
+                                    <span className="truncate">{group.title}</span><ArrowRight size={10} className="shrink-0 text-[#94A3B8]" />
+                                  </div>
+                                  <div className="mt-1 text-[9px] text-[#98A2B3]">View collection</div>
+                                </div>
+                              </Link>
+
+                              {group.mega_menu_items.length > 0 && (
+                                <div className="border-t border-[#E5E7EB] bg-white px-3 py-2.5">
+                                  <div className="flex flex-wrap gap-x-2 gap-y-1.5">
+                                    {group.mega_menu_items.map((item) => {
+                                      const itemLabel = item.label_override || item.categories?.name || "Category";
+                                      const itemSlug = item.categories?.slug;
+                                      if (!itemSlug) return null;
+                                      return (
+                                        <Link key={item.id} to="/shop" search={{ category: itemSlug } as never} onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="rounded-[6px] bg-[#F5F7FA] px-2 py-1.5 text-[9px] font-medium text-[#667085] hover:bg-[#EEF2F6] hover:text-[#111827]">
+                                          {itemLabel}
+                                        </Link>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <Link to="/account" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="mt-1 flex items-center justify-between border-t border-[#E5E7EB] px-3 py-3 text-[11px] text-[#64748B]">
+                <span>Account</span><User size={14} strokeWidth={1.7} />
               </Link>
             </nav>
           </div>

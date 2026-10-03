@@ -220,14 +220,39 @@ function ProductPage() {
   }, [product]);
 
   useEffect(() => {
+    const firstColor = product.product_colors?.[0] ?? null;
+    const colorImage = firstColor
+      ? product.product_images?.find(
+          (image: any) => String(image?.color_id ?? "") === String(firstColor.id),
+        )
+      : null;
+
+    setSelectedColor(firstColor);
     setSelectedImage(
-      product.image_url ||
+      colorImage?.image_url ||
+        product.image_url ||
         product.product_images?.[0]?.image_url ||
         "",
     );
-    setSelectedColor(product.product_colors?.[0] ?? null);
     setQuantity(1);
   }, [product.id]);
+
+  function handleColorChange(color: any) {
+    setSelectedColor(color);
+
+    // Each product image can be linked to a color through product_images.color_id.
+    // When a color is selected, immediately switch the gallery to that color's image.
+    const colorImage = productImages.find(
+      (image: any) => String(image?.color_id ?? "") === String(color?.id ?? ""),
+    );
+
+    if (colorImage?.image_url) {
+      setSelectedImage(colorImage.image_url);
+      return;
+    }
+
+    // If the selected color has no linked image, keep the current gallery image.
+  }
 
   const activeImage =
     selectedImage ||
@@ -408,26 +433,38 @@ function ProductPage() {
             </div>
 
             {productImages.length > 1 && (
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                {productImages.map((image: any, index: number) => (
-                  <button
-                    key={`${image.id ?? index}-${image.image_url}`}
-                    type="button"
-                    onClick={() => setSelectedImage(image.image_url)}
-                    className={`h-[68px] w-[68px] shrink-0 overflow-hidden rounded-[12px] bg-[#F5F5F7] transition ${
-                      activeImage === image.image_url
-                        ? "ring-2 ring-[#1D1D1F] ring-offset-1"
-                        : "opacity-70 hover:opacity-100"
-                    }`}
-                    aria-label={`View image ${index + 1}`}
-                  >
-                    <img
-                      src={getImageUrl(image.image_url, "thumb") || image.image_url}
-                      alt={`${product.name} ${index + 1}`}
-                      className="h-full w-full object-contain p-1.5"
-                    />
-                  </button>
-                ))}
+              <div className="mt-3 flex flex-wrap items-end gap-2 pb-1">
+                {productImages.map((image: any, index: number) => {
+                  const isActive = activeImage === image.image_url;
+
+                  return (
+                    <button
+                      key={`${image.id ?? index}-${image.image_url}`}
+                      type="button"
+                      onClick={() => setSelectedImage(image.image_url)}
+                      aria-label={`View image ${index + 1}`}
+                      aria-current={isActive ? "true" : undefined}
+                      className={`group relative h-[56px] w-[56px] shrink-0 overflow-visible bg-transparent p-0 transition-all duration-200 ease-out focus-visible:outline-none ${
+                        isActive
+                          ? "scale-[1.06] opacity-100"
+                          : "opacity-65 hover:scale-[1.05] hover:opacity-100"
+                      }`}
+                    >
+                      <img
+                        src={getImageUrl(image.image_url, "thumb") || image.image_url}
+                        alt={`${product.name} ${index + 1}`}
+                        className="h-full w-full object-contain bg-transparent p-0 transition-transform duration-200 ease-out group-hover:scale-[1.03]"
+                      />
+
+                      {isActive && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute -bottom-[5px] left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-[#0071E3]"
+                        />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -495,7 +532,7 @@ function ProductPage() {
                         key={color.id}
                         type="button"
                         title={color.name}
-                        onClick={() => setSelectedColor(color)}
+                        onClick={() => handleColorChange(color)}
                         className={`h-9 w-9 rounded-full border-2 p-[2px] transition ${
                           selectedColor?.id === color.id
                             ? "border-[#1D1D1F]"
@@ -715,7 +752,13 @@ function ProductPage() {
                 </button>
 
                 {openFaq === index && (
-                  <div className="border-t border-[#E5E5E7] px-5 pb-5 pl-[68px] pt-4 sm:px-6 sm:pl-[74px]">
+                  <div
+                    className={`border-t border-[#E5E5E7] px-5 pb-5 pt-4 sm:px-6 ${
+                      faq.type === "specs" || faq.type === "faq"
+                        ? ""
+                        : "pl-[68px] sm:pl-[74px]"
+                    }`}
+                  >
                     {faq.type === "specs" ? (
                       specs.length > 0 ||
                       product.material ||
@@ -724,72 +767,46 @@ function ProductPage() {
                       product.light_source ||
                       product.power_source ||
                       product.warranty ? (
-                        <div className="grid max-w-[900px] grid-cols-1 gap-x-10 gap-y-3 sm:grid-cols-2">
-                          {specs.map((spec: any) => (
+                        <div className="max-w-[900px] overflow-hidden rounded-[10px] border border-[#E9E9EC] bg-white">
+                          {[
+                            ...specs.map((spec: any) => ({
+                              id: spec.id,
+                              label: spec.label,
+                              value: spec.value,
+                            })),
+                            ...(product.material
+                              ? [{ id: "material", label: "Material", value: product.material }]
+                              : []),
+                            ...(product.dimensions
+                              ? [{ id: "dimensions", label: "Dimensions", value: product.dimensions }]
+                              : []),
+                            ...(product.color
+                              ? [{ id: "color", label: "Color", value: product.color }]
+                              : []),
+                            ...(product.light_source
+                              ? [{ id: "light_source", label: "Light source", value: product.light_source }]
+                              : []),
+                            ...(product.power_source
+                              ? [{ id: "power_source", label: "Power source", value: product.power_source }]
+                              : []),
+                            ...(product.warranty
+                              ? [{ id: "warranty", label: "Warranty", value: product.warranty }]
+                              : []),
+                          ].map((item: any, index: number, items: any[]) => (
                             <div
-                              key={spec.id}
-                              className="flex items-start justify-between gap-4 border-b border-[#F0F0F2] pb-3 text-[13px]"
+                              key={item.id}
+                              className={`grid grid-cols-[43%_57%] items-start text-[13px] sm:grid-cols-[38%_62%] ${
+                                index < items.length - 1 ? "border-b border-[#ECECF0]" : ""
+                              } ${index % 2 === 0 ? "bg-white" : "bg-[#FAFAFB]"}`}
                             >
-                              <span className="text-[#6E6E73]">{spec.label}</span>
-                              <span className="text-right font-medium text-[#1D1D1F]">
-                                {spec.value}
+                              <span className="min-w-0 px-3 py-3 text-[#77777C] sm:px-4">
+                                {item.label}
+                              </span>
+                              <span className="min-w-0 border-l border-[#F0F0F2] px-3 py-3 text-left font-medium leading-5 text-[#1D1D1F] sm:px-4">
+                                {item.value}
                               </span>
                             </div>
                           ))}
-
-                          {product.material && (
-                            <div className="flex items-start justify-between gap-4 border-b border-[#F0F0F2] pb-3 text-[13px]">
-                              <span className="text-[#6E6E73]">Material</span>
-                              <span className="text-right font-medium text-[#1D1D1F]">
-                                {product.material}
-                              </span>
-                            </div>
-                          )}
-
-                          {product.dimensions && (
-                            <div className="flex items-start justify-between gap-4 border-b border-[#F0F0F2] pb-3 text-[13px]">
-                              <span className="text-[#6E6E73]">Dimensions</span>
-                              <span className="text-right font-medium text-[#1D1D1F]">
-                                {product.dimensions}
-                              </span>
-                            </div>
-                          )}
-
-                          {product.color && (
-                            <div className="flex items-start justify-between gap-4 border-b border-[#F0F0F2] pb-3 text-[13px]">
-                              <span className="text-[#6E6E73]">Color</span>
-                              <span className="text-right font-medium text-[#1D1D1F]">
-                                {product.color}
-                              </span>
-                            </div>
-                          )}
-
-                          {product.light_source && (
-                            <div className="flex items-start justify-between gap-4 border-b border-[#F0F0F2] pb-3 text-[13px]">
-                              <span className="text-[#6E6E73]">Light source</span>
-                              <span className="text-right font-medium text-[#1D1D1F]">
-                                {product.light_source}
-                              </span>
-                            </div>
-                          )}
-
-                          {product.power_source && (
-                            <div className="flex items-start justify-between gap-4 border-b border-[#F0F0F2] pb-3 text-[13px]">
-                              <span className="text-[#6E6E73]">Power source</span>
-                              <span className="text-right font-medium text-[#1D1D1F]">
-                                {product.power_source}
-                              </span>
-                            </div>
-                          )}
-
-                          {product.warranty && (
-                            <div className="flex items-start justify-between gap-4 border-b border-[#F0F0F2] pb-3 text-[13px]">
-                              <span className="text-[#6E6E73]">Warranty</span>
-                              <span className="text-right font-medium text-[#1D1D1F]">
-                                {product.warranty}
-                              </span>
-                            </div>
-                          )}
                         </div>
                       ) : (
                         <p className="text-[13px] leading-6 text-[#6E6E73]">
@@ -798,7 +815,7 @@ function ProductPage() {
                       )
                     ) : faq.type === "faq" ? (
                       productFaqs.length > 0 ? (
-                        <div className="max-w-[900px]">
+                        <div className="w-full max-w-[900px]">
                           {productFaqs.map((item: any, faqIndex: number) => {
                             const itemOpen = openProductFaq === item.id;
 

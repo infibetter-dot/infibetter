@@ -642,70 +642,155 @@ export default function Collections({
           </Link>
         </div>
 
-        {/* TABS */}
+       {/* TABS */}
 
-        <div
-          className="
-            mt-3 flex w-full items-center gap-1
-            rounded-[10px] border border-[#E2E6EB] bg-[#F4F6F8] p-1
-            sm:w-auto sm:border-0 sm:bg-transparent sm:p-0
-          "
-        >
-          <button
-            type="button"
-            onClick={() => changeTab("best")}
-            className={`
-              h-9 flex-1 rounded-[8px] px-4
-              sm:h-8 sm:flex-none sm:rounded-[7px] sm:px-5
-              text-[9px]
-              font-semibold
-              transition-all
-              ${
-                activeTab === "best"
-                  ? "bg-white text-[#171717] shadow-sm ring-1 ring-[#E1E5E9]"
-                  : "bg-transparent text-neutral-500"
-              }
-            `}
-          >
-            Best Sellers
-          </button>
+<div
+  className="
+    mt-3
+    flex
+    h-[42px]
+    w-full
+    items-center
+    gap-1
+    rounded-[13px]
+    border
+    border-[#E1E6ED]
+    bg-[#F7F9FB]
+    p-1
+    shadow-[0_2px_10px_rgba(15,23,42,0.03)]
+    sm:h-9
+    sm:w-auto
+    sm:border-0
+    sm:bg-transparent
+    sm:p-0
+    sm:shadow-none
+  "
+>
+  {/* BEST SELLERS */}
 
-          <button
-            type="button"
-            onClick={() => changeTab("new")}
-            className={`
-              h-9 flex-1 rounded-[8px] px-4
-              sm:h-8 sm:flex-none sm:rounded-[7px] sm:px-5
-              text-[9px]
-              font-semibold
-              transition-all
-              ${
-                activeTab === "new"
-                  ? "bg-white text-[#171717] shadow-sm ring-1 ring-[#E1E5E9]"
-                  : "bg-transparent text-neutral-500"
-              }
-            `}
-          >
-            New Arrivals
-          </button>
+  <button
+    type="button"
+    onClick={() => changeTab("best")}
+    className={`
+      flex
+      h-full
+      min-w-0
+      flex-1
+      items-center
+      justify-center
+      rounded-[10px]
+      px-3
+      text-[10px]
+      font-semibold
+      tracking-[-0.01em]
+      transition-all
+      duration-200
 
-          <Link
-            to="/shop"
-            className="
-              ml-2
-              flex
-              items-center
-              gap-1
-              text-[9px]
-              font-semibold
-              text-[#0066E6]
-              sm:hidden
-            "
-          >
-            View all
-            <ArrowRight size={11} />
-          </Link>
-        </div>
+      sm:h-8
+      sm:flex-none
+      sm:rounded-[7px]
+      sm:px-5
+      sm:text-[9px]
+
+      ${
+        activeTab === "best"
+          ? `
+            bg-white
+            text-[#171717]
+            shadow-[0_2px_7px_rgba(15,23,42,0.08)]
+            ring-1
+            ring-[#E4E8ED]
+          `
+          : `
+            bg-transparent
+            text-[#8A93A0]
+            hover:text-[#4B5563]
+          `
+      }
+    `}
+  >
+    Best Sellers
+  </button>
+
+  {/* NEW ARRIVALS */}
+
+  <button
+    type="button"
+    onClick={() => changeTab("new")}
+    className={`
+      flex
+      h-full
+      min-w-0
+      flex-1
+      items-center
+      justify-center
+      rounded-[10px]
+      px-3
+      text-[10px]
+      font-semibold
+      tracking-[-0.01em]
+      transition-all
+      duration-200
+
+      sm:h-8
+      sm:flex-none
+      sm:rounded-[7px]
+      sm:px-5
+      sm:text-[9px]
+
+      ${
+        activeTab === "new"
+          ? `
+            bg-white
+            text-[#171717]
+            shadow-[0_2px_7px_rgba(15,23,42,0.08)]
+            ring-1
+            ring-[#E4E8ED]
+          `
+          : `
+            bg-transparent
+            text-[#8A93A0]
+            hover:text-[#4B5563]
+          `
+      }
+    `}
+  >
+    New Arrivals
+  </button>
+
+  {/* VIEW ALL */}
+
+  <Link
+    to="/shop"
+    className="
+      flex
+      h-full
+      shrink-0
+      items-center
+      justify-center
+      gap-1
+      rounded-[10px]
+      px-3
+      text-[9px]
+      font-semibold
+      text-[#0066E6]
+      transition-all
+      duration-200
+      hover:bg-white/70
+
+      sm:h-8
+      sm:rounded-[7px]
+      sm:px-2
+    "
+  >
+    <span>View all</span>
+
+    <ArrowRight
+      size={11}
+      strokeWidth={2}
+    />
+  </Link>
+</div>
 
         {/* PRODUCTS */}
 

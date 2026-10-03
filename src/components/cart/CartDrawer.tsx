@@ -804,6 +804,33 @@ export default function CartDrawer({
                 </span>
               </div>
 
+              {/* JCB — official JCB Emblem */}
+              <div
+                className="
+                  flex
+                  h-[30px]
+                  w-[48px]
+                  shrink-0
+                  items-center
+                  justify-center
+                  overflow-hidden
+                  rounded-[8px]
+                  border
+                  border-[#D8DEE8]
+                  bg-white
+                  shadow-[0_1px_3px_rgba(15,23,42,0.10)]
+                "
+                aria-label="JCB"
+              >
+                <img
+                  src="https://jcb.sitecorecontenthub.cloud/api/public/content/105780_pic_logo_02.gif"
+                  alt="JCB"
+                  width={40}
+                  height={31}
+                  className="block h-[27px] w-[35px] object-contain"
+                />
+              </div>
+
               {/* VISA */}
               <div
                 className="
