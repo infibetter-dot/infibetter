@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { ChevronUp, Eye, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -10,6 +9,7 @@ import ProductSpecification from "./ProductSpecification";
 import ProductUSP from "./ProductUSP";
 import ProductColors from "./ProductColors";
 import ProductFAQs from "./ProductFAQs";
+import ProductCompatibility from "./ProductCompatibility";
 
 // INFIBETTER: giá gốc trong database luôn là USD.
 // VND chỉ dùng để hiển thị tham khảo cho admin.
@@ -44,7 +44,6 @@ export default function ProductEditor({
   onSaved,
   collapse,
 }: Props) {
-  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [colorVersion, setColorVersion] = useState(0);
   const [name, setName] = useState(product.name ?? "");
@@ -423,70 +422,56 @@ async function save() {
 
     setLoading(true);
 
-    const payload = {
-      name: name.trim(),
-      slug: createSlug(name),
-      price: Number(price),
-      compare_at_price: Number(comparePrice),
-      stock: Number(stock),
-      image_url: imageUrl,
-      short_description: shortDescription,
-      description,
-      seo_title: seoTitle,
-      seo_description: seoDescription,
-      seo_keywords: seoKeywords,
-      category_id: categoryId,
-      featured,
-      best_seller: bestSeller,
-      top_seller: topSeller,
-    };
-
-    console.log("PRODUCT SAVE ID:", product.id);
-    console.log("PRODUCT SAVE PAYLOAD:", payload);
-
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("products")
-      .update(payload)
-      .eq("id", product.id)
-      .select("*")
-      .single();
+      .update({
+  featured,
+  best_seller: bestSeller,
+  top_seller: topSeller,
+  name,
+  slug: createSlug(name),
 
-    console.log("PRODUCT SAVE RESULT:", data);
-    console.log("PRODUCT SAVE ERROR:", error);
+  image_url: imageUrl,
 
-    if (error) {
-      console.error("SUPABASE PRODUCT UPDATE ERROR:", error);
-      throw new Error(
-        `Không thể lưu sản phẩm: ${error.message}`
-      );
-    }
 
-    if (!data) {
-      throw new Error(
-        "Supabase không trả về sản phẩm sau khi lưu. Kiểm tra RLS UPDATE."
-      );
-    }
 
-    // Đồng bộ object hiện tại để UI không quay về dữ liệu cũ
-    product.name = data.name;
-    product.price = data.price;
-    product.compare_at_price = data.compare_at_price;
-    product.stock = data.stock;
-    product.slug = data.slug;
+  short_description: shortDescription,
 
-    toast.success(
-      `Đã lưu: ${data.name} — $${Number(data.price).toFixed(2)}`
-    );
+  compare_at_price: comparePrice,
+
+  description,
+
+  seo_title: seoTitle,
+  seo_description: seoDescription,
+  seo_keywords: seoKeywords,
+
+  category_id:
+  categoryId === ""
+    ? null
+    : categoryId,
+
+  price,
+  stock,
+})
+
+      .eq("id", product.id);
+
+if (error) throw error;
+    toast.success("Đã lưu sản phẩm");
 
     onSaved();
 
   } catch (err: any) {
-    console.error("PRODUCT SAVE FAILED:", err);
-    toast.error(err?.message || "Không thể lưu sản phẩm.");
+
+    toast.error(err.message);
+
   } finally {
+
     setLoading(false);
+
   }
 }
+
   
   return (
     <div className="space-y-5">
@@ -1007,6 +992,14 @@ async function save() {
             />
           </div>
         </div>
+      )}
+
+      {/* DÒNG MÁY / COMPATIBILITY */}
+      {product.id && (
+        <ProductCompatibility
+          productId={product.id}
+          onSaved={() => setColorVersion((v) => v + 1)}
+        />
       )}
 
  {/* SPECIFICATION + USP */}
