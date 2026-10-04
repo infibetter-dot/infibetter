@@ -29,8 +29,6 @@ import {
 } from "react";
 
 import { toast } from "sonner";
-import { z } from "zod";
-
 import { useCart } from "@/lib/cart";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -40,6 +38,9 @@ const PAYPAL_OPTIONS = {
   "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
   currency: "USD",
   intent: "capture",
+  locale: "en_US",
+  // Buttons only. We intentionally do NOT load Card Fields / Advanced Card Fields.
+  // The card option below is the PayPal-hosted debit/credit card funding button.
   components: "buttons",
 };
 
@@ -124,15 +125,7 @@ const REST_OF_WORLD: CountryOption = {
 const PROCESSING_DAYS: [number, number] = [1, 2];
 const OFFER_DISCOUNT = 0.15;
 
-const schema = z.object({
-  full_name: z.string().trim().min(2, "Please enter your full name.").max(120),
-  email: z.string().trim().email("Please enter a valid email."),
-  phone: z.string().trim().min(7, "Please enter a valid phone number.").max(30),
-  address: z.string().trim().min(5, "Please enter your street address.").max(300),
-  city: z.string().trim().min(2, "Please enter your city.").max(120),
-  state: z.string().trim().min(2, "Please enter your state or region.").max(120),
-  postal_code: z.string().trim().min(2, "Please enter your postal code.").max(20),
-});
+
 
 function flagUrl(code: string) {
   return code === "ROW"
@@ -298,15 +291,20 @@ function CheckoutPage() {
     const form = document.querySelector("form");
     if (!form) throw new Error("Checkout form not found.");
 
-    const parsed = schema.safeParse(
-      Object.fromEntries(new FormData(form)),
-    );
+    const formData = new FormData(form);
+    const getValue = (name: string) =>
+      String(formData.get(name) ?? "").trim();
 
-    if (!parsed.success) {
-      throw new Error(
-        parsed.error.issues[0]?.message ?? "Please check your details.",
-      );
-    }
+    // Checkout form fields are optional because PayPal can collect the
+    // customer's payment and checkout information inside PayPal.
+    // If the customer filled any INFIBETTER fields, keep those values.
+    const customerName = getValue("full_name") || "PayPal Customer";
+    const customerEmail = getValue("email");
+    const customerPhone = getValue("phone");
+    const customerAddress = getValue("address");
+    const customerCity = getValue("city");
+    const customerState = getValue("state");
+    const customerPostalCode = getValue("postal_code");
 
     const shippingLabel = `${country.name} / ${country.zone} / ${
       shippingMethod === "express" ? "Express" : "Standard"
@@ -314,13 +312,13 @@ function CheckoutPage() {
 
     const payload = {
       status: "pending",
-      full_name: parsed.data.full_name,
-      phone: parsed.data.phone,
-      email: parsed.data.email,
-      address: parsed.data.address,
-      city: `${parsed.data.city}, ${country.name}`,
-      district: parsed.data.state,
-      ward: parsed.data.postal_code,
+      full_name: customerName,
+      phone: customerPhone,
+      email: customerEmail,
+      address: customerAddress,
+      city: `${customerCity}, ${country.name}`,
+      district: customerState,
+      ward: customerPostalCode,
       notes: [
         `Shipping: ${shippingLabel}`,
         `Estimated delivery: ${deliveryRange}`,
@@ -369,14 +367,14 @@ function CheckoutPage() {
       JSON.stringify({
         id: order.id,
         created_at: new Date().toISOString(),
-        full_name: parsed.data.full_name,
-        phone: parsed.data.phone,
-        email: parsed.data.email,
-        address: parsed.data.address,
-        city: parsed.data.city,
+        full_name: customerName,
+        phone: customerPhone,
+        email: customerEmail,
+        address: customerAddress,
+        city: customerCity,
         country: country.name,
-        state: parsed.data.state,
-        postal_code: parsed.data.postal_code,
+        state: customerState,
+        postal_code: customerPostalCode,
         payment_method: "paypal",
         payment_status: paymentStatus,
         subtotal: Number(subtotalUsd.toFixed(2)),
@@ -422,7 +420,7 @@ function CheckoutPage() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     toast.info(
-      "Please use the PayPal button above to complete your payment.",
+      "Checkout details are optional. You can pay directly with PayPal or a debit / credit card.",
     );
   }
 
@@ -462,87 +460,130 @@ function CheckoutPage() {
                     Express checkout
                   </p>
                   <h1 className="mt-1 text-xl font-semibold tracking-[-0.03em]">
-                    Pay securely with PayPal
+                    Pay with PayPal or card
                   </h1>
                 </div>
                 <CreditCard className="h-5 w-5 text-neutral-400" />
               </div>
 
               <div className="mt-5">
+                
                 <PayPalScriptProvider options={PAYPAL_OPTIONS}>
-                  <PayPalButtons
-                    fundingSource={FUNDING.PAYPAL}
-                    disabled={submitting}
-                    style={{
-                      layout: "vertical",
-                      shape: "rect",
-                      label: "paypal",
-                      height: 48,
-                    }}
-                    createOrder={async () => {
-                      const form = document.querySelector("form");
-                      if (!form) {
-                        throw new Error("Checkout form not found.");
-                      }
-
-                      const parsed = schema.safeParse(
-                        Object.fromEntries(new FormData(form)),
-                      );
-
-                      if (!parsed.success) {
-                        toast.error(
-                          parsed.error.issues[0]?.message ??
-                            "Please complete your details.",
-                        );
-                        throw new Error("Please complete your details.");
-                      }
-
-                      const { data, error } =
-                        await supabase.functions.invoke(
-                          "paypal-create-order",
-                          {
-                            body: {
-                              amount: totalUsd.toFixed(2),
-                              currency: "USD",
+                  <div className="space-y-3">
+                    {/* PayPal wallet */}
+                    <PayPalButtons
+                      fundingSource={FUNDING.PAYPAL}
+                      disabled={submitting}
+                      style={{
+                        layout: "vertical",
+                        shape: "rect",
+                        label: "paypal",
+                        height: 48,
+                      }}
+                      createOrder={async () => {
+                        const { data, error } =
+                          await supabase.functions.invoke(
+                            "paypal-create-order",
+                            {
+                              body: {
+                                amount: totalUsd.toFixed(2),
+                                currency: "USD",
+                              },
                             },
-                          },
-                        );
+                          );
 
-                      if (
-                        error ||
-                        !data?.success ||
-                        !data?.orderId
-                      ) {
+                        if (
+                          error ||
+                          !data?.success ||
+                          !data?.orderId
+                        ) {
+                          console.error(
+                            "PAYPAL CREATE ORDER ERROR",
+                            error,
+                            data,
+                          );
+                          throw new Error(
+                            "Unable to create the PayPal order.",
+                          );
+                        }
+
+                        return data.orderId;
+                      }}
+                      onApprove={async (data) => {
+                        await handlePaypalApprove(data.orderID);
+                      }}
+                      onCancel={() => {
+                        toast.info("PayPal checkout was cancelled.");
+                      }}
+                      onError={(error) => {
+                        console.error("PAYPAL BUTTON ERROR", error);
+                        toast.error(
+                          "PayPal could not complete the payment.",
+                        );
+                      }}
+                    />
+
+                    {/* Debit / Credit Card through PayPal */}
+                    <PayPalButtons
+                      fundingSource={FUNDING.CARD}
+                      disabled={submitting}
+                      style={{
+                        layout: "vertical",
+                        shape: "rect",
+                        label: "pay",
+                        height: 48,
+                      }}
+                      createOrder={async () => {
+                        const { data, error } =
+                          await supabase.functions.invoke(
+                            "paypal-create-order",
+                            {
+                              body: {
+                                amount: totalUsd.toFixed(2),
+                                currency: "USD",
+                              },
+                            },
+                          );
+
+                        if (
+                          error ||
+                          !data?.success ||
+                          !data?.orderId
+                        ) {
+                          console.error(
+                            "PAYPAL CARD CREATE ORDER ERROR",
+                            error,
+                            data,
+                          );
+                          throw new Error(
+                            "Unable to create the PayPal order.",
+                          );
+                        }
+
+                        return data.orderId;
+                      }}
+                      onApprove={async (data) => {
+                        await handlePaypalApprove(data.orderID);
+                      }}
+                      onCancel={() => {
+                        toast.info("Card payment was cancelled.");
+                      }}
+                      onError={(error) => {
                         console.error(
-                          "PAYPAL CREATE ORDER ERROR",
+                          "PAYPAL CARD BUTTON ERROR",
                           error,
-                          data,
                         );
-                        throw new Error(
-                          "Unable to create the PayPal order.",
+                        toast.error(
+                          "Card payment could not be completed.",
                         );
-                      }
-
-                      return data.orderId;
-                    }}
-                    onApprove={async (data) => {
-                      await handlePaypalApprove(data.orderID);
-                    }}
-                    onCancel={() => {
-                      toast.info("PayPal checkout was cancelled.");
-                    }}
-                    onError={(error) => {
-                      console.error("PAYPAL BUTTON ERROR", error);
-                      toast.error(
-                        "PayPal could not complete the payment.",
-                      );
-                    }}
-                  />
+                      }}
+                    />
+                  </div>
                 </PayPalScriptProvider>
               </div>
 
               <p className="mt-3 text-center text-[11px] leading-5 text-neutral-500">
-                Secure payment powered by PayPal.
+                Pay with PayPal or with a debit / credit card securely through PayPal.
               </p>
             </section>
 
@@ -550,25 +591,23 @@ function CheckoutPage() {
               <SectionTitle
                 eyebrow="1"
                 title="Contact"
-                description="We'll send your order confirmation and tracking updates here."
+                description="Optional. PayPal can provide the payment and checkout details when available."
               />
 
               <div className="mt-5 space-y-4">
                 <Field
                   name="full_name"
                   label="Full name"
-                  required
                   placeholder="Your full name"
                 />
 
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-neutral-600">
-                    Email *
+                    Email
                   </span>
                   <input
                     name="email"
                     type="email"
-                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
@@ -582,7 +621,7 @@ function CheckoutPage() {
               <SectionTitle
                 eyebrow="2"
                 title="Delivery"
-                description="Where should we send your order?"
+                description="Optional. PayPal may collect delivery details during checkout."
               />
 
               <div className="mt-5 space-y-4">
@@ -598,7 +637,6 @@ function CheckoutPage() {
                 <Field
                   name="address"
                   label="Street address"
-                  required
                   placeholder="House number, street, apartment"
                 />
 
@@ -606,19 +644,16 @@ function CheckoutPage() {
                   <Field
                     name="city"
                     label="City"
-                    required
                     placeholder="City"
                   />
                   <Field
                     name="state"
                     label="State / region"
-                    required
                     placeholder="State"
                   />
                   <Field
                     name="postal_code"
                     label="Postal code"
-                    required
                     placeholder="Postal code"
                   />
                 </div>
@@ -713,6 +748,143 @@ function CheckoutPage() {
                 }}
               />
             )}
+
+            {/* ADDITIONAL PAYPAL PAYMENT — existing PayPal section above remains unchanged */}
+            <section className="box-border w-full min-w-0 overflow-hidden rounded-[10px] border border-[#e5e7eb] bg-white sm:rounded-[12px]">
+              <div className="border-b border-[#e5e7eb] px-3 py-3 sm:px-5 sm:py-4">
+                <h2 className="text-[16px] font-semibold leading-5 tracking-[-0.02em] sm:text-[18px] sm:leading-6">
+                  Payment
+                </h2>
+                <p className="mt-1 text-[11px] font-normal leading-4 text-[#6B7280] sm:text-xs">
+                  All transactions are secure and encrypted.
+                </p>
+              </div>
+
+              <PayPalScriptProvider options={PAYPAL_OPTIONS}>
+                <div className="box-border w-full min-w-0 p-3 sm:p-4">
+                  {/* Official PayPal wallet button. Keep the PayPal-hosted UI untouched. */}
+                  <div className="w-full min-w-0 overflow-hidden rounded-[8px] border border-transparent bg-white">
+                    <PayPalButtons
+                      fundingSource={FUNDING.PAYPAL}
+                      disabled={submitting}
+                      style={{
+                        layout: "vertical",
+                        shape: "rect",
+                        label: "paypal",
+                        height: 48,
+                      }}
+                      createOrder={async () => {
+                        const { data, error } =
+                          await supabase.functions.invoke(
+                            "paypal-create-order",
+                            {
+                              body: {
+                                amount: totalUsd.toFixed(2),
+                                currency: "USD",
+                              },
+                            },
+                          );
+
+                        if (
+                          error ||
+                          !data?.success ||
+                          !data?.orderId
+                        ) {
+                          console.error(
+                            "PAYPAL CREATE ORDER ERROR",
+                            error,
+                            data,
+                          );
+                          throw new Error(
+                            "Unable to create the PayPal order.",
+                          );
+                        }
+
+                        return data.orderId;
+                      }}
+                      onApprove={async (data) => {
+                        await handlePaypalApprove(data.orderID);
+                      }}
+                      onCancel={() => {
+                        toast.info("PayPal checkout was cancelled.");
+                      }}
+                      onError={(error) => {
+                        console.error("PAYPAL BUTTON ERROR", error);
+                        toast.error(
+                          "PayPal could not complete the payment.",
+                        );
+                      }}
+                    />
+                  </div>
+
+                  <div className="my-2.5 flex w-full min-w-0 items-center gap-2.5 sm:my-3 sm:gap-3" aria-hidden="true">
+                    <div className="h-px min-w-0 flex-1 bg-[#e5e7eb]" />
+                    <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.08em] text-[#9ca3af] sm:text-[11px]">
+                      OR
+                    </span>
+                    <div className="h-px min-w-0 flex-1 bg-[#e5e7eb]" />
+                  </div>
+
+                  {/* Debit / credit card through PayPal — official PayPal button */}
+                  <div className="w-full min-w-0 overflow-hidden rounded-[8px] border border-transparent bg-white">
+                    <PayPalButtons
+                      fundingSource={FUNDING.CARD}
+                      disabled={submitting}
+                      style={{
+                        layout: "vertical",
+                        shape: "rect",
+                        label: "pay",
+                        height: 48,
+                      }}
+                      createOrder={async () => {
+                        const { data, error } =
+                          await supabase.functions.invoke(
+                            "paypal-create-order",
+                            {
+                              body: {
+                                amount: totalUsd.toFixed(2),
+                                currency: "USD",
+                              },
+                            },
+                          );
+
+                        if (
+                          error ||
+                          !data?.success ||
+                          !data?.orderId
+                        ) {
+                          console.error(
+                            "PAYPAL CARD CREATE ORDER ERROR",
+                            error,
+                            data,
+                          );
+                          throw new Error(
+                            "Unable to create the PayPal order.",
+                          );
+                        }
+
+                        return data.orderId;
+                      }}
+                      onApprove={async (data) => {
+                        await handlePaypalApprove(data.orderID);
+                      }}
+                      onCancel={() => {
+                        toast.info("Card payment was cancelled.");
+                      }}
+                      onError={(error) => {
+                        console.error(
+                          "PAYPAL CARD BUTTON ERROR",
+                          error,
+                        );
+                        toast.error(
+                          "Card payment could not be completed.",
+                        );
+                      }}
+                    />
+                  </div>
+                </div>
+              </PayPalScriptProvider>
+            </section>
 
             <section className="hidden rounded-2xl border border-[#e2e2e2] lg:block">
               <button
@@ -873,7 +1045,7 @@ function CheckoutPage() {
                   Secure checkout
                 </div>
                 <p className="mt-1">
-                  Your payment is processed securely by PayPal.
+                  Your payment is processed securely by PayPal. Debit and credit card payments are handled by PayPal.
                 </p>
               </div>
             </div>
@@ -1884,7 +2056,7 @@ function CountryDropdown({
       <input type="hidden" name={name} value={value} />
 
       <span className="mb-1.5 block text-xs font-medium text-neutral-600">
-        Country / region *
+        Country / region
       </span>
 
       <button
@@ -1964,14 +2136,13 @@ function PhoneField({ country }: { country: CountryOption }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium text-neutral-600">
-        Phone number *
+        Phone number
       </span>
 
       <div className="flex h-11 overflow-hidden rounded-xl border border-[#dcdcdc] bg-white transition focus-within:border-[#0066e6] focus-within:ring-4 focus-within:ring-[#0066e6]/10">
         <input
           name="phone"
           type="tel"
-          required
           inputMode="tel"
           placeholder={`${country.dialCode} 555 000 0000`}
           className="min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-neutral-900 outline-none placeholder:text-neutral-400"
