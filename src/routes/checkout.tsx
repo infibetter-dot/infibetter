@@ -33,15 +33,15 @@ import { useCart } from "@/lib/cart";
 import { supabase } from "@/integrations/supabase/client";
 
 // Keep PayPal SDK configuration stable for the entire checkout page lifetime.
-// INFIBETTER only needs PayPal Buttons, so do not load extra PayPal components.
 const PAYPAL_OPTIONS = {
   "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
   currency: "USD",
   intent: "capture",
   locale: "en_US",
-  // Buttons only. We intentionally do NOT load Card Fields / Advanced Card Fields.
-  // The card option below is the PayPal-hosted debit/credit card funding button.
+  // Only load the PayPal Buttons component.
+  // The Debit/Credit Card option below is rendered as a PayPal funding button.
   components: "buttons",
+  "disable-funding": "venmo",
 };
 
 export const Route = createFileRoute("/checkout")({
@@ -175,6 +175,60 @@ function usd(value: number) {
     currency: "USD",
   }).format(value);
 }
+
+function PaymentMethodIcons() {
+  return (
+    <div
+      className="flex w-full items-center justify-center gap-2 pt-2"
+      aria-label="Accepted payment methods"
+    >
+      <div
+        className="flex h-6 w-8 items-center justify-center rounded-md bg-white"
+        title="PayPal"
+      >
+        <svg viewBox="0 0 32 24" className="h-5 w-6" aria-hidden="true">
+          <path
+            fill="#003087"
+            d="M10.1 4.2h8.1c4.1 0 6.2 2.2 5.5 5.5-.7 3.4-3.5 5.3-7.3 5.3h-2.5l-1 4.8H8.1l2-15.6Z"
+          />
+          <path
+            fill="#009CDE"
+            d="M8.3 6.4h7.9c3.7 0 5.8 1.8 5.4 4.5-.5 2.8-3 4.6-6.6 4.6h-2.5l-.7 3.5H7.2L8.3 6.4Z"
+            opacity=".9"
+          />
+        </svg>
+      </div>
+
+      <div
+        className="flex h-6 min-w-[34px] items-center justify-center rounded-md bg-[#1434CB] px-1.5"
+        title="Visa"
+      >
+        <span className="text-[10px] font-black italic tracking-tight text-white">
+          VISA
+        </span>
+      </div>
+
+      <div
+        className="flex h-6 min-w-[34px] items-center justify-center rounded-md bg-[#F3F3F3]"
+        title="Mastercard"
+      >
+        <svg viewBox="0 0 36 24" className="h-5 w-7" aria-hidden="true">
+          <circle cx="13" cy="12" r="7" fill="#EB001B" />
+          <circle cx="23" cy="12" r="7" fill="#F79E1B" />
+          <path
+            fill="#FF5F00"
+            d="M18 6.8a7 7 0 0 0 0 10.4 7 7 0 0 0 0-10.4Z"
+          />
+        </svg>
+      </div>
+
+      <span className="ml-0.5 text-[12px] font-medium text-[#6B7280]">
+        +more
+      </span>
+    </div>
+  );
+}
+
 
 function CheckoutPage() {
   const { items, clear, count, add } = useCart();
@@ -403,7 +457,12 @@ function CheckoutPage() {
         throw new Error("Unable to confirm the PayPal payment.");
       }
 
-      if (!data?.success || data?.status !== "COMPLETED") {
+      if (
+        !data?.success ||
+        data?.orderStatus !== "COMPLETED" ||
+        data?.captureStatus !== "COMPLETED"
+      ) {
+        console.error("PAYPAL CAPTURE RESPONSE", data);
         throw new Error("PayPal payment was not completed.");
       }
 
@@ -448,10 +507,11 @@ function CheckoutPage() {
       </div>
 
       <main className="mx-auto w-full max-w-[1180px] px-4 py-8 sm:px-5 lg:px-8">
-        <form
-          onSubmit={handleSubmit}
-          className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_390px] xl:gap-10"
-        >
+        <PayPalScriptProvider options={PAYPAL_OPTIONS}>
+          <form
+            onSubmit={handleSubmit}
+            className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_390px] xl:gap-10"
+          >
           <div className="space-y-6">
             <section className="rounded-2xl border border-[#e2e2e2] p-5 sm:p-6">
               <div className="flex items-center justify-between">
@@ -467,8 +527,9 @@ function CheckoutPage() {
               </div>
 
               <div className="mt-5">
-                
-                <PayPalScriptProvider options={PAYPAL_OPTIONS}>
+                <p className="mb-3 text-xs leading-5 text-neutral-500">
+                  You can pay now without completing the form below. PayPal will handle the payment flow and may collect the information required to complete your payment.
+                </p>
                   <div className="space-y-3">
                     {/* PayPal wallet */}
                     <PayPalButtons
@@ -579,7 +640,6 @@ function CheckoutPage() {
                       }}
                     />
                   </div>
-                </PayPalScriptProvider>
               </div>
 
               <p className="mt-3 text-center text-[11px] leading-5 text-neutral-500">
@@ -749,7 +809,7 @@ function CheckoutPage() {
               />
             )}
 
-            {/* ADDITIONAL PAYPAL PAYMENT — existing PayPal section above remains unchanged */}
+            {/* PAYMENT */}
             <section className="box-border w-full min-w-0 overflow-hidden rounded-[10px] border border-[#e5e7eb] bg-white sm:rounded-[12px]">
               <div className="border-b border-[#e5e7eb] px-3 py-3 sm:px-5 sm:py-4">
                 <h2 className="text-[16px] font-semibold leading-5 tracking-[-0.02em] sm:text-[18px] sm:leading-6">
@@ -760,10 +820,9 @@ function CheckoutPage() {
                 </p>
               </div>
 
-              <PayPalScriptProvider options={PAYPAL_OPTIONS}>
                 <div className="box-border w-full min-w-0 p-3 sm:p-4">
                   {/* Official PayPal wallet button. Keep the PayPal-hosted UI untouched. */}
-                  <div className="w-full min-w-0 overflow-hidden rounded-[8px] border border-transparent bg-white">
+                  <div className="w-full min-w-0 overflow-hidden">
                     <PayPalButtons
                       fundingSource={FUNDING.PAYPAL}
                       disabled={submitting}
@@ -817,16 +876,8 @@ function CheckoutPage() {
                     />
                   </div>
 
-                  <div className="my-2.5 flex w-full min-w-0 items-center gap-2.5 sm:my-3 sm:gap-3" aria-hidden="true">
-                    <div className="h-px min-w-0 flex-1 bg-[#e5e7eb]" />
-                    <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.08em] text-[#9ca3af] sm:text-[11px]">
-                      OR
-                    </span>
-                    <div className="h-px min-w-0 flex-1 bg-[#e5e7eb]" />
-                  </div>
-
                   {/* Debit / credit card through PayPal — official PayPal button */}
-                  <div className="w-full min-w-0 overflow-hidden rounded-[8px] border border-transparent bg-white">
+                  <div className="mt-3 w-full min-w-0 overflow-hidden">
                     <PayPalButtons
                       fundingSource={FUNDING.CARD}
                       disabled={submitting}
@@ -882,8 +933,11 @@ function CheckoutPage() {
                       }}
                     />
                   </div>
+
+                  {/* Accepted payment methods */}
+                  <PaymentMethodIcons />
+
                 </div>
-              </PayPalScriptProvider>
             </section>
 
             <section className="hidden rounded-2xl border border-[#e2e2e2] lg:block">
@@ -1180,7 +1234,8 @@ function CheckoutPage() {
               </p>
             </div>
           </aside>
-        </form>
+          </form>
+        </PayPalScriptProvider>
       </main>
 
       {legalModal ? (
