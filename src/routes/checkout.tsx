@@ -246,8 +246,6 @@ function CheckoutPage() {
   const [offerLoading, setOfferLoading] = useState(true);
   const [offerDismissed, setOfferDismissed] = useState(false);
   const [legalModal, setLegalModal] = useState<LegalDocumentKey | null>(null);
-  const [missingCheckoutFields, setMissingCheckoutFields] = useState<string[]>([]);
-  const [checkoutInfoModalOpen, setCheckoutInfoModalOpen] = useState(false);
 
   const country = getCountry(countryCode);
   const shippingFeeUsd =
@@ -478,43 +476,6 @@ function CheckoutPage() {
     }
   }
 
-  function validateCheckoutInformation() {
-    const form = document.querySelector("form");
-    if (!form) return true;
-
-    const formData = new FormData(form);
-    const requiredFields = [
-      { name: "full_name", label: "Full name" },
-      { name: "email", label: "Email" },
-      { name: "phone", label: "Phone number" },
-      { name: "address", label: "Street address" },
-      { name: "city", label: "City" },
-      { name: "state", label: "State / region" },
-      { name: "postal_code", label: "Postal code" },
-    ];
-
-    const missing = requiredFields.filter(
-      ({ name }) => !String(formData.get(name) ?? "").trim(),
-    );
-
-    if (missing.length > 0) {
-      setMissingCheckoutFields(missing.map((field) => field.label));
-      setCheckoutInfoModalOpen(true);
-      return false;
-    }
-
-    return true;
-  }
-
-  async function handlePaypalClick(_data: unknown, actions: { resolve: () => void; reject: () => void }) {
-    if (!validateCheckoutInformation()) {
-      actions.reject();
-      return;
-    }
-
-    actions.resolve();
-  }
-
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     toast.info(
@@ -572,7 +533,6 @@ function CheckoutPage() {
                     <PayPalButtons
                       fundingSource={FUNDING.PAYPAL}
                       disabled={submitting}
-                      onClick={handlePaypalClick}
                       style={{
                         layout: "vertical",
                         shape: "rect",
@@ -626,7 +586,6 @@ function CheckoutPage() {
                     <PayPalButtons
                       fundingSource={FUNDING.CARD}
                       disabled={submitting}
-                      onClick={handlePaypalClick}
                       style={{
                         layout: "vertical",
                         shape: "rect",
@@ -690,15 +649,11 @@ function CheckoutPage() {
               <SectionTitle
                 eyebrow="1"
                 title="Contact"
-                description="Optional. PayPal can provide the payment and checkout details when available."
               />
 
               <div className="mt-5 space-y-4">
-                <Field
-                  name="full_name"
-                  label="Full name"
-                  placeholder="Your full name"
-                />
+                
+          
 
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-neutral-600">
@@ -720,7 +675,6 @@ function CheckoutPage() {
               <SectionTitle
                 eyebrow="2"
                 title="Delivery"
-                description="Optional. PayPal may collect delivery details during checkout."
               />
 
               <div className="mt-5 space-y-4">
@@ -865,7 +819,6 @@ function CheckoutPage() {
                     <PayPalButtons
                       fundingSource={FUNDING.PAYPAL}
                       disabled={submitting}
-                      onClick={handlePaypalClick}
                       style={{
                         layout: "vertical",
                         shape: "rect",
@@ -921,7 +874,6 @@ function CheckoutPage() {
                     <PayPalButtons
                       fundingSource={FUNDING.CARD}
                       disabled={submitting}
-                      onClick={handlePaypalClick}
                       style={{
                         layout: "vertical",
                         shape: "rect",
@@ -1279,45 +1231,6 @@ function CheckoutPage() {
         </PayPalScriptProvider>
       </main>
 
-      {checkoutInfoModalOpen ? (
-        <CheckoutInformationModal
-          missingFields={missingCheckoutFields}
-          onClose={() => setCheckoutInfoModalOpen(false)}
-          onComplete={() => {
-            setCheckoutInfoModalOpen(false);
-            const firstMissingField = [
-              "full_name",
-              "email",
-              "phone",
-              "address",
-              "city",
-              "state",
-              "postal_code",
-            ].find((name) => {
-              const form = document.querySelector("form");
-              if (!form) return false;
-              const value = new FormData(form).get(name);
-              return !String(value ?? "").trim();
-            });
-
-            if (firstMissingField) {
-              window.setTimeout(() => {
-                const field = document.querySelector<HTMLElement>(
-                  `[name="${firstMissingField}"]`,
-                );
-
-                field?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "center",
-                });
-
-                field?.focus();
-              }, 0);
-            }
-          }}
-        />
-      ) : null}
-
       {legalModal ? (
         <LegalModal
           document={legalModal}
@@ -1357,84 +1270,6 @@ function LegalLink({
     >
       {label}
     </button>
-  );
-}
-
-function CheckoutInformationModal({
-  missingFields,
-  onClose,
-  onComplete,
-}: {
-  missingFields: string[];
-  onClose: () => void;
-  onComplete: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="checkout-information-modal-title"
-        className="w-full max-w-[440px] overflow-hidden rounded-2xl bg-white shadow-2xl"
-      >
-        <div className="flex items-center justify-between border-b border-[#e8e8e8] px-5 py-4">
-          <div>
-            <h2
-              id="checkout-information-modal-title"
-              className="text-lg font-semibold tracking-[-0.02em]"
-            >
-              Complete your information
-            </h2>
-            <p className="mt-1 text-xs leading-5 text-neutral-500">
-              Please enter your information before continuing to payment.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="px-5 py-5">
-          <p className="text-sm font-medium text-[#111]">
-            Please complete the following fields:
-          </p>
-
-          <div className="mt-3 space-y-2">
-            {missingFields.map((field) => (
-              <div
-                key={field}
-                className="flex items-center gap-2 rounded-lg bg-[#f7f7f7] px-3 py-2.5 text-sm text-neutral-700"
-              >
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#0066e6]" />
-                <span>{field}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex justify-end border-t border-[#e8e8e8] px-5 py-3">
-          <button
-            type="button"
-            onClick={onComplete}
-            className="rounded-xl bg-[#0066e6] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0052b8]"
-          >
-            Complete information
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 
