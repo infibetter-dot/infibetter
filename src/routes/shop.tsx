@@ -4,15 +4,18 @@ import { useMemo } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { ProductCard } from "@/components/product-card";
+import banner04 from "@/assets/hero/banner04.png";
 
 import {
+  Battery,
+  CheckCircle2,
+  RotateCcw,
+  ShieldCheck,
+  Truck,
   BatteryCharging,
-  Cable,
   ChevronDown,
-  Headphones,
   Package,
   Search,
-  SlidersHorizontal,
   Smartphone,
   Watch,
 } from "lucide-react";
@@ -73,27 +76,26 @@ const DEVICE_FILTERS = [
   {
     id: "iphone",
     label: "iPhone",
+    categorySlug: "iphone-cases",
     icon: Smartphone,
   },
   {
     id: "watch",
     label: "Apple Watch",
+    categorySlug: "watch-bands",
     icon: Watch,
-  },
-  {
-    id: "airpods",
-    label: "AirPods",
-    icon: Headphones,
   },
   {
     id: "charging",
     label: "Charging",
+    categorySlug: "wireless-charging",
     icon: BatteryCharging,
   },
   {
-    id: "cables",
-    label: "Cables",
-    icon: Cable,
+    id: "power-banks",
+    label: "Power Banks",
+    categorySlug: "power-banks",
+    icon: Battery,
   },
 ];
 
@@ -626,46 +628,137 @@ function ShopPage() {
      DEVICE COUNTS
   ======================================================= */
 
-  const deviceCounts =
-    useMemo(() => {
-      const products =
-        productsQ.data ?? [];
+  const deviceCountsQ = useQuery({
+    queryKey: ["infibetter-shop-device-counts"],
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
 
-      const counts: Record<
-        string,
-        number
-      > = {
-        all: products.length,
-        iphone: 0,
-        watch: 0,
-        airpods: 0,
-        charging: 0,
-        cables: 0,
+    queryFn: async () => {
+      const [{ data: products, error: productsError }, { data: categories, error: categoriesError }] =
+        await Promise.all([
+          supabase
+            .from("products")
+            .select("id,category_id")
+            .eq("is_active", true),
+
+          supabase
+            .from("categories")
+            .select("id,slug,parent_id"),
+        ]);
+
+      if (productsError) {
+        console.error(
+          "INFIBETTER DEVICE COUNTS PRODUCTS ERROR:",
+          productsError,
+        );
+        throw productsError;
+      }
+
+      if (categoriesError) {
+        console.error(
+          "INFIBETTER DEVICE COUNTS CATEGORY ERROR:",
+          categoriesError,
+        );
+        throw categoriesError;
+      }
+
+      const categoryList = categories ?? [];
+      const productList = products ?? [];
+
+      const categoryIdsBySlug: Record<string, string[]> = {};
+
+      const getCategoryTreeIds = (slug: string) => {
+        const selectedCategory = categoryList.find(
+          (category: any) => category.slug === slug,
+        );
+
+        if (!selectedCategory) {
+          return [];
+        }
+
+        const ids = new Set<string>([
+          selectedCategory.id,
+        ]);
+
+        let changed = true;
+
+        while (changed) {
+          changed = false;
+
+          for (const category of categoryList) {
+            if (
+              category.parent_id &&
+              ids.has(category.parent_id) &&
+              !ids.has(category.id)
+            ) {
+              ids.add(category.id);
+              changed = true;
+            }
+          }
+        }
+
+        return Array.from(ids);
       };
 
-      products.forEach(
-        (product: any) => {
-          Object.keys(
-            CATEGORY_KEYWORDS,
-          ).forEach(
-            (device) => {
-              if (
-                matchesDevice(
-                  product,
-                  device,
-                )
-              ) {
-                counts[
-                  device
-                ] += 1;
-              }
-            },
-          );
-        },
-      );
+      const categorySlugs = [
+        "iphone-cases",
+        "watch-bands",
+        "wireless-charging",
+        "power-banks",
+      ];
 
-      return counts;
-    }, [productsQ.data]);
+      categorySlugs.forEach((slug) => {
+        categoryIdsBySlug[slug] =
+          getCategoryTreeIds(slug);
+      });
+
+      const countProductsForCategory = (
+        categoryIds: string[],
+      ) => {
+        if (categoryIds.length === 0) {
+          return 0;
+        }
+
+        const ids = new Set(categoryIds);
+
+        return productList.filter(
+          (product: any) =>
+            product.category_id &&
+            ids.has(product.category_id),
+        ).length;
+      };
+
+      return {
+        all: productList.length,
+
+        iphone: countProductsForCategory(
+          categoryIdsBySlug["iphone-cases"] ?? [],
+        ),
+
+        watch: countProductsForCategory(
+          categoryIdsBySlug["watch-bands"] ?? [],
+        ),
+
+        charging: countProductsForCategory(
+          categoryIdsBySlug["wireless-charging"] ?? [],
+        ),
+
+        "power-banks": countProductsForCategory(
+          categoryIdsBySlug["power-banks"] ?? [],
+        ),
+      };
+    },
+  });
+
+  const deviceCounts =
+    deviceCountsQ.data ?? {
+      all: 0,
+      iphone: 0,
+      watch: 0,
+      charging: 0,
+      "power-banks": 0,
+    };
 
   /* =======================================================
      NAVIGATION
@@ -683,8 +776,15 @@ function ShopPage() {
       return;
     }
 
+    const selectedFilter = DEVICE_FILTERS.find(
+      (item) => item.id === device,
+    );
+
+    const categorySlug =
+      selectedFilter?.categorySlug ?? device;
+
     window.location.href =
-      `/shop?category=${device}`;
+      `/shop?category=${categorySlug}`;
   }
 
   function changeModel(
@@ -783,14 +883,25 @@ function ShopPage() {
               overflow-hidden
               rounded-[28px]
               bg-[#F5F5F7]
-              px-7
-              py-12
-              md:px-12
-              md:py-16
-              lg:px-16
-              lg:py-20
+              aspect-[1273/434]
             "
           >
+            {/* BANNER 04 */}
+            <img
+              src={banner04}
+              alt="INFIBETTER accessories"
+              className="
+                pointer-events-none
+                absolute
+                inset-0
+                h-full
+                w-full
+                object-cover
+                object-center
+                opacity-100
+                [filter:saturate(1.08)_contrast(1.05)]
+              "
+            />
 
             {/* BACKGROUND LIGHT */}
 
@@ -826,98 +937,9 @@ function ShopPage() {
 
             {/* CONTENT */}
 
-            <div className="relative max-w-[720px]">
+            <div className="relative z-10 max-w-[720px] pr-0 md:max-w-[560px]">
 
-              <p
-                className="
-                  mb-4
-                  text-[10px]
-                  font-semibold
-                  uppercase
-                  tracking-[0.2em]
-                  text-[#6E6E73]
-                  md:text-[11px]
-                "
-              >
-                INFIBETTER ACCESSORIES
-              </p>
 
-              <h1
-                className="
-                  text-[42px]
-                  font-semibold
-                  leading-[1.04]
-                  tracking-[-0.045em]
-                  text-[#1D1D1F]
-                  md:text-[54px]
-                  lg:text-[62px]
-                "
-              >
-                Accessories
-                <br />
-                that fit.
-              </h1>
-
-              <p
-                className="
-                  mt-5
-                  max-w-[590px]
-                  text-[16px]
-                  leading-7
-                  text-[#6E6E73]
-                  md:text-[18px]
-                "
-              >
-                Cases, chargers,
-                cables and everyday
-                accessories designed
-                to complete your
-                setup.
-              </p>
-
-              <div className="mt-7 flex flex-wrap gap-3">
-
-                <Link
-                  to="/shop"
-                  className="
-                    inline-flex
-                    h-10
-                    items-center
-                    rounded-full
-                    bg-[#0071E3]
-                    px-5
-                    text-[13px]
-                    font-semibold
-                    text-white
-                    transition
-                    hover:bg-[#0077ED]
-                  "
-                >
-                  Shop accessories
-                </Link>
-
-                <a
-                  href="#products"
-                  className="
-                    inline-flex
-                    h-10
-                    items-center
-                    rounded-full
-                    border
-                    border-[#D2D2D7]
-                    bg-white
-                    px-5
-                    text-[13px]
-                    font-medium
-                    text-[#1D1D1F]
-                    transition
-                    hover:bg-[#FAFAFA]
-                  "
-                >
-                  Browse products
-                </a>
-
-              </div>
 
             </div>
 
@@ -1047,7 +1069,7 @@ function ShopPage() {
 
               {/* SELECT */}
 
-              <div className="relative min-w-[260px]">
+              <div className="relative z-10 min-w-[260px]" px-7 pt-12 md:px-12 md:pt-16 lg:px-16 lg:pt-20>
 
                 <select
                   value={
@@ -1154,139 +1176,11 @@ function ShopPage() {
           mx-auto
           max-w-[1240px]
           px-5
-          py-10
+          py-7
           md:px-8
-          md:py-12
+          md:py-9
         "
       >
-
-        {/* TOOLBAR */}
-
-        <div
-          className="
-            mb-7
-            flex
-            flex-col
-            gap-4
-            border-b
-            border-[#E5E5E7]
-            pb-5
-            md:flex-row
-            md:items-center
-            md:justify-between
-          "
-        >
-
-          <div className="flex items-center gap-3">
-
-            <h2
-              className="
-                text-[22px]
-                font-semibold
-                tracking-[-0.025em]
-                text-[#1D1D1F]
-              "
-            >
-              {sp.category && sp.category !== "all"
-                ? sp.category
-                    .replace(/-/g, " ")
-                    .replace(/\b\w/g, (letter) =>
-                      letter.toUpperCase(),
-                    )
-                : "All accessories"}
-            </h2>
-
-            <span className="rounded-full bg-[#F5F5F7] px-2.5 py-1 text-[11px] font-medium text-[#6E6E73]">
-              {
-                filteredProducts.length
-              }
-            </span>
-
-          </div>
-
-          <div className="flex items-center gap-2">
-
-            <div className="hidden items-center gap-2 text-[13px] text-[#6E6E73] sm:flex">
-
-              <SlidersHorizontal
-                size={15}
-              />
-
-              <span>
-                Filter & sort
-              </span>
-
-            </div>
-
-            {/* SORT */}
-
-            <div className="relative">
-
-              <select
-                value={
-                  sp.sort ??
-                  "newest"
-                }
-                onChange={(
-                  event,
-                ) =>
-                  changeSort(
-                    event.target
-                      .value,
-                  )
-                }
-                className="
-                  h-9
-                  appearance-none
-                  rounded-full
-                  border
-                  border-[#D2D2D7]
-                  bg-white
-                  px-4
-                  pr-9
-                  text-[12px]
-                  font-medium
-                  text-[#1D1D1F]
-                  outline-none
-                  hover:bg-[#F5F5F7]
-                "
-              >
-
-                <option value="newest">
-                  Newest
-                </option>
-
-                <option value="best">
-                  Best sellers
-                </option>
-
-                <option value="price-low">
-                  Price: Low to High
-                </option>
-
-                <option value="price-high">
-                  Price: High to Low
-                </option>
-
-              </select>
-
-              <ChevronDown
-                size={14}
-                className="
-                  pointer-events-none
-                  absolute
-                  right-3
-                  top-1/2
-                  -translate-y-1/2
-                  text-[#6E6E73]
-                "
-              />
-
-            </div>
-
-          </div>
-
-        </div>
 
         {/* CATEGORY */}
         {sp.category &&
@@ -1469,76 +1363,56 @@ function ShopPage() {
           BENEFITS
       =================================================== */}
 
-      <section className="border-t border-[#E5E5E7] bg-[#F5F5F7]">
+      <section className="border-t border-[#E5E5E7] bg-white">
+        <div className="mx-auto grid max-w-[1240px] grid-cols-2 md:grid-cols-4">
+          {[
+            {
+              icon: ShieldCheck,
+              title: "Secure checkout",
+              description: "Safe and protected payments.",
+            },
+            {
+              icon: Truck,
+              title: "Tracked shipping",
+              description: "Follow your order every step.",
+            },
+            {
+              icon: RotateCcw,
+              title: "Easy returns",
+              description: "Simple support when you need it.",
+            },
+            {
+              icon: CheckCircle2,
+              title: "Built for everyday",
+              description: "Accessories that fit your setup.",
+            },
+          ].map((item, index) => {
+            const Icon = item.icon;
 
-        <div
-          className="
-            mx-auto
-            grid
-            max-w-[1240px]
-            grid-cols-2
-            divide-x
-            divide-[#D2D2D7]
-            px-5
-            md:grid-cols-4
-            md:px-8
-          "
-        >
+            return (
+              <div
+                key={item.title}
+                className={[
+                  "flex min-h-[150px] flex-col items-center justify-center px-5 py-8 text-center",
+                  index > 0 ? "border-l border-[#E5E5E7]" : "",
+                  index > 1 ? "border-t border-[#E5E5E7] md:border-t-0" : "",
+                ].join(" ")}
+              >
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#F5F5F7] text-[#424245]">
+                  <Icon size={18} strokeWidth={1.7} />
+                </div>
 
-          <div className="px-4 py-8 text-center md:px-8">
+                <p className="text-[14px] font-semibold tracking-[-0.01em] text-[#1D1D1F]">
+                  {item.title}
+                </p>
 
-            <p className="text-[14px] font-semibold">
-              Secure checkout
-            </p>
-
-            <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">
-              Safe and protected
-              payments.
-            </p>
-
-          </div>
-
-          <div className="px-4 py-8 text-center md:px-8">
-
-            <p className="text-[14px] font-semibold">
-              Tracked shipping
-            </p>
-
-            <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">
-              Follow your order
-              every step.
-            </p>
-
-          </div>
-
-          <div className="border-t border-[#D2D2D7] px-4 py-8 text-center md:border-t-0 md:px-8">
-
-            <p className="text-[14px] font-semibold">
-              Easy returns
-            </p>
-
-            <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">
-              Simple support when
-              you need it.
-            </p>
-
-          </div>
-
-          <div className="border-t border-[#D2D2D7] px-4 py-8 text-center md:border-t-0 md:px-8">
-
-            <p className="text-[14px] font-semibold">
-              Built for everyday
-            </p>
-
-            <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">
-              Accessories that fit
-              your setup.
-            </p>
-
-          </div>
-
+                <p className="mt-1.5 max-w-[180px] text-[12px] leading-5 text-[#6E6E73]">
+                  {item.description}
+                </p>
+              </div>
+            );
+          })}
         </div>
-
       </section>
 
     </main>
