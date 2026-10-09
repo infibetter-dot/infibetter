@@ -1,4 +1,8 @@
-import { Flame, Timer, ArrowDown } from "lucide-react";
+import {
+  ArrowDown,
+  Flame,
+  Timer,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FlashSaleCountdown from "./FlashSaleCountdown";
 
@@ -9,149 +13,411 @@ interface Props {
 export default function FlashSaleHero({
   endAt,
 }: Props) {
-
   const scrollProducts = () => {
-
     document
       .getElementById("flash-products")
       ?.scrollIntoView({
         behavior: "smooth",
       });
-
   };
 
   return (
-
     <section
-  className="
-    relative
-    overflow-hidden
-    rounded-3xl
-
-    bg-gradient-to-r
-    from-orange-500
-    via-red-500
-    to-pink-500
-
-    px-5
-    py-10
-
-    sm:px-8
-    sm:py-16
-
-    text-white
-    shadow-xl
-  "
->
-
-      <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-
-      <div className="absolute -bottom-24 left-0 h-72 w-72 rounded-full bg-yellow-300/10 blur-3xl" />
+      className="
+        relative
+        overflow-hidden
+        rounded-[28px]
+        border
+        border-[#E8E1D8]
+        bg-[#F7F4EF]
+        shadow-[0_18px_60px_rgba(74,62,48,0.08)]
+      "
+    >
+      {/* =====================================================
+          BACKGROUND DECOR
+      ===================================================== */}
 
       <div
-  className="
-    relative
-    mx-auto
-    flex
-    max-w-7xl
-    flex-col
-    gap-10
+        className="
+          pointer-events-none
+          absolute
+          -right-24
+          -top-24
+          h-72
+          w-72
+          rounded-full
+          bg-[#D97745]/10
+          blur-[90px]
+        "
+      />
 
-    lg:flex-row
-    lg:items-center
-    lg:justify-between
-  "
->
+      <div
+        className="
+          pointer-events-none
+          absolute
+          -bottom-32
+          left-1/3
+          h-80
+          w-80
+          rounded-full
+          bg-[#E8C9B2]/20
+          blur-[100px]
+        "
+      />
 
-        <div className="max-w-xl">
+      {/* =====================================================
+          CONTENT
+      ===================================================== */}
 
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2">
+      <div
+        className="
+          relative
+          z-10
+          mx-auto
+          grid
+          max-w-[1380px]
+          gap-10
+          px-5
+          py-8
+          sm:px-8
+          sm:py-12
+          lg:grid-cols-[1.05fr_.95fr]
+          lg:items-center
+          lg:px-12
+          lg:py-14
+        "
+      >
+        {/* ===================================================
+            LEFT
+        =================================================== */}
 
-            <Flame className="h-5 w-5" />
+        <div className="max-w-[620px]">
+          {/* Badge */}
 
-            <span className="font-semibold">
-
-              FLASH SALE 14.07 → 19.07
-
+          <div
+            className="
+              inline-flex
+              items-center
+              gap-2
+              rounded-full
+              border
+              border-[#E3D7CA]
+              bg-white/80
+              px-3.5
+              py-2
+              shadow-[0_3px_12px_rgba(74,62,48,0.05)]
+              backdrop-blur
+            "
+          >
+            <span
+              className="
+                flex
+                h-6
+                w-6
+                items-center
+                justify-center
+                rounded-full
+                bg-[#D97745]
+                text-white
+              "
+            >
+              <Flame
+                size={13}
+                strokeWidth={2.2}
+              />
             </span>
 
+            <span
+              className="
+                text-[11px]
+                font-semibold
+                uppercase
+                tracking-[0.16em]
+                text-[#6B6258]
+              "
+            >
+              Flash Sale
+            </span>
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-black leading-none">
+          {/* Heading */}
 
-            GIẢM
-
-            <span className="block text-yellow-300">
-
-              ĐẾN 40%
-
+          <h1
+            className="
+              mt-6
+              text-[42px]
+              font-semibold
+              leading-[0.98]
+              tracking-[-0.045em]
+              text-[#25211E]
+              sm:text-[54px]
+              lg:text-[68px]
+            "
+          >
+            Flash Sale
+            <span className="block text-[#D97745]">
+              Giảm đến 40%
             </span>
-
           </h1>
 
-          <p className="mt-6 text-lg text-white/90">
+          {/* Description */}
 
-            Chỉ áp dụng trong thời gian diễn ra Flash Sale.
-
-            Giá sẽ quay về bình thường sau khi kết thúc.
-
+          <p
+            className="
+              mt-5
+              max-w-[540px]
+              text-[15px]
+              leading-7
+              text-[#756C63]
+              sm:text-[16px]
+            "
+          >
+            Ưu đãi đặc biệt dành cho một số sản phẩm
+            trong thời gian giới hạn. Giá ưu đãi sẽ
+            kết thúc khi Flash Sale kết thúc.
           </p>
 
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+          {/* CTA */}
 
+          <div
+            className="
+              mt-8
+              flex
+              flex-col
+              gap-3
+              sm:flex-row
+            "
+          >
             <Button
               size="lg"
-              className="bg-white text-red-600 hover:bg-neutral-100"
               onClick={scrollProducts}
+              className="
+                h-12
+                rounded-full
+                bg-[#D97745]
+                px-7
+                text-[14px]
+                font-semibold
+                text-white
+                shadow-[0_8px_24px_rgba(217,119,69,0.22)]
+                transition-all
+                hover:bg-[#C9683A]
+                hover:shadow-[0_10px_28px_rgba(217,119,69,0.28)]
+              "
             >
               Mua ngay
+              <span className="ml-2">
+                →
+              </span>
             </Button>
 
             <Button
-  size="lg"
-  variant="outline"
-  className="border-white bg-transparent font-semibold text-white hover:bg-white hover:text-red-600"
->
-  Xem ưu đãi
-</Button>
-
+              size="lg"
+              variant="outline"
+              onClick={scrollProducts}
+              className="
+                h-12
+                rounded-full
+                border-[#D8CEC3]
+                bg-white/70
+                px-7
+                text-[14px]
+                font-semibold
+                text-[#4D463F]
+                hover:border-[#CDBEAF]
+                hover:bg-white
+              "
+            >
+              Xem sản phẩm
+            </Button>
           </div>
-
         </div>
 
-        <div className="w-full max-w-[420px] rounded-3xl bg-white/15 p-6 backdrop-blur">
+        {/* ===================================================
+            COUNTDOWN
+        =================================================== */}
 
-  <div className="mb-5 flex items-center gap-2">
+        <div
+          className="
+            relative
+            w-full
+          "
+        >
+          <div
+            className="
+              overflow-hidden
+              rounded-[24px]
+              border
+              border-[#E7DED3]
+              bg-white
+              p-5
+              shadow-[0_12px_40px_rgba(74,62,48,0.08)]
+              sm:p-7
+            "
+          >
+            {/* Header */}
 
-    <Timer className="h-6 w-6" />
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                gap-4
+              "
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="
+                    flex
+                    h-10
+                    w-10
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-[#F8EDE5]
+                    text-[#D97745]
+                  "
+                >
+                  <Timer
+                    size={19}
+                    strokeWidth={1.8}
+                  />
+                </div>
 
-    <span className="font-semibold text-lg">
+                <div>
+                  <p
+                    className="
+                      text-[11px]
+                      font-semibold
+                      uppercase
+                      tracking-[0.14em]
+                      text-[#8A8178]
+                    "
+                  >
+                    Ưu đãi có hạn
+                  </p>
 
-      Kết thúc sau
+                  <p
+                    className="
+                      mt-0.5
+                      text-[16px]
+                      font-semibold
+                      text-[#2F2A26]
+                    "
+                  >
+                    Kết thúc sau
+                  </p>
+                </div>
+              </div>
 
-    </span>
+              <span
+                className="
+                  rounded-full
+                  bg-[#F8EDE5]
+                  px-3
+                  py-1.5
+                  text-[10px]
+                  font-semibold
+                  uppercase
+                  tracking-[0.1em]
+                  text-[#D97745]
+                "
+              >
+                Limited
+              </span>
+            </div>
 
-  </div>
+            {/* Divider */}
 
-  <FlashSaleCountdown
-    endAt={endAt}
-  />
+            <div
+              className="
+                my-5
+                h-px
+                bg-[#EEE8E1]
+              "
+            />
 
+            {/* Countdown */}
 
+            <FlashSaleCountdown
+              endAt={endAt}
+            />
 
-</div>
+            {/* Bottom message */}
 
+            <div
+              className="
+                mt-5
+                flex
+                items-center
+                gap-2
+                rounded-xl
+                bg-[#F8F5F1]
+                px-4
+                py-3
+              "
+            >
+              <span
+                className="
+                  h-1.5
+                  w-1.5
+                  rounded-full
+                  bg-[#D97745]
+                "
+              />
+
+              <p
+                className="
+                  text-[12px]
+                  leading-5
+                  text-[#756C63]
+                "
+              >
+                Giá ưu đãi chỉ áp dụng trong thời gian
+                Flash Sale.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* =====================================================
+          SCROLL INDICATOR
+      ===================================================== */}
+
       <button
+        type="button"
         onClick={scrollProducts}
-        className="absolute bottom-5 left-1/2 -translate-x-1/2 animate-bounce"
+        aria-label="Xem sản phẩm Flash Sale"
+        className="
+          absolute
+          bottom-4
+          left-1/2
+          z-20
+          hidden
+          -translate-x-1/2
+          items-center
+          justify-center
+          rounded-full
+          border
+          border-[#DDD3C9]
+          bg-white/80
+          p-2
+          text-[#756C63]
+          shadow-sm
+          backdrop-blur
+          transition
+          hover:bg-white
+          hover:text-[#D97745]
+          lg:flex
+        "
       >
-        <ArrowDown className="h-7 w-7" />
+        <ArrowDown
+          size={17}
+          strokeWidth={1.8}
+        />
       </button>
-
     </section>
-
   );
-
 }
