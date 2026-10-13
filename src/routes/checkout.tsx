@@ -338,140 +338,76 @@ function CheckoutPage() {
     );
   }
 
-  async function createOrderInSupabase(
-    paymentStatus: "paid",
-    paypalOrderId: string,
-  ) {
-    const form = document.querySelector("form");
-    if (!form) throw new Error("Checkout form not found.");
-
-    const formData = new FormData(form);
-    const getValue = (name: string) =>
-      String(formData.get(name) ?? "").trim();
-
-    // Checkout form fields are optional because PayPal can collect the
-    // customer's payment and checkout information inside PayPal.
-    // If the customer filled any INFIBETTER fields, keep those values.
-    const customerName = getValue("full_name") || "PayPal Customer";
-    const customerEmail = getValue("email");
-    const customerPhone = getValue("phone");
-    const customerAddress = getValue("address");
-    const customerCity = getValue("city");
-    const customerState = getValue("state");
-    const customerPostalCode = getValue("postal_code");
-
-    const shippingLabel = `${country.name} / ${country.zone} / ${
-      shippingMethod === "express" ? "Express" : "Standard"
-    }`;
-
-    const payload = {
-      status: "pending",
-      full_name: customerName,
-      phone: customerPhone,
-      email: customerEmail,
-      address: customerAddress,
-      city: `${customerCity}, ${country.name}`,
-      district: customerState,
-      ward: customerPostalCode,
-      notes: [
-        `Shipping: ${shippingLabel}`,
-        `Estimated delivery: ${deliveryRange}`,
-        `PayPal Order ID: ${paypalOrderId}`,
-      ].join(" | "),
-      payment_method: "paypal",
-      payment_status: paymentStatus,
-      subtotal: Number(subtotalUsd.toFixed(2)),
-      shipping_fee: Number(shippingFeeUsd.toFixed(2)),
-      shipping_discount: 0,
-      discount_amount: 0,
-      total: Number(totalUsd.toFixed(2)),
-    };
-
-    const { data: order, error } = await supabase
-      .from("orders")
-      .insert(payload)
-      .select("*")
-      .single();
-
-    if (error || !order) {
-      throw new Error(error?.message ?? "Unable to create your order.");
-    }
-
-    const orderItems = items.map((item) => ({
-      order_id: order.id,
-      product_id: item.id,
-      product_name: item.name,
-      product_image: item.image,
-      product_color_id: item.productColorId,
-      color_name: item.colorName,
-      color_hex: item.colorHex,
-      unit_price: item.price,
-      quantity: item.quantity,
-    }));
-
-    const { data: insertedItems, error: itemsError } = await supabase
-      .from("order_items")
-      .insert(orderItems)
-      .select();
-
-    if (itemsError) throw new Error(itemsError.message);
-
-    localStorage.setItem(
-      "olive_last_order",
-      JSON.stringify({
-        id: order.id,
-        created_at: new Date().toISOString(),
-        full_name: customerName,
-        phone: customerPhone,
-        email: customerEmail,
-        address: customerAddress,
-        city: customerCity,
-        country: country.name,
-        state: customerState,
-        postal_code: customerPostalCode,
-        payment_method: "paypal",
-        payment_status: paymentStatus,
-        subtotal: Number(subtotalUsd.toFixed(2)),
-        shipping: Number(shippingFeeUsd.toFixed(2)),
-        total: Number(totalUsd.toFixed(2)),
-        shipping_method: shippingMethod,
-        estimated_delivery: deliveryRange,
-        items: insertedItems ?? [],
-      }),
-    );
-
-    clear();
-    navigate({ to: "/order-success" });
-  }
-
   async function handlePaypalApprove(orderID: string) {
+    if (submitting) return;
     setSubmitting(true);
-
     try {
+      const form = document.querySelector("form");
+      if (!form) throw new Error("Checkout form not found.");
+      const formData = new FormData(form);
+      const getValue = (name: string) => String(formData.get(name) ?? "").trim();
+      const checkout = {
+        full_name: getValue("full_name") || "PayPal Customer",
+        email: getValue("email"),
+        phone: getValue("phone"),
+        address: getValue("address"),
+        city: `${getValue("city")}, ${country.name}`,
+        district: getValue("state"),
+        ward: getValue("postal_code"),
+        notes: `Shipping: ${country.name} / ${country.zone} / ${shippingMethod} | Estimated delivery: ${deliveryRange} | PayPal Order ID: ${orderID}`,
+        subtotal: Number(subtotalUsd.toFixed(2)),
+        shipping_fee: Number(shippingFeeUsd.toFixed(2)),
+        total: Number(totalUsd.toFixed(2)),
+        items: items.map((item) => ({
+          product_id: item.id,
+          product_name: item.name,
+          product_image: item.image,
+          product_color_id: item.productColorId,
+          color_name: item.colorName,
+          color_hex: item.colorHex,
+          unit_price: Number(item.price),
+          quantity: Number(item.quantity),
+        })),
+      };
       const { data, error } = await supabase.functions.invoke(
         "paypal-capture-order",
-        { body: { orderId: orderID } },
+        { body: { orderId: orderID, checkout } },
       );
-
-      if (error) {
-        throw new Error("Unable to confirm the PayPal payment.");
+      if (error || !data?.success || !data?.dbOrderId) {
+        console.error("PAYPAL CHECKOUT FAILED", { error, data });
+        throw new Error(data?.error ?? "Unable to confirm payment and save your order.");
       }
-
-      if (
-        !data?.success ||
-        data?.orderStatus !== "COMPLETED" ||
-        data?.captureStatus !== "COMPLETED"
-      ) {
-        console.error("PAYPAL CAPTURE RESPONSE", data);
-        throw new Error("PayPal payment was not completed.");
+      if (!["COMPLETED", "PENDING"].includes(data.captureStatus)) {
+        throw new Error("PayPal capture has not been accepted.");
       }
-
-      await createOrderInSupabase("paid", orderID);
+      localStorage.setItem("olive_last_order", JSON.stringify({
+        id: data.dbOrderId,
+        created_at: new Date().toISOString(),
+        full_name: checkout.full_name,
+        phone: checkout.phone,
+        email: checkout.email,
+        address: checkout.address,
+        city: checkout.city,
+        payment_method: "paypal",
+        payment_status: data.paymentStatus,
+        subtotal: checkout.subtotal,
+        shipping: checkout.shipping_fee,
+        total: checkout.total,
+        shipping_method: shippingMethod,
+        estimated_delivery: deliveryRange,
+        items: checkout.items,
+      }));
+      if (data.paymentStatus === "pending") {
+        toast.info("Order received. PayPal payment is pending review.");
+      } else {
+        toast.success("Payment confirmed and order saved.");
+      }
+      clear();
+      navigate({ to: "/order-success" });
     } catch (error) {
       console.error("PAYPAL PAYMENT ERROR", error);
-      toast.error(
-        error instanceof Error ? error.message : "PayPal payment failed.",
-      );
+      toast.error(error instanceof Error ? error.message : "PayPal checkout failed.");
+    } finally {
       setSubmitting(false);
     }
   }
