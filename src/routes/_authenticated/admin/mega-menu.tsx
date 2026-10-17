@@ -790,6 +790,15 @@ function MegaMenuAdminPage() {
 
                       <button
                         type="button"
+                        onClick={() => addGroup(section)}
+                        className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-dashed border-blue-300 bg-blue-50 px-3 text-[10px] font-bold text-blue-700 transition hover:border-blue-500 hover:bg-blue-100"
+                      >
+                        <Plus size={12} />
+                        Thêm nhóm
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() =>
                           saveSection(section)
                         }

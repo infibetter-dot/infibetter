@@ -11,9 +11,9 @@ import {
   type CurrencyCode,
 } from "@/lib/currency-system";
 
-import banner01 from "@/assets/hero/iphonecase.png";
-import banner02 from "@/assets/hero/wireless charger.png";
-import banner03 from "@/assets/hero/powerbank.png";
+import banner01 from "@/assets/hero/iphonecase1.png";
+import banner02 from "@/assets/hero/wireless charger1.png";
+import banner03 from "@/assets/hero/powerbank1.png";
 import hero1 from "@/assets/hero/watchband.png";
 import hero2 from "@/assets/hero/hero_2.png";
 
@@ -37,52 +37,42 @@ const categoryImages = [
   banner02,
   banner03,
   hero1,
-  hero2,
 ];
 
 const collections = [
   {
     title: "iPhone Cases",
     subtitle: "Shop iPhone Cases",
-    slug: "op-dien-thoai",
+    slug: "iphone-cases",
   },
   {
     title: "Wireless Charging",
     subtitle: "Shop Wireless Chargers",
-    slug: "sac-khong-day",
+    slug: "wireless-charging",
   },
   {
     title: "Power Banks",
     subtitle: "Shop Power Banks",
-    slug: "pin-du-phong",
+    slug: "power-banks",
   },
   {
     title: "Apple Watch Bands",
     subtitle: "Shop Watch Bands",
     slug: "day-deo-apple-watch",
   },
-  {
-    title: "iPad Cases",
-    subtitle: "Shop iPad Cases",
-    slug: "phu-kien-ipad",
-  },
 ];
 
-const demoProductImages = [
-  banner02,
-  banner03,
-  banner01,
-  hero1,
-  hero2,
-];
-
+// Fallback images used by product cards when a product has no image_url.
+const demoProductImages = [banner02, banner03, banner01, hero1, hero2];
 
 function ProductMiniCard({
   product,
   fallbackImage,
+  floatDelay = 0,
 }: {
   product: CollectionProduct;
   fallbackImage: string;
+  floatDelay?: number;
 }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
     getCurrency(),
@@ -208,20 +198,21 @@ function ProductMiniCard({
       params={{ slug: product.slug }}
       className="
         group relative grid w-[calc(100vw-58px)] flex-none snap-start
-        grid-cols-[42%_58%] min-w-0 overflow-hidden
+        grid-cols-[38%_62%] min-w-0 items-center overflow-hidden
         rounded-[14px] border border-[#E5E7EB]
-        bg-white transition-all duration-300
+        bg-white shadow-[0_2px_10px_rgba(15,23,42,0.04)]
+        transition-all duration-300
         hover:-translate-y-1
         hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)]
         sm:block sm:w-auto sm:rounded-[10px]
-        sm:h-auto
+        sm:h-auto sm:border-0 sm:bg-transparent sm:shadow-none
       "
     >
       {/* IMAGE */}
       <div
   className="
-    relative h-full min-h-[210px]
-    overflow-hidden bg-white
+    relative h-[132px] min-h-0
+    overflow-hidden rounded-xl bg-white
     sm:aspect-square sm:h-auto
   "
 >
@@ -230,7 +221,7 @@ function ProductMiniCard({
           alt={product.name}
           className="
             absolute inset-0
-            h-full w-full
+            h-full w-full rounded-xl
             object-contain p-2
             transition-transform duration-500
             group-hover:scale-[1.03]
@@ -254,7 +245,7 @@ function ProductMiniCard({
       </div>
 
       {/* INFO */}
-      <div className="flex h-full min-h-[210px] flex-col justify-center px-3 pb-3 pt-3 sm:h-auto sm:min-h-0 sm:block sm:px-2.5 sm:pb-2.5 sm:pt-2">
+      <div className="flex min-h-0 flex-col justify-center px-2.5 py-2 sm:h-auto sm:min-h-0 sm:block sm:px-2.5 sm:pb-2.5 sm:pt-2">
         <h3
           className="
             line-clamp-1
@@ -273,7 +264,7 @@ function ProductMiniCard({
         </p>
 
         <div className="mt-2 flex items-center gap-1">
-          <span className="text-[14px] font-bold text-[#0066E6] sm:text-[11px]">
+          <span className="text-[13px] font-bold text-[#0066E6] sm:text-[11px]">
             {displayPrice}
           </span>
 
@@ -287,28 +278,26 @@ function ProductMiniCard({
         </div>
 
         <div
-  className="
-    mt-3 flex h-[34px]
-    w-[92%]
-    items-center justify-center
-    self-start
-    rounded-[8px]
-    border border-[#E8EBEF]
-    bg-white
-    text-[9px] font-semibold
-    text-[#171717]
-    shadow-[0_3px_10px_rgba(15,23,42,0.06)]
-    transition-all duration-300
-    group-hover:border-[#D9DEE5]
-    group-hover:shadow-[0_5px_14px_rgba(15,23,42,0.08)]
-  "
->
-  View product
-  <ArrowRight
-    size={11}
-    className="ml-1 transition-transform duration-300 group-hover:translate-x-1"
-  />
-</div>
+          className="
+            infi-float-button relative mt-2 flex h-[30px]
+            w-full items-center justify-center self-start
+            rounded-[8px] border border-[#E8EBEF] bg-white
+            text-[9px] font-semibold text-[#171717]
+            shadow-[0_3px_10px_rgba(15,23,42,0.06)]
+            transition-[border-color,box-shadow] duration-300
+            group-hover:border-[#D9DEE5]
+            group-hover:shadow-[0_5px_14px_rgba(15,23,42,0.08)]
+          "
+          style={{ animationDelay: `${floatDelay}s` }}
+        >
+          <span className="absolute inset-0 flex items-center justify-center text-center">
+            View product
+          </span>
+          <ArrowRight
+            size={11}
+            className="absolute right-2 transition-transform duration-300 group-hover:translate-x-0.5"
+          />
+        </div>
       </div>
     </Link>
   );
@@ -385,6 +374,25 @@ export default function Collections({
         lg:px-6 lg:pb-12 lg:pt-10
       "
     >
+      <style>{`
+        @keyframes infi-float-up-down {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
+
+        .infi-float-button {
+          animation: infi-float-up-down 2.8s ease-in-out infinite;
+          will-change: transform;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .infi-float-button {
+            animation: none;
+            will-change: auto;
+          }
+        }
+      `}</style>
+
       {/* =====================================================
           SHOP BY CATEGORY
       ====================================================== */}
@@ -478,12 +486,12 @@ export default function Collections({
           [scrollbar-width:none]
           [&::-webkit-scrollbar]:hidden
           sm:grid
-          sm:grid-cols-3
-          sm:gap-3
+          sm:grid-cols-2
+          sm:gap-4
           sm:overflow-visible
           sm:pb-0
           sm:pr-0
-          lg:grid-cols-5
+          lg:grid-cols-4
         "
       >
         {collections.map((item, index) => (
@@ -812,6 +820,7 @@ export default function Collections({
                     <ProductMiniCard
                       key={product.id}
                       product={product}
+                      floatDelay={((mobileIndex + index) % 5) * 0.35}
                       fallbackImage={
                         demoProductImages[
                           (mobileIndex + index) % demoProductImages.length
@@ -822,13 +831,13 @@ export default function Collections({
                 </div>
 
                 {activeProducts.length > 1 && (
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-[9px] font-medium text-neutral-400">
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <span className="text-[8px] font-medium text-neutral-400">
                       Explore more
                     </span>
 
-                    <div className="flex items-center gap-2">
-                      <span className="mr-1 text-[9px] text-neutral-400">
+                    <div className="flex items-center gap-1.5">
+                      <span className="mr-1 text-[8px] text-neutral-400">
                         {mobileIndex + 1} / {activeProducts.length}
                       </span>
 
@@ -838,13 +847,13 @@ export default function Collections({
                         disabled={!canGoPrev}
                         aria-label="Previous products"
                         className="
-                          flex h-9 w-9 items-center justify-center rounded-full
+                          flex h-5 w-5 items-center justify-center rounded-full
                           border border-[#E2E6EB] bg-white text-neutral-500
                           shadow-sm transition-all active:scale-95
                           disabled:cursor-not-allowed disabled:opacity-35
                         "
                       >
-                        <ChevronLeft size={15} />
+                        <ChevronLeft size={7} />
                       </button>
 
                       <button
@@ -853,13 +862,13 @@ export default function Collections({
                         disabled={!canGoNext}
                         aria-label="Next products"
                         className="
-                          flex h-9 w-9 items-center justify-center rounded-full
+                          flex h-5 w-5 items-center justify-center rounded-full
                           border border-[#E2E6EB] bg-white text-neutral-800
                           shadow-sm transition-all active:scale-95
                           disabled:cursor-not-allowed disabled:opacity-35
                         "
                       >
-                        <ChevronRight size={15} />
+                        <ChevronRight size={7} />
                       </button>
                     </div>
                   </div>
@@ -873,6 +882,7 @@ export default function Collections({
                     <ProductMiniCard
                       key={product.id}
                       product={product}
+                      floatDelay={((desktopStartIndex + index) % 5) * 0.35}
                       fallbackImage={
                         demoProductImages[
                           (desktopStartIndex + index) % demoProductImages.length
