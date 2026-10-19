@@ -197,18 +197,13 @@ const productOptions = (slug: string) =>
           category_id,
 
           product_images(
-
-            id,
-
-            image_url,
-
-            sort_order,
-
-            color_id,
-
-            is_lifestyle
-
-          ),
+  id,
+  image_url,
+  sort_order,
+  color_id,
+  is_lifestyle,
+  image_type
+)
 
           product_colors(
 
@@ -457,6 +452,7 @@ function ProductPage() {
   const [activeModelIndex, setActiveModelIndex] = useState(0);
 
   const modelSelectRef = useRef<HTMLDivElement | null>(null);
+  const videoCarouselRef = useRef<HTMLDivElement | null>(null);
 
   const [quantity, setQuantity] = useState(1);
 
@@ -473,7 +469,13 @@ function ProductPage() {
     // or the main gallery navigation.
     const images = (product.product_images ?? [])
 
-      .filter((item: any) => item?.image_url && item?.is_lifestyle !== true)
+      .filter(
+        (item: any) =>
+          item?.image_url &&
+          item?.is_lifestyle !== true &&
+          item?.image_type !== "video" &&
+          !/\.(mp4|webm)(?:$|[?#])/i.test(item.image_url),
+      )
 
       .sort((a: any, b: any) => {
 
@@ -539,6 +541,25 @@ function ProductPage() {
 
     [product],
 
+  );
+
+  // Product videos are displayed in their own horizontal carousel below Lifestyle.
+  const productVideos = useMemo(
+    () =>
+      (product.product_images ?? [])
+        .filter(
+          (item: any) =>
+            item?.image_url &&
+            (
+              item?.image_type === "video" ||
+              /\.(mp4|webm)(?:$|[?#])/i.test(item.image_url)
+            ),
+        )
+        .sort(
+          (a: any, b: any) =>
+            Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
+        ),
+    [product],
   );
 
   useEffect(() => {
@@ -653,16 +674,19 @@ function ProductPage() {
   }
 
   const activeImage =
-
     selectedImage ||
-
     product.image_url ||
-
     productImages[0]?.image_url ||
-
     "";
 
-  const price = Number(product.price) || 0;
+  const activeMedia = productImages.find(
+    (item: any) => item?.image_url === activeImage,
+  );
+
+  const isActiveVideo =
+    activeMedia?.image_type === "video" ||
+    /\.(mp4|webm)(?:$|[?#])/i.test(activeImage);
+const price = Number(product.price) || 0;
 
   const comparePrice = Number(product.compare_at_price) || 0;
 
@@ -1083,17 +1107,23 @@ function ProductPage() {
               <div className="aspect-square w-full">
 
                 {activeImage ? (
-
-                  <img
-
-                    src={getImageUrl(activeImage, "large") || activeImage}
-
-                    alt={product.name}
-
-                    className="h-full w-full object-contain scale-[0.78] p-0"
-
-                  />
-
+                  isActiveVideo ? (
+                    <video
+                      key={activeImage}
+                      src={activeImage}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label={`${product.name} video`}
+                      className="h-full w-full bg-white object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={getImageUrl(activeImage, "large") || activeImage}
+                      alt={product.name}
+                      className="h-full w-full object-contain scale-[0.78] p-0"
+                    />
+                  )
                 ) : (
 
                   <div className="flex h-full items-center justify-center text-sm text-[#86868B]">
@@ -1182,15 +1212,32 @@ function ProductPage() {
 
                     >
 
-                      <img
-
-                        src={getImageUrl(image.image_url, "thumb") || image.image_url}
-
-                        alt={`${product.name} ${index + 1}`}
-
-                        className="h-full w-full object-contain bg-transparent p-0 transition-transform duration-200 ease-out group-hover:scale-[1.03]"
-
-                      />
+                      {image?.image_type === "video" ||
+                      /\.(mp4|webm)(?:$|[?#])/i.test(image.image_url) ? (
+                        <span className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[#F5F5F7]">
+                          <video
+                            src={image.image_url}
+                            preload="metadata"
+                            muted
+                            playsInline
+                            aria-hidden="true"
+                            className="h-full w-full object-contain"
+                          />
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/[0.08]">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[#1D1D1F] shadow-sm">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            </span>
+                          </span>
+                        </span>
+                      ) : (
+                        <img
+                          src={getImageUrl(image.image_url, "thumb") || image.image_url}
+                          alt={`${product.name} ${index + 1}`}
+                          className="h-full w-full object-contain bg-transparent p-0 transition-transform duration-200 ease-out group-hover:scale-[1.03]"
+                        />
+                      )}
 
                       {isActive && (
 
@@ -1812,7 +1859,62 @@ function ProductPage() {
 
       )}
 
-            {/* Lifestyle gallery — only Lifestyle images */}
+            {/* Product video carousel — displayed above Lifestyle */}
+      {productVideos.length > 0 && (
+        <section className="bg-white">
+          <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
+                  WATCH
+                </p>
+                <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[#1D1D1F] sm:text-[28px]">
+                  Product videos
+                </h2>
+                <p className="mt-2 text-[13px] text-[#6E6E73]">
+                  See the details in motion.
+                </p>
+              </div>
+              {productVideos.length > 1 && (
+                <div className="hidden shrink-0 gap-2 sm:flex">
+                  <button type="button" onClick={() => videoCarouselRef.current?.scrollBy({ left: -360, behavior: "smooth" })} aria-label="Scroll videos left" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D2D2D7] bg-white text-[#1D1D1F] transition hover:bg-[#F5F5F7]">
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button type="button" onClick={() => videoCarouselRef.current?.scrollBy({ left: 360, behavior: "smooth" })} aria-label="Scroll videos right" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D2D2D7] bg-white text-[#1D1D1F] transition hover:bg-[#F5F5F7]">
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              )}
+            </div>
+            <div ref={videoCarouselRef} className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Product videos">
+              {productVideos.map((video: any, index: number) => (
+                <article key={`${video.id ?? index}-${video.image_url}`} className="w-[78vw] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[16px] bg-[#F5F5F7] ring-1 ring-black/[0.06] sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]">
+                  <div className="relative aspect-[4/5] overflow-hidden bg-[#E8E8EA]">
+                    <video
+                      src={video.image_url}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="auto"
+                      aria-label={`${product.name} product video ${index + 1}`}
+                      className="h-full w-full object-cover"
+/>
+                    <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white">Video {index + 1}</span>
+                  </div>
+                  <div className="p-4 sm:p-5">
+                    <h3 className="text-[14px] font-semibold leading-5 text-[#1D1D1F]">{video.title || `${product.name} — Video ${index + 1}`}</h3>
+                    <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">Discover the product from every angle.</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos →</p>}
+          </div>
+        </section>
+      )}
+
+{/* Lifestyle gallery — only Lifestyle images */}
 
       {lifestyleImages.length > 0 && (
 

@@ -1,106 +1,224 @@
-﻿
-import { useState } from "react";
+﻿import { useRef, useState } from "react";
+import { ChevronRight } from "lucide-react";
 
-const videos = [
+type VideoItem = {
+  label: string;
+  title: string;
+  description: string;
+  video: string;
+  href: string;
+  exploreLabel: string;
+};
+
+const videos: VideoItem[] = [
   {
-    src: "/videos/lv_0_20261017175215.mp4",
     label: "INFIBETTER",
-    title: "Charge smarter.",
+    title: "Armor MagSafe Case",
+    description: "Protection meets everyday style.",
+    video:
+      "/videos/video1.mp4",
+    href: "/products/armor-magsafe-case",
+    exploreLabel: "Explore Armor Case",
   },
   {
-    src: "/videos/infibetter-video-2.mp4",
     label: "POWER",
     title: "Power your everyday.",
+    description: "Smart accessories for life on the go.",
+    video: "/videos/infibetter-video-2.mp4",
+    href: "/products/armor-magsafe-case",
+    exploreLabel: "Explore product",
   },
   {
-    src: "/videos/infibetter-video-3.mp4",
     label: "DESIGN",
     title: "Designed to move.",
+    description: "Minimal design. Everyday convenience.",
+    video: "/videos/infibetter-video-3.mp4",
+    href: "/products/armor-magsafe-case",
+    exploreLabel: "Explore product",
   },
   {
-    src: "/videos/infibetter-video-4.mp4",
     label: "LIFESTYLE",
     title: "Stay connected.",
+    description: "Made to fit your everyday routine.",
+    video: "/videos/infibetter-video-4.mp4",
+    href: "/products/armor-magsafe-case",
+    exploreLabel: "Explore product",
   },
 ];
 
-function VideoCard({
-  src,
-  label,
-  title,
-}: {
-  src: string;
-  label: string;
-  title: string;
-}) {
+function VideoCard({ item, index }: { item: VideoItem; index: number }) {
   const [videoError, setVideoError] = useState(false);
 
   return (
-    <div className="group relative aspect-square min-w-0 overflow-hidden rounded-xl bg-[#E9EDF2] sm:rounded-2xl">
+    <article
+      data-video-card
+      className="
+        group relative isolate aspect-[9/16] min-w-0
+        w-[72%] shrink-0 snap-start overflow-hidden
+        rounded-[14px] bg-[#E9EDF2]
+        sm:w-[42%] sm:rounded-[18px]
+        lg:w-auto
+      "
+    >
       {!videoError ? (
         <video
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          src={src}
+          src={item.video}
           autoPlay
           muted
           loop
           playsInline
           preload="metadata"
-          aria-label={`${label} product showcase`}
+          aria-label={item.title}
+          className="
+            absolute inset-0 h-full w-full object-cover
+            transition-transform duration-700
+            group-hover:scale-[1.03]
+          "
           onError={() => setVideoError(true)}
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#E9EDF2] px-3 text-center">
-          <p className="text-xs font-semibold text-neutral-700">
+        <div className="absolute inset-0 flex items-center justify-center bg-[#E9EDF2] p-3 text-center">
+          <p className="text-xs text-neutral-500">
             Video unavailable
-          </p>
-          <p className="mt-1 break-all text-[10px] text-neutral-500">
-            {src.split("/").pop()}
           </p>
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
+      {/* Nội dung không phủ gradient đen lên video */}
+      <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
+        <div className="rounded-xl border border-white/30 bg-white/75 p-3 text-[#171717] shadow-sm backdrop-blur-md sm:p-4">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#0066E6] sm:text-[10px]">
+            {item.label} · 0{index + 1}
+          </p>
 
-      <div className="pointer-events-none absolute bottom-3 left-3 right-3 text-white sm:bottom-4 sm:left-4 sm:right-4">
-        <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-white/80 sm:text-[10px]">
-          {label}
-        </p>
+          <h3 className="mt-1.5 text-sm font-semibold leading-tight tracking-tight sm:text-base">
+            {item.title}
+          </h3>
 
-        <h3 className="mt-1 text-sm font-semibold leading-tight tracking-tight sm:text-base lg:text-lg">
-          {title}
-        </h3>
+          <p className="mt-1 text-[10px] leading-relaxed text-neutral-600 sm:text-xs">
+            {item.description}
+          </p>
+
+          <a
+            href={item.href}
+            className="
+              mt-3 inline-flex min-h-[36px] w-full
+              items-center justify-between gap-2
+              rounded-full bg-[#171717] px-3 py-2
+              text-[10px] font-semibold text-white
+              transition-colors hover:bg-[#0066E6]
+              active:scale-[0.99] sm:text-[11px]
+            "
+          >
+            <span>{item.exploreLabel}</span>
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 
 export default function HomeVideoSection() {
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollToNextCard = () => {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    const cards = Array.from(
+      carousel.querySelectorAll<HTMLElement>("[data-video-card]"),
+    );
+
+    if (!cards.length) return;
+
+    const currentIndex = cards.reduce((closestIndex, card, index) => {
+      const currentDistance = Math.abs(
+        card.offsetLeft - carousel.scrollLeft,
+      );
+      const closestDistance = Math.abs(
+        cards[closestIndex].offsetLeft - carousel.scrollLeft,
+      );
+
+      return currentDistance < closestDistance ? index : closestIndex;
+    }, 0);
+
+    const nextIndex = (currentIndex + 1) % cards.length;
+
+    carousel.scrollTo({
+      left:
+        cards[nextIndex].offsetLeft -
+        cards[0].offsetLeft,
+      behavior: "smooth",
+    });
+  };
+
   return (
-    <section className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
-      <div className="mb-4 sm:mb-5">
-        <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#0066E6] sm:text-[10px]">
-          Made for everyday life
-        </p>
+    <section className="bg-[#F7F8FA] py-6 sm:py-8 lg:py-10">
+      <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-4 lg:px-5">
+        <div className="mb-4 sm:mb-5">
+          <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#0066E6] sm:text-[10px]">
+            Made for everyday life
+          </p>
 
-        <h2 className="text-[25px] font-bold leading-tight tracking-[-0.04em] text-[#171717] sm:text-[32px]">
-          Power your everyday.
-        </h2>
+          <h2 className="text-[25px] font-bold leading-tight tracking-[-0.04em] text-[#171717] sm:text-[32px]">
+            Power your everyday.
+          </h2>
 
-        <p className="mt-2 max-w-lg text-[11px] leading-relaxed text-neutral-500 sm:text-[13px]">
-          Discover smarter accessories designed to keep you connected.
-        </p>
-      </div>
+          <p className="mt-2 max-w-lg text-[11px] leading-relaxed text-neutral-500 sm:text-[13px]">
+            Discover smarter accessories designed to keep you connected.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {videos.map((video) => (
-          <VideoCard
-            key={video.src}
-            src={video.src}
-            label={video.label}
-            title={video.title}
-          />
-        ))}
+        <div className="relative">
+          <div
+            ref={carouselRef}
+            className="
+              -mx-3 flex snap-x snap-mandatory
+              gap-3 overflow-x-auto overscroll-x-contain
+              px-3 pb-3 pt-1
+              [scrollbar-width:none]
+              [&::-webkit-scrollbar]:hidden
+              sm:mx-0 sm:px-0
+              lg:grid lg:grid-cols-4 lg:gap-3
+              lg:overflow-visible
+            "
+          >
+            {videos.map((item, index) => (
+              <VideoCard
+                key={item.video}
+                item={item}
+                index={index}
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={scrollToNextCard}
+            aria-label="View next video"
+            className="
+              absolute right-1 top-1/2 z-20
+              flex h-9 w-9 -translate-y-1/2
+              items-center justify-center
+              rounded-full border border-white/80
+              bg-white/80 text-[#171717]
+              shadow-md backdrop-blur-md
+              transition hover:bg-white active:scale-95
+              sm:right-2
+              lg:hidden
+            "
+          >
+            <ChevronRight size={18} strokeWidth={1.8} />
+          </button>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between gap-3 lg:hidden">
+          <p className="text-[11px] text-neutral-500">
+            <span className="mr-2 text-[#171717]">← →</span>
+            Swipe to explore all 4 videos
+          </p>
+        </div>
       </div>
     </section>
   );
