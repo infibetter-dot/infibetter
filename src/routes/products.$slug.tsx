@@ -1681,89 +1681,48 @@ const price = Number(product.price) || 0;
 
               </div>
 
-              {/* Benefits / Trust Features */}
-
-<div
-
-  className="
-
-    mt-6
-
-    w-full
-
-    min-w-0
-
-    box-border
-
-    overflow-hidden
-
-    rounded-[12px]
-
-    border
-
-    border-[#E8E8EA]
-
-    bg-[#FBFBFC]
-
-    px-4
-
-    py-3.5
-
-    shadow-[0_2px_10px_rgba(0,0,0,0.035)]
-
-    sm:px-5
-
-    sm:py-4
-
-  "
-
->
-
-  <div className="grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-3 sm:gap-x-6 sm:gap-y-3.5">
-
-    {[
-
-      { icon: Truck, text: "Tracked shipping" },
-
-      { icon: RotateCcw, text: "30-day returns" },
-
-      { icon: ShieldCheck, text: "Secure payments" },
-
-      { icon: Check, text: "Product support" },
-
-    ].map(({ icon: Icon, text }) => (
-
-      <div
-
-        key={text}
-
-        className="flex min-w-0 items-center gap-2.5"
-
-      >
-
-        <Icon
-
-          size={16}
-
-          strokeWidth={1.6}
-
-          className="shrink-0 text-[#55585D]"
-
-        />
-
-        <span className="min-w-0 truncate text-[12px] font-normal leading-4 text-[#55585D] sm:text-[12px]">
-
-          {text}
-
-        </span>
-
-      </div>
-
-    ))}
-
-  </div>
-
-</div>
+              {/* Extra-compact Trust Features */}
+              <div className="mx-auto mt-2 w-full max-w-[680px] overflow-hidden rounded-xl border border-[#E8E8EA] bg-white shadow-[0_5px_16px_rgba(15,23,42,0.09)]">
+                <div className="grid grid-cols-2 divide-x divide-y divide-[#E9EAEC] md:grid-cols-4 md:divide-y-0">
+                  {[
+                    {
+                      icon: ShieldCheck,
+                      title: "Secure checkout",
+                      description: "Protected payments",
+                    },
+                    {
+                      icon: Truck,
+                      title: "Tracked shipping",
+                      description: "Track every order",
+                    },
+                    {
+                      icon: RotateCcw,
+                      title: "Easy returns",
+                      description: "Hassle-free returns",
+                    },
+                    {
+                      icon: Check,
+                      title: "Built for everyday",
+                      description: "Made for your setup",
+                    },
+                  ].map(({ icon: Icon, title, description }) => (
+                    <div
+                      key={title}
+                      className="flex min-w-0 flex-col items-center justify-center px-1.5 py-2 text-center sm:px-2 sm:py-2.5"
+                    >
+                      <span className="mb-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#F4F5F6] text-[#5B6068] sm:h-6 sm:w-6">
+                        <Icon size={11} strokeWidth={1.7} />
+                      </span>
+                      <span className="text-[9px] font-semibold leading-3 text-[#30343B] sm:text-[10px] sm:leading-[13px]">
+                        {title}
+                      </span>
+                      <span className="mt-0.5 max-w-[120px] text-[8px] leading-[11px] text-[#858A93] sm:text-[9px] sm:leading-3">
+                        {description}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* Description */}
 

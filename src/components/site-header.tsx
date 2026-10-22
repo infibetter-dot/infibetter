@@ -4,19 +4,19 @@ import CartDrawer from "@/components/cart/CartDrawer";
 
 import {
 
-  ArrowRight,
+  ArrowRight,
 
-  ChevronDown,
+  ChevronDown,
 
-  Menu,
+  Menu,
 
-  Search,
+  Search,
 
-  ShoppingBag,
+  ShoppingBag,
 
-  User,
+  User,
 
-  X,
+  X,
 
 } from "lucide-react";
 
@@ -42,17 +42,17 @@ type MegaMenuKey = "cases" | "charging" | "lifestyle" | null;
 
 type MegaItem = {
 
-  id: string;
+  id: string;
 
-  category_id: string | null;
+  category_id: string | null;
 
-  label_override: string | null;
+  label_override: string | null;
 
-  sort_order: number;
+  sort_order: number;
 
-  is_visible: boolean;
+  is_visible: boolean;
 
-  categories: { id: string; name: string; slug: string; parent_id: string | null } | null;
+  categories: { id: string; name: string; slug: string; parent_id: string | null } | null;
 
 };
 
@@ -60,23 +60,23 @@ type MegaItem = {
 
 type MegaGroup = {
 
-  id: string;
+  id: string;
 
-  section_id: string;
+  section_id: string;
 
-  title: string;
+  title: string;
 
-  category_id: string | null;
+  category_id: string | null;
 
-  image_url: string | null;
+  image_url: string | null;
 
-  sort_order: number;
+  sort_order: number;
 
-  is_visible: boolean;
+  is_visible: boolean;
 
-  mega_menu_items: MegaItem[];
+  mega_menu_items: MegaItem[];
 
-  category: { id: string; name: string; slug: string; parent_id: string | null } | null;
+  category: { id: string; name: string; slug: string; parent_id: string | null } | null;
 
 };
 
@@ -84,19 +84,19 @@ type MegaGroup = {
 
 type MegaSection = {
 
-  id: string;
+  id: string;
 
-  menu_key: Exclude<MegaMenuKey, null>;
+  menu_key: Exclude<MegaMenuKey, null>;
 
-  title: string;
+  title: string;
 
-  image_url: string | null;
+  image_url: string | null;
 
-  sort_order: number;
+  sort_order: number;
 
-  is_visible: boolean;
+  is_visible: boolean;
 
-  mega_menu_groups: MegaGroup[];
+  mega_menu_groups: MegaGroup[];
 
 };
 
@@ -108,11 +108,11 @@ const fallbackImages = [banner01, banner02, banner03];
 
 function getSectionFallback(menuKey: string) {
 
-  if (menuKey === "cases") return banner02;
+  if (menuKey === "cases") return banner02;
 
-  if (menuKey === "charging") return banner03;
+  if (menuKey === "charging") return banner03;
 
-  return banner01;
+  return banner01;
 
 }
 
@@ -120,19 +120,19 @@ function getSectionFallback(menuKey: string) {
 
 function getGroupFallback(menuKey: string, index: number) {
 
-  if (menuKey === "charging") {
+  if (menuKey === "charging") {
 
-    return [banner03, banner02, banner01, banner03][index] ?? banner03;
+    return [banner03, banner02, banner01, banner03][index] ?? banner03;
 
-  }
+  }
 
-  if (menuKey === "cases") {
+  if (menuKey === "cases") {
 
-    return [banner01, banner02, banner03][index] ?? banner01;
+    return [banner01, banner02, banner03][index] ?? banner01;
 
-  }
+  }
 
-  return fallbackImages[index % fallbackImages.length];
+  return fallbackImages[index % fallbackImages.length];
 
 }
 
@@ -140,7 +140,7 @@ function getGroupFallback(menuKey: string, index: number) {
 
 function getMegaGridColumns(groupCount: number) {
 
-  return Math.max(1, Math.min(groupCount, 4));
+  return Math.max(1, Math.min(groupCount, 4));
 
 }
 
@@ -148,2114 +148,2110 @@ function getMegaGridColumns(groupCount: number) {
 
 export function SiteHeader() {
 
-  const { count } = useCart();
+  const { count } = useCart();
 
 
 
-  const [cartOpen, setCartOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
 
-  const [activeMenu, setActiveMenu] =
+  const [activeMenu, setActiveMenu] =
 
-    useState<MegaMenuKey>(null);
+    useState<MegaMenuKey>(null);
 
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  const [searchValue, setSearchValue] = useState("");
+  const [searchValue, setSearchValue] = useState("");
 
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const [mobileExpandedMenu, setMobileExpandedMenu] = useState<MegaMenuKey>(null);
+  const [mobileExpandedMenu, setMobileExpandedMenu] = useState<MegaMenuKey>(null);
 
-  const [megaMenus, setMegaMenus] = useState<MegaSection[]>([]);
+  const [megaMenus, setMegaMenus] = useState<MegaSection[]>([]);
 
 
 
-  const loadMegaMenus = async () => {
+  const loadMegaMenus = async () => {
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase
 
-      .from("mega_menu_sections")
+      .from("mega_menu_sections")
 
-      .select(`
+      .select(`
 
-        id, menu_key, title, image_url, sort_order, is_visible,
+        id, menu_key, title, image_url, sort_order, is_visible,
 
-        mega_menu_groups (
+        mega_menu_groups (
 
-          id, section_id, title, category_id, image_url, sort_order, is_visible,
+          id, section_id, title, category_id, image_url, sort_order, is_visible,
 
-          categories ( id, name, slug, parent_id ),
+          categories ( id, name, slug, parent_id ),
 
-          mega_menu_items (
+          mega_menu_items (
 
-            id, category_id, label_override, sort_order, is_visible,
+            id, category_id, label_override, sort_order, is_visible,
 
-            categories ( id, name, slug, parent_id )
+            categories ( id, name, slug, parent_id )
 
-          )
+          )
 
-        )
+        )
 
-      `)
+      `)
 
-      .eq("is_visible", true)
+      .eq("is_visible", true)
 
-      .order("sort_order");
+      .order("sort_order");
 
 
 
-    if (error) {
+    if (error) {
 
-      console.error("Mega Menu load error:", error);
+      console.error("Mega Menu load error:", error);
 
-      return;
+      return;
 
-    }
+    }
 
 
 
-    const normalized = ((data ?? []) as any[]).map((section) => ({
+    const normalized = ((data ?? []) as any[]).map((section) => ({
 
-      ...section,
+      ...section,
 
-      mega_menu_groups: [...(section.mega_menu_groups ?? [])]
+      mega_menu_groups: [...(section.mega_menu_groups ?? [])]
 
-        .filter((group: any) => group.is_visible)
+        .filter((group: any) => group.is_visible)
 
-        .sort((a: any, b: any) => a.sort_order - b.sort_order)
+        .sort((a: any, b: any) => a.sort_order - b.sort_order)
 
-        .map((group: any) => ({
+        .map((group: any) => ({
 
-          ...group,
+          ...group,
 
-          category: group.categories ?? null,
+          category: group.categories ?? null,
 
-          mega_menu_items: [...(group.mega_menu_items ?? [])]
+          mega_menu_items: [...(group.mega_menu_items ?? [])]
 
-            .filter((item: any) => item.is_visible && item.category_id)
+            .filter((item: any) => item.is_visible && item.category_id)
 
-            .sort((a: any, b: any) => a.sort_order - b.sort_order),
+            .sort((a: any, b: any) => a.sort_order - b.sort_order),
 
-        })),
+        })),
 
-    }));
+    }));
 
 
 
-    setMegaMenus(normalized as MegaSection[]);
+    setMegaMenus(normalized as MegaSection[]);
 
-  };
+  };
 
 
 
-  useEffect(() => {
+  useEffect(() => {
 
-    loadMegaMenus();
+    loadMegaMenus();
 
-    const handleMegaMenuUpdated = () => loadMegaMenus();
+    const handleMegaMenuUpdated = () => loadMegaMenus();
 
-    window.addEventListener("infibetter:mega-menu-updated", handleMegaMenuUpdated);
+    window.addEventListener("infibetter:mega-menu-updated", handleMegaMenuUpdated);
 
-    return () => {
+    return () => {
 
-      window.removeEventListener("infibetter:mega-menu-updated", handleMegaMenuUpdated);
+      window.removeEventListener("infibetter:mega-menu-updated", handleMegaMenuUpdated);
 
-    };
+    };
 
-  }, []);
+  }, []);
 
 
 
-  const headerRef =
+  const headerRef =
 
-    useRef<HTMLDivElement>(null);
+    useRef<HTMLDivElement>(null);
 
 
 
-  /*
+  /*
 
-   * ============================================================
+   * ============================================================
 
-   * CLICK OUTSIDE
+   * CLICK OUTSIDE
 
-   * ============================================================
+   * ============================================================
 
-   */
+   */
 
 
 
-  useEffect(() => {
+  useEffect(() => {
 
-    const handleClickOutside = (
+    const handleClickOutside = (
 
-      event: MouseEvent,
+      event: MouseEvent,
 
-    ) => {
+    ) => {
 
-      if (
+      if (
 
-        headerRef.current &&
+        headerRef.current &&
 
-        !headerRef.current.contains(
+        !headerRef.current.contains(
 
-          event.target as Node,
+          event.target as Node,
 
-        )
+        )
 
-      ) {
+      ) {
 
-        setActiveMenu(null);
+        setActiveMenu(null);
 
-        setSearchOpen(false);
+        setSearchOpen(false);
 
-        setMobileOpen(false);
+        setMobileOpen(false);
 
-      }
+      }
 
-    };
+    };
 
 
 
-    document.addEventListener(
+    document.addEventListener(
 
-      "mousedown",
+      "mousedown",
 
-      handleClickOutside,
+      handleClickOutside,
 
-    );
+    );
 
 
 
-    return () => {
+    return () => {
 
-      document.removeEventListener(
+      document.removeEventListener(
 
-        "mousedown",
+        "mousedown",
 
-        handleClickOutside,
+        handleClickOutside,
 
-      );
+      );
 
-    };
+    };
 
-  }, []);
+  }, []);
 
 
 
-  /*
+  /*
 
-   * ============================================================
+   * ============================================================
 
-   * ESC
+   * ESC
 
-   * ============================================================
+   * ============================================================
 
-   */
+   */
 
 
 
-  useEffect(() => {
+  useEffect(() => {
 
-    const handleEscape = (
+    const handleEscape = (
 
-      event: KeyboardEvent,
+      event: KeyboardEvent,
 
-    ) => {
+    ) => {
 
-      if (event.key === "Escape") {
+      if (event.key === "Escape") {
 
-        setActiveMenu(null);
+        setActiveMenu(null);
 
-        setSearchOpen(false);
+        setSearchOpen(false);
 
-        setMobileOpen(false);
+        setMobileOpen(false);
 
-        setCartOpen(false);
+        setCartOpen(false);
 
-      }
+      }
 
-    };
+    };
 
 
 
-    document.addEventListener(
+    document.addEventListener(
 
-      "keydown",
+      "keydown",
 
-      handleEscape,
+      handleEscape,
 
-    );
+    );
 
 
 
-    return () => {
+    return () => {
 
-      document.removeEventListener(
+      document.removeEventListener(
 
-        "keydown",
+        "keydown",
 
-        handleEscape,
+        handleEscape,
 
-      );
+      );
 
-    };
+    };
 
-  }, []);
+  }, []);
 
 
 
-  /*
+  /*
 
-   * ============================================================
+   * ============================================================
 
-   * OPEN CART FROM PRODUCT PAGE
+   * OPEN CART FROM PRODUCT PAGE
 
-   * ============================================================
+   * ============================================================
 
-   *
+   *
 
-   * Product detail phát:
+   * Product detail phát:
 
-   *
+   *
 
-   * window.dispatchEvent(
+   * window.dispatchEvent(
 
-   *   new Event("infibetter:open-cart")
+   *   new Event("infibetter:open-cart")
 
-   * )
+   * )
 
-   *
+   *
 
-   * Header nhận event này và mở CartDrawer.
+   * Header nhận event này và mở CartDrawer.
 
-   */
+   */
 
 
 
-  useEffect(() => {
+  useEffect(() => {
 
-    const handleOpenCart = () => {
+    const handleOpenCart = () => {
 
-      setCartOpen(true);
+      setCartOpen(true);
 
-    };
+    };
 
 
 
-    window.addEventListener(
+    window.addEventListener(
 
-      "infibetter:open-cart",
+      "infibetter:open-cart",
 
-      handleOpenCart,
+      handleOpenCart,
 
-    );
+    );
 
 
 
-    return () => {
+    return () => {
 
-      window.removeEventListener(
+      window.removeEventListener(
 
-        "infibetter:open-cart",
+        "infibetter:open-cart",
 
-        handleOpenCart,
+        handleOpenCart,
 
-      );
+      );
 
-    };
+    };
 
-  }, []);
+  }, []);
 
 
 
-  /*
+  /*
 
-   * ============================================================
+   * ============================================================
 
-   * SEARCH
+   * SEARCH
 
-   * ============================================================
+   * ============================================================
 
-   */
+   */
 
 
 
-  const handleSearchSubmit = (
+  const handleSearchSubmit = (
 
-    event: React.FormEvent<HTMLFormElement>,
+    event: React.FormEvent<HTMLFormElement>,
 
-  ) => {
+  ) => {
 
-    event.preventDefault();
+    event.preventDefault();
 
 
 
-    const keyword = searchValue.trim();
+    const keyword = searchValue.trim();
 
 
 
-    if (!keyword) return;
+    if (!keyword) return;
 
 
 
-    window.location.href = `/shop?q=${encodeURIComponent(
+    window.location.href = `/shop?q=${encodeURIComponent(
 
-      keyword,
+      keyword,
 
-    )}`;
+    )}`;
 
-  };
+  };
 
 
 
-  /*
+  /*
 
-   * ============================================================
+   * ============================================================
 
-   * MEGA MENU
+   * MEGA MENU
 
-   * ============================================================
+   * ============================================================
 
-   */
+   */
 
 
 
-  const toggleMenu = (
+  const toggleMenu = (
 
-    menu: Exclude<MegaMenuKey, null>,
+    menu: Exclude<MegaMenuKey, null>,
 
-  ) => {
+  ) => {
 
-    setSearchOpen(false);
+    setSearchOpen(false);
 
-    setMobileOpen(false);
+    setMobileOpen(false);
 
 
 
-    setActiveMenu((current) =>
+    setActiveMenu((current) =>
 
-      current === menu ? null : menu,
+      current === menu ? null : menu,
 
-    );
+    );
 
-  };
+  };
 
 
 
-  const activeMegaMenu =
+  const activeMegaMenu =
 
-    activeMenu === null
+    activeMenu === null
 
-      ? null
+      ? null
 
-      : megaMenus.find((menu) => menu.menu_key === activeMenu) ?? null;
+      : megaMenus.find((menu) => menu.menu_key === activeMenu) ?? null;
 
 
 
-  return (
+  return (
 
-    <header
+    <header
 
-      ref={headerRef}
+      ref={headerRef}
 
-      className="
+      className="
 
-        sticky
+        sticky
 
-        top-0
+        top-0
 
-        z-[100]
+        z-[100]
 
-        w-full
+        w-full
 
-        bg-[#F7F8FA]/95
+        bg-[#F7F8FA]/95
 
-        py-2
+        py-2
 
-        backdrop-blur-xl
+        backdrop-blur-xl
 
-        sm:py-2.5
+        sm:py-2.5
 
-      "
+      "
 
-    >
+    >
 
-      {/* TOP ANNOUNCEMENT */}
+      {/* TOP ANNOUNCEMENT */}
 
 
 
-      <div
+      <div
 
-        className="
+        className="
 
-          mb-1.5
+          mb-1.5
 
-          flex
+          flex
 
-          h-4
+          h-4
 
-          items-center
+          items-center
 
-          justify-center
+          justify-center
 
-          gap-2
+          gap-2
 
-          text-[7px]
+          text-[7px]
 
-          font-semibold
+          font-semibold
 
-          uppercase
+          uppercase
 
-          tracking-[0.08em]
+          tracking-[0.08em]
 
-          text-[#334155]
+          text-[#334155]
 
-        "
+        "
 
-      >
+      >
 
-        <span>Free tracked shipping</span>
+        <span>Free tracked shipping</span>
 
 
 
-        <span className="text-[#94A3B8]">
+        <span className="text-[#94A3B8]">
 
-          ·
+          ·
 
-        </span>
+        </span>
 
 
 
-        <span>30-day returns</span>
+        <span>30-day returns</span>
 
-      </div>
+      </div>
 
 
 
-      {/* HEADER CAPSULE */}
+      {/* HEADER CAPSULE */}
 
 
 
-      <div className="relative mx-auto w-[calc(100%-24px)] max-w-[1320px]">
+      <div className="relative mx-auto w-[calc(100%-24px)] max-w-[1320px]">
 
-        <div
+        <div
 
-          className="
+          className="
 
-            relative
+            relative
 
-            flex
+            flex
 
-            h-[54px]
+            h-[54px]
 
-            items-center
+            items-center
 
-            rounded-[12px]
+            rounded-[12px]
 
-            border
+            border
 
-            border-[#D8DDE4]
+            border-[#D8DDE4]
 
-            bg-white
+            bg-white
 
-            px-3
+            px-3
 
-            shadow-[0_2px_12px_rgba(15,23,42,0.06)]
+            shadow-[0_2px_12px_rgba(15,23,42,0.06)]
 
-            sm:h-[58px]
+            sm:h-[58px]
 
-            sm:px-4
+            sm:px-4
 
-            lg:px-5
+            lg:px-5
 
-          "
+          "
 
-        >
+        >
 
-          {/* LOGO */}
+          {/* LOGO */}
 
 
 
-          <Link
+          <Link
 
-            to="/"
+            to="/"
 
-            onClick={() => {
+            onClick={() => {
 
-              setActiveMenu(null);
+              setActiveMenu(null);
 
-              setMobileOpen(false);
+              setMobileOpen(false);
 
-            }}
+            }}
 
-            className="
+            className="
 
-              shrink-0
+              shrink-0
 
-              text-[18px]
+              text-[18px]
 
-              font-bold
+              font-bold
 
-              tracking-[-0.055em]
+              tracking-[-0.055em]
 
-              text-[#111827]
+              text-[#111827]
 
-              sm:text-[20px]
+              sm:text-[20px]
 
-            "
+            "
 
-          >
+          >
 
-            INFIBETTER
+            INFIBETTER
 
-          </Link>
+          </Link>
 
 
 
-          {/* DESKTOP NAV */}
+          {/* DESKTOP NAV */}
 
 
 
-          <nav
+          <nav
 
-            className="
+            className="
 
-              absolute
+              absolute
 
-              left-1/2
+              left-1/2
 
-              hidden
+              hidden
 
-              -translate-x-1/2
+              -translate-x-1/2
 
-              items-center
+              items-center
 
-              gap-1
+              gap-1
 
-              rounded-full
+              rounded-full
 
-              border
+              border
 
-              border-[#D6DCE5]
+              border-[#D6DCE5]
 
-              bg-[#F6F8FB]
+              bg-[#F6F8FB]
 
-              p-1
+              p-1
 
-              shadow-[0_2px_10px_rgba(15,23,42,0.06)]
+              shadow-[0_2px_10px_rgba(15,23,42,0.06)]
 
-              lg:flex
+              lg:flex
 
-            "
+            "
 
-          >
+          >
 
-            <Link
+            <Link
 
-              to="/shop"
+              to="/shop"
 
-              className="
+              className="
 
-                flex
+                flex
 
-                items-center
+                items-center
 
-                gap-1.5
+                gap-1.5
 
-                whitespace-nowrap
+                whitespace-nowrap
 
-                rounded-full
+                rounded-full
 
-                px-3.5
+                px-3.5
 
-                py-2
+                py-2
 
-                text-[11px]
+                text-[11px]
 
-                font-semibold
+                font-semibold
 
-                tracking-[-0.01em]
+                tracking-[-0.01em]
 
-                text-[#334155]
+                text-[#334155]
 
-                transition-all
+                transition-all
 
-                hover:bg-white
+                hover:bg-white
 
-                hover:text-[#111827]
+                hover:text-[#111827]
 
-                hover:shadow-[0_1px_4px_rgba(15,23,42,0.06)]
+                hover:shadow-[0_1px_4px_rgba(15,23,42,0.06)]
 
-              "
+              "
 
-            >
+            >
 
-              Shop Apple accessories
+              Shop Apple accessories
 
 
 
-              <ArrowRight
+              <ArrowRight
 
-                size={10}
+                size={10}
 
-                strokeWidth={1.8}
+                strokeWidth={1.8}
 
-              />
+              />
 
-            </Link>
+            </Link>
 
 
 
-            <button
+            <button
 
-              type="button"
+              type="button"
 
-              onClick={() =>
+              onClick={() =>
 
-                toggleMenu("cases")
+                toggleMenu("cases")
 
-              }
+              }
 
-              className={`
+              className={`
 
-                flex
+                flex
 
-                items-center
+                items-center
 
-                gap-1.5
+                gap-1.5
 
-                whitespace-nowrap
+                whitespace-nowrap
 
-                rounded-full
+                rounded-full
 
-                px-3.5
+                px-3.5
 
-                py-2
+                py-2
 
-                text-[11px]
+                text-[11px]
 
-                font-semibold
+                font-semibold
 
-                tracking-[-0.01em]
+                tracking-[-0.01em]
 
-                transition-all
+                transition-all
 
-                ${
+                ${
 
-                  activeMenu === "cases"
+                  activeMenu === "cases"
 
-                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
+                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
 
-                    : "text-[#334155]"
+                    : "text-[#334155]"
 
-                }
+                }
 
-              `}
+              `}
 
-            >
+            >
 
-              Cases & Bands
+              Cases & Bands
 
 
 
-              <ChevronDown
+              <ChevronDown
 
-                size={12}
+                size={12}
 
-                strokeWidth={2}
+                strokeWidth={2}
 
-                className={`transition-transform duration-200 ${
+                className={`transition-transform duration-200 ${
 
-                  activeMenu === "cases"
+                  activeMenu === "cases"
 
-                    ? "rotate-180"
+                    ? "rotate-180"
 
-                    : ""
+                    : ""
 
-                }`}
+                }`}
 
-              />
+              />
 
-            </button>
+            </button>
 
 
 
-            <button
+            <button
 
-              type="button"
+              type="button"
 
-              onClick={() =>
+              onClick={() =>
 
-                toggleMenu("charging")
+                toggleMenu("charging")
 
-              }
+              }
 
-              className={`
+              className={`
 
-                flex
+                flex
 
-                items-center
+                items-center
 
-                gap-1.5
+                gap-1.5
 
-                whitespace-nowrap
+                whitespace-nowrap
 
-                rounded-full
+                rounded-full
 
-                px-3.5
+                px-3.5
 
-                py-2
+                py-2
 
-                text-[11px]
+                text-[11px]
 
-                font-semibold
+                font-semibold
 
-                tracking-[-0.01em]
+                tracking-[-0.01em]
 
-                transition-all
+                transition-all
 
-                ${
+                ${
 
-                  activeMenu === "charging"
+                  activeMenu === "charging"
 
-                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
+                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
 
-                    : "text-[#334155]"
+                    : "text-[#334155]"
 
-                }
+                }
 
-              `}
+              `}
 
-            >
+            >
 
-              Charging
+              Charging
 
 
 
-              <ChevronDown
+              <ChevronDown
 
-                size={12}
+                size={12}
 
-                strokeWidth={2}
+                strokeWidth={2}
 
-                className={`transition-transform duration-200 ${
+                className={`transition-transform duration-200 ${
 
-                  activeMenu === "charging"
+                  activeMenu === "charging"
 
-                    ? "rotate-180"
+                    ? "rotate-180"
 
-                    : ""
+                    : ""
 
-                }`}
+                }`}
 
-              />
+              />
 
-            </button>
+            </button>
 
 
 
-            <button
+            <button
 
-              type="button"
+              type="button"
 
-              onClick={() =>
+              onClick={() =>
 
-                toggleMenu("lifestyle")
+                toggleMenu("lifestyle")
 
-              }
+              }
 
-              className={`
+              className={`
 
-                flex
+                flex
 
-                items-center
+                items-center
 
-                gap-1.5
+                gap-1.5
 
-                whitespace-nowrap
+                whitespace-nowrap
 
-                rounded-full
+                rounded-full
 
-                px-3.5
+                px-3.5
 
-                py-2
+                py-2
 
-                text-[11px]
+                text-[11px]
 
-                font-semibold
+                font-semibold
 
-                tracking-[-0.01em]
+                tracking-[-0.01em]
 
-                transition-all
+                transition-all
 
-                ${
+                ${
 
-                  activeMenu === "lifestyle"
+                  activeMenu === "lifestyle"
 
-                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
+                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
 
-                    : "text-[#334155]"
+                    : "text-[#334155]"
 
-                }
+                }
 
-              `}
+              `}
 
-            >
+            >
 
-              Lifestyle Gear
+              Lifestyle Gear
 
 
 
-              <ChevronDown
+              <ChevronDown
 
-                size={12}
+                size={12}
 
-                strokeWidth={2}
+                strokeWidth={2}
 
-                className={`transition-transform duration-200 ${
+                className={`transition-transform duration-200 ${
 
-                  activeMenu === "lifestyle"
+                  activeMenu === "lifestyle"
 
-                    ? "rotate-180"
+                    ? "rotate-180"
 
-                    : ""
+                    : ""
 
-                }`}
+                }`}
 
-              />
+              />
 
-            </button>
+            </button>
 
-          </nav>
+          </nav>
 
 
 
-          {/* ACTIONS */}
+          {/* ACTIONS */}
 
 
 
-          <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
+          <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
 
-            {searchOpen && (
+            {searchOpen && (
 
-              <form
+              <form
 
-                onSubmit={
+                onSubmit={
 
-                  handleSearchSubmit
+                  handleSearchSubmit
 
-                }
+                }
 
-                className="
+                className="
 
-                  hidden
+                  hidden
 
-                  h-8
+                  h-8
 
-                  w-[180px]
+                  w-[180px]
 
-                  overflow-hidden
+                  overflow-hidden
 
-                  rounded-[7px]
+                  rounded-[7px]
 
-                  border
+                  border
 
-                  border-[#D9DEE5]
+                  border-[#D9DEE5]
 
-                  bg-[#F8FAFC]
+                  bg-[#F8FAFC]
 
-                  lg:flex
+                  lg:flex
 
-                "
+                "
 
-              >
+              >
 
-                <input
+                <input
 
-                  autoFocus
+                  autoFocus
 
-                  value={searchValue}
+                  value={searchValue}
 
-                  onChange={(event) =>
+                  onChange={(event) =>
 
-                    setSearchValue(
+                    setSearchValue(
 
-                      event.target.value,
+                      event.target.value,
 
-                    )
+                    )
 
-                  }
+                  }
 
-                  placeholder="Search"
+                  placeholder="Search"
 
-                  className="
+                  className="
 
-                    min-w-0
+                    min-w-0
 
-                    flex-1
+                    flex-1
 
-                    bg-transparent
+                    bg-transparent
 
-                    px-3
+                    px-3
 
-                    text-[9px]
+                    text-[9px]
 
-                    text-[#111827]
+                    text-[#111827]
 
-                    outline-none
+                    outline-none
 
-                    placeholder:text-[#94A3B8]
+                    placeholder:text-[#94A3B8]
 
-                  "
+                  "
 
-                />
+                />
 
-              </form>
+              </form>
 
-            )}
+            )}
 
 
 
-            {/* SEARCH */}
+            {/* SEARCH */}
 
 
 
-            <button
+            <button
 
-              type="button"
+              type="button"
 
-              onClick={() =>
+              onClick={() =>
 
-                setSearchOpen(
+                setSearchOpen(
 
-                  (value) => !value,
+                  (value) => !value,
 
-                )
+                )
 
-              }
+              }
 
-              aria-label="Search"
+              aria-label="Search"
 
-              className="
+              className="
 
-                flex
+                flex
 
-                h-8
+                h-8
 
-                w-8
+                w-8
 
-                items-center
+                items-center
 
-                justify-center
+                justify-center
 
-                rounded-full
+                rounded-full
 
-                text-[#334155]
+                text-[#334155]
 
-                transition
+                transition
 
-                hover:bg-[#F1F5F9]
+                hover:bg-[#F1F5F9]
 
-                hover:text-[#0877E8]
+                hover:text-[#0877E8]
 
-              "
+              "
 
-            >
+            >
 
-              {searchOpen ? (
+              {searchOpen ? (
 
-                <X
+                <X
 
-                  size={16}
+                  size={16}
 
-                  strokeWidth={1.7}
+                  strokeWidth={1.7}
 
-                />
+                />
 
-              ) : (
+              ) : (
 
-                <Search
+                <Search
 
-                  size={16}
+                  size={16}
 
-                  strokeWidth={1.7}
+                  strokeWidth={1.7}
 
-                />
+                />
 
-              )}
+              )}
 
-            </button>
+            </button>
 
 
 
-            {/* ACCOUNT */}
+            {/* ACCOUNT */}
 
 
 
-            <Link
+            <Link
 
-              to="/account"
+              to="/account"
 
-              aria-label="Account"
+              aria-label="Account"
 
-              className="
+              className="
 
-                hidden
+                hidden
 
-                h-8
+                h-8
 
-                w-8
+                w-8
 
-                items-center
+                items-center
 
-                justify-center
+                justify-center
 
-                rounded-full
+                rounded-full
 
-                text-[#334155]
+                text-[#334155]
 
-                transition
+                transition
 
-                hover:bg-[#F1F5F9]
+                hover:bg-[#F1F5F9]
 
-                hover:text-[#0877E8]
+                hover:text-[#0877E8]
 
-                sm:flex
+                sm:flex
 
-              "
+              "
 
-            >
+            >
 
-              <User
+              <User
 
-                size={16}
+                size={16}
 
-                strokeWidth={1.7}
+                strokeWidth={1.7}
 
-              />
+              />
 
-            </Link>
+            </Link>
 
 
 
-            {/* CART */}
+            {/* CART */}
 
 
 
-            <button
+            <button
 
-              type="button"
+              type="button"
 
-              onClick={() =>
+              onClick={() =>
 
-                setCartOpen(true)
+                setCartOpen(true)
 
-              }
+              }
 
-              aria-label="Cart"
+              aria-label="Cart"
 
-              className="
+              className="
 
-                relative
+                relative
 
-                flex
+                flex
 
-                h-8
+                h-8
 
-                w-8
+                w-8
 
-                items-center
+                items-center
 
-                justify-center
+                justify-center
 
-                rounded-full
+                rounded-full
 
-                text-[#334155]
+                text-[#334155]
 
-                transition
+                transition
 
-                hover:bg-[#F1F5F9]
+                hover:bg-[#F1F5F9]
 
-                hover:text-[#0877E8]
+                hover:text-[#0877E8]
 
-              "
+              "
 
-            >
+            >
 
-              <ShoppingBag
+              <ShoppingBag
 
-                size={16}
+                size={16}
 
-                strokeWidth={1.7}
+                strokeWidth={1.7}
 
-              />
+              />
 
 
 
-              {count > 0 && (
+              {count > 0 && (
 
-                <span
+                <span
 
-                  className="
+                  className="
 
-                    absolute
+                    absolute
 
-                    right-0
+                    right-0
 
-                    top-0
+                    top-0
 
-                    flex
+                    flex
 
-                    h-3.5
+                    h-3.5
 
-                    min-w-3.5
+                    min-w-3.5
 
-                    items-center
+                    items-center
 
-                    justify-center
+                    justify-center
 
-                    rounded-full
+                    rounded-full
 
-                    bg-[#0877E8]
+                    bg-[#0877E8]
 
-                    px-1
+                    px-1
 
-                    text-[7px]
+                    text-[7px]
 
-                    font-bold
+                    font-bold
 
-                    text-white
+                    text-white
 
-                  "
+                  "
 
-                >
+                >
 
-                  {count > 99
+                  {count > 99
 
-                    ? "99+"
+                    ? "99+"
 
-                    : count}
+                    : count}
 
-                </span>
+                </span>
 
-              )}
+              )}
 
-            </button>
+            </button>
 
 
 
-            {/* MOBILE MENU */}
+            {/* MOBILE MENU */}
 
 
 
-            <button
+            <button
 
-              type="button"
+              type="button"
 
-              onClick={() => {
+              onClick={() => {
 
-                setMobileOpen((value) => !value);
+                setMobileOpen((value) => !value);
 
-                setActiveMenu(null);
+                setActiveMenu(null);
 
-                setMobileExpandedMenu(null);
+                setMobileExpandedMenu(null);
 
-              }}
+              }}
 
-              aria-label="Menu"
+              aria-label="Menu"
 
-              className="
+              className="
 
-                flex
+                flex
 
-                h-8
+                h-8
 
-                w-8
+                w-8
 
-                items-center
+                items-center
 
-                justify-center
+                justify-center
 
-                rounded-full
+                rounded-full
 
-                text-[#334155]
+                text-[#334155]
 
-                lg:hidden
+                lg:hidden
 
-              "
+              "
 
-            >
+            >
 
-              {mobileOpen ? (
+              {mobileOpen ? (
 
-                <X size={17} />
+                <X size={17} />
 
-              ) : (
+              ) : (
 
-                <Menu size={17} />
+                <Menu size={17} />
 
-              )}
+              )}
 
-            </button>
+            </button>
 
-          </div>
+          </div>
 
-        </div>
+        </div>
 
 
 
-        {/* MEGA MENU */}
+        {/* MEGA MENU */}
 
 
 
-        {activeMegaMenu && (
+        {activeMegaMenu && (
 
-          <div
+          <div
 
-            className="
+            className="
 
-              absolute
+              absolute
 
-              left-1/2
+              left-1/2
 
-              top-[62px]
+              top-[62px]
 
-              hidden
+              hidden
 
-              w-[calc(100%-28px)]
+              w-[calc(100%-28px)]
 
-              max-w-[1280px]
+              max-w-[760px]
 
-              -translate-x-1/2
+              -translate-x-1/2
 
-              overflow-hidden
+              overflow-hidden
 
-              rounded-[18px]
+              rounded-[18px]
 
-              border
+              border
 
-              border-[#D9DEE7]
+              border-[#D9DEE7]
 
-              bg-white
+              bg-white
 
-              shadow-[0_24px_60px_rgba(15,23,42,0.12)]
+              shadow-[0_24px_60px_rgba(15,23,42,0.12)]
 
-              lg:block
+              lg:block
 
-            "
+            "
 
-          >
+          >
 
-            <div className="grid grid-cols-[1fr_168px] gap-3 p-3.5">
+            <div className="grid grid-cols-[minmax(0,1fr)_120px] gap-2 p-2">
 
-              {/* CATEGORY CARDS */}
+              {/* CATEGORY CARDS */}
 
 
 
-              <div
+              <div
 
-                className="
+                className="
 
-                  grid
+                  grid
 
-                  gap-x-2.5
+                  gap-x-2
 
-                  gap-y-4
+                  gap-y-2
 
-                  p-1
+                  p-0.5
 
-                "
+                "
 
-                style={{
+                style={{
 
-                  gridTemplateColumns: `repeat(${getMegaGridColumns(
+                  gridTemplateColumns: `repeat(${getMegaGridColumns(
 
-                    activeMegaMenu.mega_menu_groups.length,
+                    activeMegaMenu.mega_menu_groups.length,
 
-                  )}, minmax(0, 1fr))`,
+                  )}, minmax(0, 1fr))`,
 
-                }}
+                }}
 
-              >
+              >
 
-                {activeMegaMenu.mega_menu_groups.map(
+                {activeMegaMenu.mega_menu_groups.map(
 
-                  (column, columnIndex) => (
+                  (column, columnIndex) => (
 
-                    <div
+                    <div
 
-                      key={column.title}
+                      key={column.title}
 
-                      className="min-w-0"
+                      className="min-w-0"
 
-                    >
+                    >
 
-                      <Link
+                      <Link
 
-                        to="/shop"
+                        to="/shop"
 
-                        search={
+                        search={
 
-                          {
+                          {
 
-                            category:
+                            category:
 
-                              column.category?.slug ?? undefined,
+                              column.category?.slug ?? undefined,
 
-                          } as never
+                          } as never
 
-                        }
+                        }
 
-                        onClick={() =>
+                        onClick={() =>
 
-                          setActiveMenu(
+                          setActiveMenu(
 
-                            null,
+                            null,
 
-                          )
+                          )
 
-                        }
+                        }
 
-                        className="group block"
+                        className="group block"
 
-                      >
+                      >
 
-                        <div
+                        <div
 
-                          className="
+                          className="
 
-                            relative
+                            relative
 
-                            mb-2.5
+                            mb-1.5
 
-                            aspect-[2.85/1]
+                            h-[145px]
 
-                            w-full
+                            w-full
 
-                            overflow-hidden
+                            overflow-hidden
 
-                            rounded-[11px]
+                            rounded-[8px]
 
-                            border
+                            shadow-[0_8px_22px_rgba(15,23,42,0.12)]
 
-                            border-[#E1E5EA]
+                            bg-[#F1F3F5]
 
-                            shadow-[0_5px_16px_rgba(15,23,42,0.10)]
+                          "
 
-                            bg-[#F1F3F5]
+                        >
 
-                          "
+                          <img
 
-                        >
+                            src={column.image_url || getGroupFallback(activeMegaMenu.menu_key, columnIndex)}
 
-                          <img
+                            alt={column.title}
 
-                            src={column.image_url || getGroupFallback(activeMegaMenu.menu_key, columnIndex)}
+                            className="
 
-                            alt={column.title}
+                              h-full
 
-                            className="
+                              w-full
 
-                              h-full
+                              object-cover
 
-                              w-full
+                              drop-shadow-[0_3px_8px_rgba(15,23,42,0.08)]
 
-                              object-cover
+                              transition-transform
 
-                              drop-shadow-[0_3px_8px_rgba(15,23,42,0.08)]
+                              duration-500
 
-                              transition-transform
+                              group-hover:scale-[1.04]
 
-                              duration-500
+                            "
 
-                              group-hover:scale-[1.04]
+                          />
 
-                            "
+                        </div>
 
-                          />
 
-                        </div>
 
+                        <div
 
+                          className="
 
-                        <div
+                            flex
 
-                          className="
+                            items-center
 
-                            flex
+                            gap-1
 
-                            items-center
-
-                            gap-1
-
-                            text-[14px]
+                            text-[12px]
                             font-bold
                             tracking-[-0.02em]
                             text-[#111827]
 
-                            transition-colors
+                            transition-colors
 
-                            group-hover:text-[#0877E8]
+                            group-hover:text-[#0877E8]
 
-                          "
+                          "
 
-                        >
+                        >
 
-                          {column.title}
-
-
-
-                          <ArrowRight
-
-                            size={9}
-
-                            className="
-
-                              opacity-40
-
-                              transition
-
-                              group-hover:translate-x-0.5
-
-                              group-hover:opacity-100
-
-                            "
-
-                          />
-
-                        </div>
-
-                      </Link>
+                          {column.title}
 
 
 
-                      {/* ITEMS */}
+                          <ArrowRight
+
+                            size={9}
+
+                            className="
+
+                              opacity-40
+
+                              transition
+
+                              group-hover:translate-x-0.5
+
+                              group-hover:opacity-100
+
+                            "
+
+                          />
+
+                        </div>
+
+                      </Link>
 
 
 
-                      <div className="mt-3 flex flex-col gap-2">
-
-                        {column.mega_menu_items.map((item) => {
-
-                          const itemLabel =
-
-                            item.label_override ||
-
-                            item.categories?.name ||
-
-                            "Category";
-
-                          const itemSlug = item.categories?.slug;
+                      {/* ITEMS */}
 
 
 
-                          return (
+                      <div className="mt-2.5 flex flex-col gap-1.5">
 
-                            <Link
+                        {column.mega_menu_items.map((item) => {
 
-                              key={item.id}
+                          const itemLabel =
 
-                              to="/shop"
+                            item.label_override ||
 
-                              search={
+                            item.categories?.name ||
 
-                                itemSlug
+                            "Category";
 
-                                  ? ({ category: itemSlug } as never)
+                          const itemSlug = item.categories?.slug;
 
-                                  : undefined
 
-                              }
 
-                              onClick={() => setActiveMenu(null)}
+                          return (
 
-                              className="
+                            <Link
 
-                                w-fit
+                              key={item.id}
 
-                                rounded-[6px]
+                              to="/shop"
 
-                                py-0.5
+                              search={
 
-                                text-[11px]
-                                font-semibold
-                                leading-5
+                                itemSlug
+
+                                  ? ({ category: itemSlug } as never)
+
+                                  : undefined
+
+                              }
+
+                              onClick={() => setActiveMenu(null)}
+
+                              className="
+
+                                w-fit
+
+                                rounded-[6px]
+
+                                py-0
+
+                                text-[10px]
+                                font-medium
+                                leading-4
                                 text-[#475467]
 
-                                transition-all
+                                transition-all
 
-                                hover:bg-[#F5F7FA]
+                                hover:bg-[#F5F7FA]
 
-                                hover:px-1.5
+                                hover:px-1.5
 
-                                hover:text-[#111827]
+                                hover:text-[#111827]
 
-                              "
+                              "
 
-                            >
+                            >
 
-                              {itemLabel}
+                              {itemLabel}
 
-                            </Link>
+                            </Link>
 
-                          );
+                          );
 
-                        })}
+                        })}
 
-                      </div>
+                      </div>
 
 
 
-                      {/* VIEW ALL */}
+                      {/* VIEW ALL */}
 
 
 
-                      <Link
+                      <Link
 
-                        to="/shop"
+                        to="/shop"
 
-                        search={
+                        search={
 
-                          {
+                          {
 
-                            category:
+                            category:
 
-                              column.category?.slug ?? undefined,
+                              column.category?.slug ?? undefined,
 
-                          } as never
+                          } as never
 
-                        }
+                        }
 
-                        onClick={() =>
+                        onClick={() =>
 
-                          setActiveMenu(
+                          setActiveMenu(
 
-                            null,
+                            null,
 
-                          )
+                          )
 
-                        }
+                        }
 
-                        className="
+                        className="
 
-                          mt-3
+                          mt-2
 
-                          inline-flex
+                          inline-flex
 
-                          items-center
+                          items-center
 
-                          gap-1.5
+                          gap-1.5
 
-                          text-[9px]
+                          text-[9px]
 
-                          font-semibold
+                          font-semibold
 
-                          text-[#475467]
+                          text-[#475467]
 
-                          transition
+                          transition
 
-                          hover:text-[#111827]
+                          hover:text-[#111827]
 
-                        "
+                        "
 
-                      >
+                      >
 
-                        View all
+                        View all
 
 
 
-                        <ArrowRight size={8} />
+                        <ArrowRight size={8} />
 
-                      </Link>
+                      </Link>
 
-                    </div>
+                    </div>
 
-                  ),
+                  ),
 
-                )}
+                )}
 
-              </div>
+              </div>
 
 
 
-              {/* FEATURE CARD */}
+              {/* FEATURE CARD */}
 
 
 
-              <Link
+              <Link
 
-                to="/shop"
+                to="/shop"
 
-                search={
+                search={
 
-                  activeMegaMenu.mega_menu_groups[0]?.category?.slug
+                  activeMegaMenu.mega_menu_groups[0]?.category?.slug
 
-                    ? ({
+                    ? ({
 
-                        category:
+                        category:
 
-                          activeMegaMenu.mega_menu_groups[0].category?.slug,
+                          activeMegaMenu.mega_menu_groups[0].category?.slug,
 
-                      } as never)
+                      } as never)
 
-                    : undefined
+                    : undefined
 
-                }
+                }
 
-                onClick={() =>
+                onClick={() =>
 
-                  setActiveMenu(null)
+                  setActiveMenu(null)
 
-                }
+                }
 
-                className="
+                className="
 
-                  group
+                  group
 
-                  relative
+                  relative
 
-                  min-h-[218px]
+                  min-h-[132px]
 
-                  overflow-hidden
+                  overflow-hidden
 
-                  rounded-[14px]
+                  rounded-[10px]
 
-                  border
+                  border
 
-                  border-[#E3E7EC]
+                  border-[#E3E7EC]
 
-                  bg-[#E9EEF3]
+                  bg-[#E9EEF3]
 
-                  shadow-[0_8px_22px_rgba(15,23,42,0.12)]
+                  shadow-[0_8px_22px_rgba(15,23,42,0.12)]
 
-                "
+                "
 
-              >
+              >
 
-                <img
+                <img
 
-                  src={activeMegaMenu.image_url || getSectionFallback(activeMegaMenu.menu_key)}
+                  src={activeMegaMenu.image_url || getSectionFallback(activeMegaMenu.menu_key)}
 
-                  alt={
+                  alt={
 
-                    activeMegaMenu.title
+                    activeMegaMenu.title
 
-                  }
+                  }
 
-                  className="
+                  className="
 
-                    absolute
+                    absolute
 
-                    inset-0
+                    inset-0
 
-                    h-full
+                    h-full
 
-                    w-full
+                    w-full
 
-                    object-cover
+                    object-cover
 
-                    transition-transform
+                    transition-transform
 
-                    duration-500
+                    duration-500
 
-                    group-hover:scale-[1.03]
+                    group-hover:scale-[1.03]
 
-                  "
+                  "
 
-                />
+                />
 
 
 
-                <div
+                <div
 
-                  className="
+                  className="
 
-                    absolute
+                    absolute
 
-                    inset-0
+                    inset-0
 
-                    bg-gradient-to-t
+                    bg-gradient-to-t
 
-                    from-black/65
+                    from-black/70
 
-                    via-black/10
+                    via-black/10
 
-                    to-transparent
+                    to-transparent
 
-                  "
+                  "
 
-                />
+                />
 
 
 
-                <div
+                <div
 
-                  className="
+                  className="
 
-                    absolute
+                    absolute
 
-                    inset-x-0
+                    inset-x-0
 
-                    bottom-0
+                    bottom-0
 
-                    p-3
+                    p-2
 
-                  "
+                  "
 
-                >
+                >
 
-                  <p
+                  <p
 
-                    className="
+                    className="
 
-                      text-[8px]
+                      text-[8px]
 
-                      font-semibold
+                      font-semibold
 
-                      uppercase
+                      uppercase
 
-                      tracking-[0.14em]
+                      tracking-[0.14em]
 
-                      text-white/75
+                      text-white/75
 
-                    "
+                    "
 
-                  >
+                  >
 
-                    Explore
+                    Explore
 
-                  </p>
+                  </p>
 
 
 
-                  <h3
+                  <h3
 
-                    className="
+                    className="
 
-                      mt-1
+                      mt-0.5
 
-                      text-[16px]
+                      text-[12px]
 
-                      font-semibold
+                      font-semibold
 
-                      tracking-[-0.035em]
+                      tracking-[-0.035em]
 
-                      text-white
+                      text-white
 
-                    "
+                    "
 
-                  >
+                  >
 
-                    {activeMegaMenu.title}
+                    {activeMegaMenu.title}
 
-                  </h3>
+                  </h3>
 
 
 
-                  <span
+                  <span
 
-                    className="
+                    className="
 
-                      mt-2.5
+                      mt-1.5
 
-                      inline-flex
+                      inline-flex
 
-                      h-8
+                      h-6
 
-                      items-center
+                      items-center
 
-                      gap-2
+                      gap-2
 
-                      rounded-full
+                      rounded-full
 
-                      bg-white
+                      bg-white
 
-                      px-3.5
+                      px-2.5
 
-                      text-[9px]
+                      text-[8px]
 
-                      font-semibold
+                      font-semibold
 
-                      text-[#111827]
+                      text-[#111827]
 
-                    "
+                    "
 
-                  >
+                  >
 
-                    Shop now
+                    Shop now
 
 
 
-                    <ArrowRight size={10} />
+                    <ArrowRight size={10} />
 
-                  </span>
+                  </span>
 
-                </div>
+                </div>
 
-              </Link>
+              </Link>
 
-            </div>
+            </div>
 
-          </div>
+          </div>
 
-        )}
+        )}
 
 
 
-        {/* MOBILE MENU */}
+        {/* MOBILE MENU */}
 
 
 
-        {mobileOpen && (
+        {mobileOpen && (
 
-          <div
+          <div
 
-            className="
+            className="
 
-              absolute left-0 right-0 top-[62px]
+              absolute left-0 right-0 top-[62px]
 
-              overflow-hidden rounded-[14px]
+              overflow-hidden rounded-[14px]
 
-              border border-[#DDE2E8] bg-white
+              border border-[#DDE2E8] bg-white
 
-              shadow-[0_18px_50px_rgba(15,23,42,0.14)]
+              shadow-[0_18px_50px_rgba(15,23,42,0.14)]
 
-              lg:hidden
+              lg:hidden
 
-            "
+            "
 
-          >
+          >
 
-            <nav className="max-h-[calc(100vh-90px)] overflow-y-auto p-3">
+            <nav className="max-h-[calc(100vh-90px)] overflow-y-auto p-3">
 
-              <Link
+              <Link
 
-                to="/shop"
+                to="/shop"
 
-                onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
+                onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
 
-                className="flex items-center justify-between rounded-[9px] px-3 py-3 text-[11px] font-semibold text-[#111827] hover:bg-[#F8FAFC]"
+                className="flex items-center justify-between rounded-[9px] px-3 py-3 text-[11px] font-semibold text-[#111827] hover:bg-[#F8FAFC]"
 
-              >
+              >
 
-                <span>Shop Apple accessories</span>
+                <span>Shop Apple accessories</span>
 
-                <ArrowRight size={13} className="text-[#94A3B8]" />
+                <ArrowRight size={13} className="text-[#94A3B8]" />
 
-              </Link>
+              </Link>
 
 
 
-              {([
+              {([
 
-                ["cases", "Cases & Bands"],
+                ["cases", "Cases & Bands"],
 
-                ["charging", "Charging"],
+                ["charging", "Charging"],
 
-                ["lifestyle", "Lifestyle Gear"],
+                ["lifestyle", "Lifestyle Gear"],
 
-              ] as const).map(([menuKey, label]) => {
+              ] as const).map(([menuKey, label]) => {
 
-                const section = megaMenus.find((menu) => menu.menu_key === menuKey);
+                const section = megaMenus.find((menu) => menu.menu_key === menuKey);
 
-                const expanded = mobileExpandedMenu === menuKey;
+                const expanded = mobileExpandedMenu === menuKey;
 
 
 
-                if (!section) {
+                if (!section) {
 
-                  return (
+                  return (
 
-                    <Link key={menuKey} to="/shop" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="flex items-center justify-between rounded-[9px] px-3 py-3 text-[11px] font-medium text-[#111827] hover:bg-[#F8FAFC]">
+                    <Link key={menuKey} to="/shop" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="flex items-center justify-between rounded-[9px] px-3 py-3 text-[11px] font-medium text-[#111827] hover:bg-[#F8FAFC]">
 
-                      <span>{label}</span><ArrowRight size={13} className="text-[#94A3B8]" />
+                      <span>{label}</span><ArrowRight size={13} className="text-[#94A3B8]" />
 
-                    </Link>
+                    </Link>
 
-                  );
+                  );
 
-                }
+                }
 
 
 
-                return (
+                return (
 
-                  <div key={menuKey} className="overflow-hidden border-b border-[#E5E7EB]">
+                  <div key={menuKey} className="overflow-hidden border-b border-[#E5E7EB]">
 
-                    <button type="button" onClick={() => setMobileExpandedMenu(expanded ? null : menuKey)} className="flex w-full items-center justify-between rounded-[9px] px-3 py-3 text-left text-[11px] font-medium text-[#111827] hover:bg-[#F8FAFC]">
+                    <button type="button" onClick={() => setMobileExpandedMenu(expanded ? null : menuKey)} className="flex w-full items-center justify-between rounded-[9px] px-3 py-3 text-left text-[11px] font-medium text-[#111827] hover:bg-[#F8FAFC]">
 
-                      <span>{label}</span>
+                      <span>{label}</span>
 
-                      <ChevronDown size={14} className={`text-[#64748B] transition-transform ${expanded ? "rotate-180" : ""}`} />
+                      <ChevronDown size={14} className={`text-[#64748B] transition-transform ${expanded ? "rotate-180" : ""}`} />
 
-                    </button>
+                    </button>
 
 
 
-                    {expanded && (
+                    {expanded && (
 
-                      <div className="px-2 pb-3">
+                      <div className="px-2 pb-3">
 
-                        <Link
+                        <Link
 
-                          to="/shop"
+                          to="/shop"
 
-                          search={section.mega_menu_groups[0]?.category?.slug ? ({ category: section.mega_menu_groups[0].category.slug } as never) : undefined}
+                          search={section.mega_menu_groups[0]?.category?.slug ? ({ category: section.mega_menu_groups[0].category.slug } as never) : undefined}
 
-                          onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
+                          onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
 
-                          className="group relative mb-3 block h-[105px] overflow-hidden rounded-[10px] border border-[#E1E5EA] bg-[#F1F3F5]"
+                          className="group relative mb-3 block h-[105px] overflow-hidden rounded-[10px] border border-[#E1E5EA] bg-[#F1F3F5]"
 
-                        >
+                        >
 
-                          <img src={section.image_url || getSectionFallback(section.menu_key)} alt={section.title || label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                          <img src={section.image_url || getSectionFallback(section.menu_key)} alt={section.title || label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
 
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-                          <div className="absolute bottom-0 left-0 right-0 p-3">
+                          <div className="absolute bottom-0 left-0 right-0 p-3">
 
-                            <div className="text-[8px] font-semibold uppercase tracking-[0.12em] text-white/75">Explore</div>
+                            <div className="text-[8px] font-semibold uppercase tracking-[0.12em] text-white/75">Explore</div>
 
-                            <div className="mt-0.5 text-[14px] font-semibold text-white">{section.title || label}</div>
+                            <div className="mt-0.5 text-[14px] font-semibold text-white">{section.title || label}</div>
 
-                          </div>
+                          </div>
 
-                        </Link>
+                        </Link>
 
 
 
-                        <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-3">
 
-                          {section.mega_menu_groups.map((group, groupIndex) => (
+                          {section.mega_menu_groups.map((group, groupIndex) => (
 
-                            <div key={group.id} className="overflow-hidden rounded-[10px] border border-[#E5E7EB] bg-[#FAFBFC]">
+                            <div key={group.id} className="overflow-hidden rounded-[10px] border border-[#E5E7EB] bg-[#FAFBFC]">
 
-                              <Link
+                              <Link
 
-                                to="/shop"
+                                to="/shop"
 
-                                search={group.category?.slug ? ({ category: group.category.slug } as never) : undefined}
+                                search={group.category?.slug ? ({ category: group.category.slug } as never) : undefined}
 
-                                onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
+                                onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
 
-                                className="flex items-center gap-3 p-2.5"
+                                className="flex items-center gap-3 p-2.5"
 
-                              >
+                              >
 
-                                <div className="h-[52px] w-[72px] shrink-0 overflow-hidden rounded-[8px] border border-[#E1E5EA] bg-white">
+                                <div className="h-[52px] w-[72px] shrink-0 overflow-hidden rounded-[8px] bg-white shadow-[0_4px_12px_rgba(15,23,42,0.12)]">
 
-                                  <img src={group.image_url || getGroupFallback(section.menu_key, groupIndex)} alt={group.title} className="h-full w-full object-cover" />
+                                  <img src={group.image_url || getGroupFallback(section.menu_key, groupIndex)} alt={group.title} className="h-full w-full object-cover" />
 
-                                </div>
+                                </div>
 
-                                <div className="min-w-0 flex-1">
+                                <div className="min-w-0 flex-1">
 
-                                  <div className="flex items-center gap-1 text-[11px] font-semibold text-[#171A1F]">
+                                  <div className="flex items-center gap-1 text-[11px] font-semibold text-[#171A1F]">
 
-                                    <span className="truncate">{group.title}</span><ArrowRight size={10} className="shrink-0 text-[#94A3B8]" />
+                                    <span className="truncate">{group.title}</span><ArrowRight size={10} className="shrink-0 text-[#94A3B8]" />
 
-                                  </div>
+                                  </div>
 
-                                  <div className="mt-1 text-[9px] text-[#98A2B3]">View collection</div>
+                                  <div className="mt-1 text-[9px] text-[#98A2B3]">View collection</div>
 
-                                </div>
+                                </div>
 
-                              </Link>
+                              </Link>
 
 
 
-                              {group.mega_menu_items.length > 0 && (
+                              {group.mega_menu_items.length > 0 && (
 
-                                <div className="border-t border-[#E5E7EB] bg-white px-3 py-2.5">
+                                <div className="border-t border-[#E5E7EB] bg-white px-3 py-2.5">
 
-                                  <div className="flex flex-wrap gap-x-2 gap-y-1.5">
+                                  <div className="flex flex-wrap gap-x-2 gap-y-1.5">
 
-                                    {group.mega_menu_items.map((item) => {
+                                    {group.mega_menu_items.map((item) => {
 
-                                      const itemLabel = item.label_override || item.categories?.name || "Category";
+                                      const itemLabel = item.label_override || item.categories?.name || "Category";
 
-                                      const itemSlug = item.categories?.slug;
+                                      const itemSlug = item.categories?.slug;
 
-                                      if (!itemSlug) return null;
+                                      if (!itemSlug) return null;
 
-                                      return (
+                                      return (
 
-                                        <Link key={item.id} to="/shop" search={{ category: itemSlug } as never} onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="rounded-[6px] bg-[#F5F7FA] px-2 py-1.5 text-[9px] font-medium text-[#667085] hover:bg-[#EEF2F6] hover:text-[#111827]">
+                                        <Link key={item.id} to="/shop" search={{ category: itemSlug } as never} onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="rounded-[6px] bg-[#F5F7FA] px-2 py-1.5 text-[9px] font-medium text-[#667085] hover:bg-[#EEF2F6] hover:text-[#111827]">
 
-                                          {itemLabel}
+                                          {itemLabel}
 
-                                        </Link>
+                                        </Link>
 
-                                      );
+                                      );
 
-                                    })}
+                                    })}
 
-                                  </div>
+                                  </div>
 
-                                </div>
+                                </div>
 
-                              )}
+                              )}
 
-                            </div>
+                            </div>
 
-                          ))}
+                          ))}
 
-                        </div>
+                        </div>
 
-                      </div>
+                      </div>
 
-                    )}
+                    )}
 
-                  </div>
+                  </div>
 
-                );
+                );
 
-              })}
+              })}
 
 
 
-              <Link to="/account" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="mt-1 flex items-center justify-between border-t border-[#E5E7EB] px-3 py-3 text-[11px] text-[#64748B]">
+              <Link to="/account" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="mt-1 flex items-center justify-between border-t border-[#E5E7EB] px-3 py-3 text-[11px] text-[#64748B]">
 
-                <span>Account</span><User size={14} strokeWidth={1.7} />
+                <span>Account</span><User size={14} strokeWidth={1.7} />
 
-              </Link>
+              </Link>
 
-            </nav>
+            </nav>
 
-          </div>
+          </div>
 
-        )}
+        )}
 
-      </div>
+      </div>
 
 
 
-      {/* ========================================================
+      {/* ========================================================
 
-          CART DRAWER
+          CART DRAWER
 
-          ======================================================== */}
+          ======================================================== */}
 
 
 
-      <CartDrawer
+      <CartDrawer
 
-  open={cartOpen}
+  open={cartOpen}
 
-  onClose={() => setCartOpen(false)}
+  onClose={() => setCartOpen(false)}
 
-  onPayPal={() => {
+  onPayPal={() => {
 
-    window.location.href = "/checkout";
+    window.location.href = "/checkout";
 
-  }}
+  }}
 
 />
 
 
 
-    </header>
+    </header>
 
-  );
+  );
 
 }

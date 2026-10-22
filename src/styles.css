@@ -508,3 +508,83 @@ border-top:1px solid #E5E5E5;
     animation: none;
   }
 }
+
+
+/* INFIBETTER — Compact product cards on mobile */
+@media (max-width: 767px) {
+  /* Product list: show 2 cards in one row */
+  .product-grid,
+  .products-grid,
+  .best-sellers-grid,
+  .featured-products-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    padding: 0 12px !important;
+  }
+
+  /* Remove oversized carousel sizing */
+  .product-card,
+  .product-item,
+  .featured-product-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    border: 1px solid #eaeaea;
+    border-radius: 15px !important;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
+    background: #fff;
+  }
+
+  /* Compact image area */
+  .product-card__image,
+  .product-image,
+  .product-card img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+  }
+
+  /* Compact product information */
+  .product-card__content,
+  .product-info {
+    padding: 9px !important;
+    gap: 4px !important;
+  }
+
+  .product-card__title,
+  .product-title {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    margin: 0 0 4px !important;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .product-card__description,
+  .product-description {
+    font-size: 10px !important;
+    line-height: 1.4 !important;
+    margin: 0 0 5px !important;
+    color: #888;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .product-card__price,
+  .product-price {
+    font-size: 13px !important;
+    font-weight: 600;
+  }
+
+  /* Hide oversized CTA overlay */
+  .product-card__overlay,
+  .product-card__quick-view {
+    display: none !important;
+  }
+}

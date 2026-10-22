@@ -197,106 +197,76 @@ function ProductMiniCard({
       to="/products/$slug"
       params={{ slug: product.slug }}
       className="
-        group relative grid w-[calc(100vw-58px)] flex-none snap-start
-        grid-cols-[38%_62%] min-w-0 items-center overflow-hidden
-        rounded-[14px] border border-[#E5E7EB]
-        bg-white shadow-[0_2px_10px_rgba(15,23,42,0.04)]
+        group relative flex w-[calc((100vw-44px)/2)] flex-none snap-start
+        flex-col overflow-hidden rounded-[20px] border border-[#EAE6E1]
+        bg-white shadow-[0_3px_12px_rgba(24,24,24,0.06)]
         transition-all duration-300
-        hover:-translate-y-1
-        hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)]
-        sm:block sm:w-auto sm:rounded-[10px]
-        sm:h-auto sm:border-0 sm:bg-transparent sm:shadow-none
+        hover:-translate-y-1 hover:shadow-[0_10px_28px_rgba(0,0,0,0.10)]
+        sm:w-auto sm:rounded-[18px]
       "
     >
-      {/* IMAGE */}
-      <div
-  className="
-    relative h-[132px] min-h-0
-    overflow-hidden rounded-xl bg-white
-    sm:aspect-square sm:h-auto
-  "
->
+      {/* PRODUCT IMAGE */}
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F4F1ED]">
         <img
           src={product.image_url || fallbackImage}
           alt={product.name}
+          loading="lazy"
           className="
-            absolute inset-0
-            h-full w-full rounded-xl
-            object-contain p-2
-            transition-transform duration-500
-            group-hover:scale-[1.03]
-            sm:p-1
+            absolute inset-0 h-full w-full object-cover
+            transition-transform duration-500 group-hover:scale-[1.03]
           "
         />
 
-        {/* BADGE */}
-        <div className="absolute left-2 top-2 flex gap-1">
-          <span
-            className="
-              rounded-[4px] bg-[#0066E6]
-              px-1.5 py-1
-              text-[7px] font-semibold
-              text-white
-            "
-          >
+        {/* Soft image tint for legible overlay */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/20 to-transparent" />
+
+        {/* BEST SELLER BADGE */}
+        <div className="absolute left-3 top-3">
+          <span className="relative inline-flex rounded-full bg-white/95 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#33302D] shadow-sm backdrop-blur-sm sm:text-[10px]">
             Best Seller
+            <span className="absolute bottom-0 left-3 right-3 h-[2px] translate-y-[1px] rounded-full bg-[#E97943]" />
           </span>
+        </div>
+
+        {/* SUBTLE CTA OVER IMAGE */}
+        <div
+          className="
+            absolute bottom-2.5 left-2.5 right-2.5 flex h-[29px]
+            items-center justify-center rounded-full
+            border border-white/55 bg-white/65
+            px-3 text-[10px] font-medium text-[#35312D]/85
+            shadow-[0_1px_4px_rgba(0,0,0,0.06)]
+            backdrop-blur-md transition-all duration-300
+            group-hover:bg-white/80 group-hover:text-[#292622]
+            sm:bottom-3 sm:left-3 sm:right-3 sm:h-[32px] sm:text-[10px]
+          "
+        >
+          <span>View product</span>
         </div>
       </div>
 
-      {/* INFO */}
-      <div className="flex min-h-0 flex-col justify-center px-2.5 py-2 sm:h-auto sm:min-h-0 sm:block sm:px-2.5 sm:pb-2.5 sm:pt-2">
-        <h3
-          className="
-            line-clamp-1
-            text-[13px]
-            font-semibold
-            sm:text-[11px]
-            tracking-[-0.01em]
-            text-[#171717]
-          "
-        >
+      {/* PRODUCT DETAILS */}
+      <div className="flex min-w-0 flex-1 flex-col px-3.5 pb-3.5 pt-3 sm:px-4 sm:pb-4 sm:pt-3.5">
+        <h3 className="line-clamp-2 min-h-[2.5em] text-[12px] font-medium leading-[1.55] tracking-[-0.01em] text-[#3A332E] sm:text-[13px]">
           {product.name}
         </h3>
 
-        <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-neutral-400 sm:line-clamp-1 sm:text-[9px]">
+        <p className="mt-1 line-clamp-1 text-[10px] leading-4 text-neutral-400 sm:text-[11px]">
           Modern design · everyday practical
         </p>
 
-        <div className="mt-2 flex items-center gap-1">
-          <span className="text-[13px] font-bold text-[#0066E6] sm:text-[11px]">
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-[14px] font-semibold tracking-[-0.02em] text-[#24211E] sm:text-[15px]">
             {displayPrice}
           </span>
 
           {price !== null &&
             comparePrice !== null &&
             comparePrice > price && (
-              <span className="text-[8px] text-neutral-400 line-through">
+              <span className="text-[10px] text-neutral-400 line-through sm:text-[11px]">
                 {displayComparePrice}
               </span>
             )}
-        </div>
-
-        <div
-          className="
-            infi-float-button relative mt-2 flex h-[30px]
-            w-full items-center justify-center self-start
-            rounded-[8px] border border-[#E8EBEF] bg-white
-            text-[9px] font-semibold text-[#171717]
-            shadow-[0_3px_10px_rgba(15,23,42,0.06)]
-            transition-[border-color,box-shadow] duration-300
-            group-hover:border-[#D9DEE5]
-            group-hover:shadow-[0_5px_14px_rgba(15,23,42,0.08)]
-          "
-          style={{ animationDelay: `${floatDelay}s` }}
-        >
-          <span className="absolute inset-0 flex items-center justify-center text-center">
-            View product
-          </span>
-          <ArrowRight
-            size={11}
-            className="absolute right-2 transition-transform duration-300 group-hover:translate-x-0.5"
-          />
         </div>
       </div>
     </Link>
@@ -316,7 +286,7 @@ export default function Collections({
   const activeProducts =
     activeTab === "best" ? products : newArrivals;
 
-  // Mobile: current product + a small peek of the next product.
+  // Mobile: show two full product cards side by side.
   const mobileProducts = activeProducts.slice(
     mobileIndex,
     mobileIndex + 2,
@@ -477,7 +447,7 @@ export default function Collections({
           flex
           snap-x
           snap-mandatory
-          gap-3
+          gap-4
           overflow-x-auto
           overscroll-x-contain
           scroll-smooth
@@ -486,12 +456,13 @@ export default function Collections({
           [scrollbar-width:none]
           [&::-webkit-scrollbar]:hidden
           sm:grid
-          sm:grid-cols-2
-          sm:gap-4
+          sm:grid-cols-4
+          sm:justify-items-center
+          sm:gap-5
           sm:overflow-visible
           sm:pb-0
           sm:pr-0
-          lg:grid-cols-4
+          lg:gap-6
         "
       >
         {collections.map((item, index) => (
@@ -499,94 +470,19 @@ export default function Collections({
             key={item.slug}
             to="/shop"
             search={{ category: item.slug } as never}
-            className="
-              group
-              relative
-              block
-              w-[190px]
-              flex-none
-              snap-start
-              aspect-[1.08/1]
-              overflow-hidden
-              rounded-[9px]
-              bg-[#EDEDED]
-              sm:w-auto
-              sm:flex-none
-              sm:rounded-[10px]
-            "
+            className="group flex w-[92px] flex-none snap-start flex-col items-center gap-2 text-center sm:w-[112px] lg:w-[124px]"
           >
-            {/* IMAGE */}
-
-            <img
-              src={categoryImages[index]}
-              alt={item.title}
-              className="
-                absolute inset-0
-                h-full w-full
-                object-cover
-                transition-transform
-                duration-700
-                group-hover:scale-[1.04]
-              "
-            />
-
-            {/* GRADIENT */}
-
-            <div
-              className="
-                absolute inset-0
-                bg-gradient-to-t
-                from-black/55
-                via-black/5
-                to-transparent
-              "
-            />
-
-            {/* LABEL */}
-
-            <div
-              className="
-                absolute
-                bottom-2
-                left-2
-                right-2
-                flex
-                h-7
-                items-center
-                justify-between
-                rounded-[7px]
-                border
-                border-white/60
-                bg-black/25
-                px-2.5
-                text-white
-                backdrop-blur-md
-                sm:h-8
-                sm:px-3
-              "
-            >
-              <span
-                className="
-                  truncate
-                  text-[8px]
-                  font-semibold
-                  sm:text-[9px]
-                "
-              >
-                {item.subtitle}
-              </span>
-
-              <ArrowRight
-                size={12}
-                strokeWidth={1.7}
-                className="
-                  shrink-0
-                  transition-transform
-                  duration-300
-                  group-hover:translate-x-1
-                "
+            <div className="relative aspect-square w-full overflow-hidden rounded-full bg-[#F3F4F6] shadow-[0_3px_12px_rgba(15,23,42,0.08)] ring-1 ring-black/[0.04] transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-[0_7px_18px_rgba(15,23,42,0.12)]">
+              <img
+                src={categoryImages[index]}
+                alt={item.title}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                loading="lazy"
               />
             </div>
+            <span className="w-full text-[10px] font-semibold leading-tight tracking-[-0.01em] text-[#242424] sm:text-[11px]">
+              {item.title}
+            </span>
           </Link>
         ))}
       </div>
@@ -598,37 +494,32 @@ export default function Collections({
       <div className="mt-7 sm:mt-8">
         {/* HEADER */}
 
-        <div className="flex items-end justify-between">
-          <div>
+        <div className="flex items-end justify-between gap-4 border-b border-[#E8E8E8] pb-4 sm:pb-5">
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="h-px w-5 bg-[#0066E6] sm:w-7" />
+              <span className="text-[8px] font-semibold uppercase tracking-[0.2em] text-[#777E87] sm:text-[9px]">
+                The INFIBETTER edit
+              </span>
+            </div>
             <h2
               className="
-                font-sans
-                text-[28px]
-                font-bold
-                leading-none
-                tracking-[-0.03em]
-                text-[#171717]
-                sm:text-[32px]
-                lg:text-[34px]
+                font-sans text-[25px] font-bold leading-[1.06]
+                tracking-[-0.045em] text-[#171717]
+                sm:text-[32px] lg:text-[36px]
               "
             >
-              Find your next upgrade
+              Find your next <span className="text-[#7B8189]">upgrade.</span>
             </h2>
 
-            <p
-              className="
-                mt-2
-                flex
-                items-center
-                gap-1.5
-                text-[10px]
-                text-neutral-500
-                sm:text-[11px]
-              "
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
+            <p className="mt-2 text-[10px] leading-relaxed text-[#777E87] sm:text-[11px]">
               The products our customers love most.
             </p>
+          </div>
+
+          <div className="hidden shrink-0 items-center gap-2 rounded-full border border-[#E5E7EB] bg-white/70 px-3 py-2 text-[9px] font-medium tracking-wide text-[#737982] md:flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
+            EVERYDAY TECH, REFINED
           </div>
 
           {/* VIEW ALL */}
@@ -656,7 +547,7 @@ export default function Collections({
   className="
     mt-3
     flex
-    h-[42px]
+    h-[36px]
     w-full
     items-center
     gap-1
@@ -686,18 +577,18 @@ export default function Collections({
       flex-1
       items-center
       justify-center
-      rounded-[10px]
-      px-3
-      text-[10px]
+      rounded-[8px]
+      px-2.5
+      text-[9px]
       font-semibold
       tracking-[-0.01em]
       transition-all
       duration-200
 
-      sm:h-8
+      sm:h-7
       sm:flex-none
-      sm:rounded-[7px]
-      sm:px-5
+      sm:rounded-full
+      sm:px-4
       sm:text-[9px]
 
       ${
@@ -732,18 +623,18 @@ export default function Collections({
       flex-1
       items-center
       justify-center
-      rounded-[10px]
-      px-3
-      text-[10px]
+      rounded-[8px]
+      px-2.5
+      text-[9px]
       font-semibold
       tracking-[-0.01em]
       transition-all
       duration-200
 
-      sm:h-8
+      sm:h-7
       sm:flex-none
-      sm:rounded-[7px]
-      sm:px-5
+      sm:rounded-full
+      sm:px-4
       sm:text-[9px]
 
       ${
@@ -806,7 +697,7 @@ export default function Collections({
           {activeProducts.length > 0 ? (
             <>
               {/* MOBILE CAROUSEL */}
-              <div className="lg:hidden">
+              <div className="relative lg:hidden">
                 <div
                   className="
                     flex snap-x snap-mandatory gap-3
@@ -830,6 +721,19 @@ export default function Collections({
                   ))}
                 </div>
 
+                {/* Single compact glass / mirror next control */}
+                {activeProducts.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={nextProducts}
+                    disabled={!canGoNext}
+                    aria-label="Next products"
+                    className="absolute right-2 top-[36%] z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/75 bg-white/45 text-[#202020] shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-xl transition-all duration-200 active:scale-90 disabled:opacity-30 sm:hidden"
+                  >
+                    <ChevronRight size={13} strokeWidth={1.8} />
+                  </button>
+                )}
+
                 {activeProducts.length > 1 && (
                   <div className="mt-1.5 flex items-center justify-between">
                     <span className="text-[8px] font-medium text-neutral-400">
@@ -841,6 +745,7 @@ export default function Collections({
                         {mobileIndex + 1} / {activeProducts.length}
                       </span>
 
+                      <div className="hidden items-center gap-1.5 sm:flex">
                       <button
                         type="button"
                         onClick={prevProducts}
@@ -870,6 +775,7 @@ export default function Collections({
                       >
                         <ChevronRight size={7} />
                       </button>
+                      </div>
                     </div>
                   </div>
                 )}

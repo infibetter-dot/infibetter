@@ -1363,28 +1363,28 @@ function ShopPage() {
           BENEFITS
       =================================================== */}
 
-      <section className="border-t border-[#E5E5E7] bg-white">
-        <div className="mx-auto grid max-w-[1240px] grid-cols-2 md:grid-cols-4">
+      <section className="border-t border-[#E5E5E7] bg-white px-4 py-3 sm:px-6 sm:py-4">
+        <div className="mx-auto grid max-w-[760px] grid-cols-2 overflow-hidden rounded-2xl border border-[#E8E8EA] bg-white shadow-[0_5px_18px_rgba(15,23,42,0.08)] md:grid-cols-4">
           {[
             {
               icon: ShieldCheck,
               title: "Secure checkout",
-              description: "Safe and protected payments.",
+              description: "Protected payments",
             },
             {
               icon: Truck,
               title: "Tracked shipping",
-              description: "Follow your order every step.",
+              description: "Track every order",
             },
             {
               icon: RotateCcw,
               title: "Easy returns",
-              description: "Simple support when you need it.",
+              description: "Hassle-free returns",
             },
             {
               icon: CheckCircle2,
               title: "Built for everyday",
-              description: "Accessories that fit your setup.",
+              description: "Made for your setup",
             },
           ].map((item, index) => {
             const Icon = item.icon;
@@ -1393,20 +1393,21 @@ function ShopPage() {
               <div
                 key={item.title}
                 className={[
-                  "flex min-h-[150px] flex-col items-center justify-center px-5 py-8 text-center",
-                  index > 0 ? "border-l border-[#E5E5E7]" : "",
-                  index > 1 ? "border-t border-[#E5E5E7] md:border-t-0" : "",
+                  "flex min-w-0 flex-col items-center justify-center px-2 py-3 text-center sm:px-3 sm:py-3.5",
+                  index % 2 === 1 ? "border-l border-[#E9EAEC] md:border-l-0" : "",
+                  index > 1 ? "border-t border-[#E9EAEC] md:border-t-0" : "",
+                  index > 0 && index !== 2 ? "md:border-l md:border-[#E9EAEC]" : "",
                 ].join(" ")}
               >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#F5F5F7] text-[#424245]">
-                  <Icon size={18} strokeWidth={1.7} />
+                <div className="mb-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-[#F5F5F7] text-[#424245] sm:h-8 sm:w-8">
+                  <Icon size={14} strokeWidth={1.7} />
                 </div>
 
-                <p className="text-[14px] font-semibold tracking-[-0.01em] text-[#1D1D1F]">
+                <p className="text-[10px] font-semibold leading-4 tracking-[-0.01em] text-[#1D1D1F] sm:text-[11px]">
                   {item.title}
                 </p>
 
-                <p className="mt-1.5 max-w-[180px] text-[12px] leading-5 text-[#6E6E73]">
+                <p className="mt-0.5 max-w-[140px] text-[9px] leading-[13px] text-[#6E6E73] sm:text-[10px] sm:leading-[14px]">
                   {item.description}
                 </p>
               </div>
