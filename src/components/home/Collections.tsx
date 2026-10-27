@@ -1,6 +1,7 @@
 ﻿import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
+  ExternalLink,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -221,27 +222,27 @@ function ProductMiniCard({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/20 to-transparent" />
 
         {/* BEST SELLER BADGE */}
-        <div className="absolute left-3 top-3">
-          <span className="relative inline-flex rounded-full bg-white/95 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#33302D] shadow-sm backdrop-blur-sm sm:text-[10px]">
+        <div className="absolute left-2 top-2">
+          <span className="relative inline-flex rounded-full bg-white/95 px-1.5 py-[3px] text-[7px] font-semibold uppercase tracking-[0.07em] text-[#33302D] shadow-[0_2px_5px_rgba(0,0,0,0.07)] backdrop-blur-sm sm:px-2 sm:py-[3px] sm:text-[8px]">
             Best Seller
-            <span className="absolute bottom-0 left-3 right-3 h-[2px] translate-y-[1px] rounded-full bg-[#E97943]" />
+            <span className="absolute bottom-0 left-2 right-2 h-[1.5px] translate-y-[1px] rounded-full bg-[#E97943]" />
           </span>
         </div>
 
-        {/* SUBTLE CTA OVER IMAGE */}
+        {/* COMPACT MIRROR-GLASS VIEW PRODUCT ICON */}
         <div
+          aria-label="View product"
           className="
-            absolute bottom-2.5 left-2.5 right-2.5 flex h-[29px]
-            items-center justify-center rounded-full
-            border border-white/55 bg-white/65
-            px-3 text-[10px] font-medium text-[#35312D]/85
-            shadow-[0_1px_4px_rgba(0,0,0,0.06)]
-            backdrop-blur-md transition-all duration-300
-            group-hover:bg-white/80 group-hover:text-[#292622]
-            sm:bottom-3 sm:left-3 sm:right-3 sm:h-[32px] sm:text-[10px]
+            absolute right-2 top-2 z-10 flex h-6 w-6
+            items-center justify-center rounded-[8px]
+            border border-white/70 bg-white/75
+            text-[#292622] shadow-[0_3px_10px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]
+            backdrop-blur-xl transition-all duration-300
+            group-hover:scale-[1.04] group-hover:bg-white/90
+            sm:h-7 sm:w-7
           "
         >
-          <span>View product</span>
+          <ExternalLink size={12} strokeWidth={1.7} />
         </div>
       </div>
 
@@ -517,28 +518,15 @@ export default function Collections({
             </p>
           </div>
 
-          <div className="hidden shrink-0 items-center gap-2 rounded-full border border-[#E5E7EB] bg-white/70 px-3 py-2 text-[9px] font-medium tracking-wide text-[#737982] md:flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
-            EVERYDAY TECH, REFINED
+          {/* RIGHT SIDE: EDIT TAG + VIEW ALL */}
+          <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-4">
+            <div className="hidden shrink-0 items-center gap-2 rounded-full border border-[#E5E7EB] bg-white/70 px-3 py-2 text-[9px] font-medium tracking-wide text-[#737982] md:flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
+              EVERYDAY TECH, REFINED
+            </div>
+
+
           </div>
-
-          {/* VIEW ALL */}
-
-          <Link
-            to="/shop"
-            className="
-              hidden
-              items-center
-              gap-1
-              text-[10px]
-              font-semibold
-              text-[#0066E6]
-              sm:flex
-            "
-          >
-            View all
-            <ArrowRight size={12} />
-          </Link>
         </div>
 
        {/* TABS */}
@@ -552,11 +540,11 @@ export default function Collections({
     items-center
     gap-1
     rounded-[13px]
-    border
-    border-[#E1E6ED]
-    bg-[#F7F9FB]
+    border border-white/80
+    bg-white/45
     p-1
-    shadow-[0_2px_10px_rgba(15,23,42,0.03)]
+    shadow-[0_5px_16px_rgba(20,30,50,0.08),inset_0_1px_0_rgba(255,255,255,0.95)]
+    backdrop-blur-xl
     sm:h-9
     sm:w-auto
     sm:border-0
@@ -594,11 +582,12 @@ export default function Collections({
       ${
         activeTab === "best"
           ? `
-            bg-white
+            bg-white/75
             text-[#171717]
-            shadow-[0_2px_7px_rgba(15,23,42,0.08)]
+            shadow-[0_3px_10px_rgba(20,30,50,0.10),inset_0_1px_0_rgba(255,255,255,1)]
             ring-1
-            ring-[#E4E8ED]
+            ring-white/90
+            backdrop-blur-xl
           `
           : `
             bg-transparent
@@ -640,11 +629,12 @@ export default function Collections({
       ${
         activeTab === "new"
           ? `
-            bg-white
+            bg-white/75
             text-[#171717]
-            shadow-[0_2px_7px_rgba(15,23,42,0.08)]
+            shadow-[0_3px_10px_rgba(20,30,50,0.10),inset_0_1px_0_rgba(255,255,255,1)]
             ring-1
-            ring-[#E4E8ED]
+            ring-white/90
+            backdrop-blur-xl
           `
           : `
             bg-transparent
@@ -669,13 +659,17 @@ export default function Collections({
       justify-center
       gap-1
       rounded-[10px]
+      border border-white/60
+      bg-white/35
       px-3
       text-[9px]
       font-semibold
       text-[#0066E6]
       transition-all
       duration-200
-      hover:bg-white/70
+      shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]
+      backdrop-blur-xl
+      hover:bg-white/65
 
       sm:h-8
       sm:rounded-[7px]

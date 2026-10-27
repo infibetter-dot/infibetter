@@ -24,8 +24,8 @@ const videos: VideoItem[] = [
     label: "POWER",
     title: "Power your everyday.",
     description: "Smart accessories for life on the go.",
-    video: "/videos/infibetter-video-2.mp4",
-    href: "/products/armor-magsafe-case",
+    video: "/videos/video2.mp4",
+    href: "/products/foldcharge-3-in-1",
     exploreLabel: "Explore product",
   },
   {
