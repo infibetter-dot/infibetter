@@ -4,17 +4,20 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
+  ShoppingCart,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useCart } from "@/lib/cart";
+import { toast } from "sonner";
 import {
   getCurrency,
   subscribeToCurrencyChange,
   type CurrencyCode,
 } from "@/lib/currency-system";
 
-import banner01 from "@/assets/hero/iphonecase1.png";
-import banner02 from "@/assets/hero/wireless charger1.png";
-import banner03 from "@/assets/hero/powerbank1.png";
+import banner01 from "@/assets/hero/iphonecase.png";
+import banner02 from "@/assets/hero/wireless charger.png";
+import banner03 from "@/assets/hero/powerbank.png";
 import hero1 from "@/assets/hero/watchband.png";
 import hero2 from "@/assets/hero/hero_2.png";
 
@@ -37,9 +40,10 @@ const categoryImages = [
   banner01,
   banner02,
   banner03,
-  hero1,
+  banner02, // Travel Power uses a charging-product image instead of the unrelated watchband/lifestyle image.
 ];
 
+// Keep these slugs in sync with the category query parameters supported by /shop.
 const collections = [
   {
     title: "iPhone Cases",
@@ -57,9 +61,9 @@ const collections = [
     slug: "power-banks",
   },
   {
-    title: "Apple Watch Bands",
-    subtitle: "Shop Watch Bands",
-    slug: "day-deo-apple-watch",
+    title: "Travel Power",
+    subtitle: "Shop Travel Power",
+    slug: "travel-power",
   },
 ];
 
@@ -78,6 +82,36 @@ function ProductMiniCard({
   const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
     getCurrency(),
   );
+  const cart = useCart();
+  const isOutOfStock = product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0;
+
+  function handleQuickAdd(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isOutOfStock) {
+      toast.error("This product is currently out of stock");
+      return;
+    }
+
+    const numericPrice = toNumber(product.price);
+    if (numericPrice === null) {
+      toast.error("Unable to add this product to cart");
+      return;
+    }
+
+    cart.add(
+      {
+        id: product.id,
+        slug: product.slug,
+        name: product.name,
+        price: numericPrice,
+        image: product.image_url || fallbackImage,
+      },
+      1,
+    );
+    toast.success("Added to cart");
+  }
 
   useEffect(() => {
     return subscribeToCurrencyChange(setCurrencyState);
@@ -198,76 +232,122 @@ function ProductMiniCard({
       to="/products/$slug"
       params={{ slug: product.slug }}
       className="
-        group relative flex w-[calc((100vw-44px)/2)] flex-none snap-start
-        flex-col overflow-hidden rounded-[20px] border border-[#EAE6E1]
-        bg-white shadow-[0_3px_12px_rgba(24,24,24,0.06)]
+        group relative flex w-[210px] flex-none snap-start flex-col
+        overflow-hidden rounded-[20px] border border-[#E8E3DD]
+        bg-white shadow-[0_3px_12px_rgba(24,24,27,0.045)]
         transition-all duration-300
-        hover:-translate-y-1 hover:shadow-[0_10px_28px_rgba(0,0,0,0.10)]
-        sm:w-auto sm:rounded-[18px]
+        hover:-translate-y-1 hover:shadow-[0_10px_28px_rgba(24,24,27,0.10)]
+        sm:w-auto
       "
     >
       {/* PRODUCT IMAGE */}
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F4F1ED]">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-white">
         <img
           src={product.image_url || fallbackImage}
           alt={product.name}
           loading="lazy"
           className="
-            absolute inset-0 h-full w-full object-cover
-            transition-transform duration-500 group-hover:scale-[1.03]
+            h-full w-full object-contain
+            p-2.5
+            transition-transform duration-500 ease-out
+            group-hover:scale-[1.035]
           "
         />
 
-        {/* Soft image tint for legible overlay */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/20 to-transparent" />
-
         {/* BEST SELLER BADGE */}
-        <div className="absolute left-2 top-2">
-          <span className="relative inline-flex rounded-full bg-white/95 px-1.5 py-[3px] text-[7px] font-semibold uppercase tracking-[0.07em] text-[#33302D] shadow-[0_2px_5px_rgba(0,0,0,0.07)] backdrop-blur-sm sm:px-2 sm:py-[3px] sm:text-[8px]">
+        <div className="absolute left-2.5 top-2.5 z-10">
+          <span
+            className="
+              inline-flex items-center rounded-full
+              border border-[#E8E8E8] bg-white
+              px-2.5 py-1
+              text-[8px] font-semibold uppercase
+              tracking-[0.12em] text-[#8A5A3B]
+              shadow-[0_2px_7px_rgba(0,0,0,0.06)]
+              sm:text-[8px]
+            "
+          >
             Best Seller
-            <span className="absolute bottom-0 left-2 right-2 h-[1.5px] translate-y-[1px] rounded-full bg-[#E97943]" />
           </span>
         </div>
 
-        {/* COMPACT MIRROR-GLASS VIEW PRODUCT ICON */}
-        <div
-          aria-label="View product"
+        {/* QUICK VIEW / OPEN PRODUCT */}
+        <span
+          aria-hidden="true"
           className="
-            absolute right-2 top-2 z-10 flex h-6 w-6
-            items-center justify-center rounded-[8px]
-            border border-white/70 bg-white/75
-            text-[#292622] shadow-[0_3px_10px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]
-            backdrop-blur-xl transition-all duration-300
-            group-hover:scale-[1.04] group-hover:bg-white/90
-            sm:h-7 sm:w-7
+            absolute right-2.5 top-2.5 z-10
+            flex h-8 w-8 items-center justify-center
+            rounded-[10px] border border-[#E8E8E8]
+            bg-white text-[#292929]
+            shadow-[0_2px_8px_rgba(0,0,0,0.07)]
+            backdrop-blur-sm
+            transition-all duration-200
+            group-hover:bg-white group-hover:scale-105
           "
         >
-          <ExternalLink size={12} strokeWidth={1.7} />
-        </div>
+          <ExternalLink size={14} strokeWidth={1.8} />
+        </span>
       </div>
 
       {/* PRODUCT DETAILS */}
-      <div className="flex min-w-0 flex-1 flex-col px-3.5 pb-3.5 pt-3 sm:px-4 sm:pb-4 sm:pt-3.5">
-        <h3 className="line-clamp-2 min-h-[2.5em] text-[12px] font-medium leading-[1.55] tracking-[-0.01em] text-[#3A332E] sm:text-[13px]">
+      <div className="flex min-h-[108px] flex-1 flex-col px-3.5 pb-3.5 pt-3">
+        <h3
+          className="
+            line-clamp-2 min-h-[2.8em]
+            text-[12px] font-medium leading-[1.4]
+            tracking-[-0.015em] text-[#262626]
+            sm:text-[12px] lg:text-[13px]
+          "
+        >
           {product.name}
         </h3>
 
-        <p className="mt-1 line-clamp-1 text-[10px] leading-4 text-neutral-400 sm:text-[11px]">
+        <p className="mt-1 line-clamp-1 text-[9px] leading-4 text-neutral-400 sm:text-[10px]">
           Modern design · everyday practical
         </p>
 
-        <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="text-[14px] font-semibold tracking-[-0.02em] text-[#24211E] sm:text-[15px]">
-            {displayPrice}
-          </span>
+        <div className="mt-auto flex min-w-0 items-center justify-between gap-2 pt-3">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="text-[15px] font-bold leading-none tracking-[-0.025em] text-[#0066E6] sm:text-[16px]">
+              {displayPrice}
+            </span>
 
-          {price !== null &&
-            comparePrice !== null &&
-            comparePrice > price && (
-              <span className="text-[10px] text-neutral-400 line-through sm:text-[11px]">
-                {displayComparePrice}
-              </span>
-            )}
+            {price !== null &&
+              comparePrice !== null &&
+              comparePrice > price && (
+                <span className="text-[10px] font-normal text-neutral-400 line-through sm:text-[11px]">
+                  {displayComparePrice}
+                </span>
+              )}
+          </div>
+
+          <button
+            type="button"
+            aria-label={`Add ${product.name} to cart`}
+            title="Add to cart"
+            disabled={isOutOfStock}
+            onClick={handleQuickAdd}
+            className="
+              group/cart relative flex h-7 w-7 shrink-0 items-center justify-center
+              overflow-hidden rounded-full border border-white/80
+              bg-gradient-to-br from-white/75 via-white/60 to-[#E8EDF3]/65
+              text-[#343A44]/80
+              shadow-[0_2px_7px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.95)]
+              backdrop-blur-xl transition-all duration-200
+              hover:scale-[1.03] hover:shadow-[0_3px_9px_rgba(15,23,42,0.12)]
+              active:scale-95 disabled:cursor-not-allowed disabled:opacity-40
+            "
+          >
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-1 top-px h-1/2 rounded-full bg-gradient-to-b from-white/90 to-transparent"
+            />
+            <ShoppingCart
+              aria-hidden="true"
+              className="relative z-10 h-3.5 w-3.5"
+              strokeWidth={1.8}
+            />
+          </button>
         </div>
       </div>
     </Link>
@@ -283,11 +363,19 @@ export default function Collections({
   const [desktopStartIndex, setDesktopStartIndex] = useState(0);
 
   const categoryScrollRef = useRef<HTMLDivElement>(null);
+  // Use the actual image from the Travelmag Hybrid product for the Travel Power category card.
+  // Product images come from the product data already passed into this component.
+  const travelPowerProduct = [...products, ...newArrivals].find((product) => {
+    const name = product.name.toLowerCase();
+    const slug = product.slug.toLowerCase();
+    return name.includes("travelmag hybrid") || slug.includes("travelmag-hybrid");
+  });
+  const travelPowerImage = travelPowerProduct?.image_url || banner02;
 
   const activeProducts =
     activeTab === "best" ? products : newArrivals;
 
-  // Mobile: show two full product cards side by side.
+  // Mobile: current product + a small peek of the next product.
   const mobileProducts = activeProducts.slice(
     mobileIndex,
     mobileIndex + 2,
@@ -339,10 +427,10 @@ export default function Collections({
   return (
     <section
       className="
-        mx-auto w-full max-w-[1320px]
-        px-4 pb-8 pt-7
-        sm:px-5 sm:pt-9
-        lg:px-6 lg:pb-12 lg:pt-10
+        mx-auto w-full max-w-[1440px] bg-transparent
+        px-1.5 pb-8 pt-7
+        sm:px-6 sm:pt-9
+        lg:px-8 lg:pb-12 lg:pt-10
       "
     >
       <style>{`
@@ -373,12 +461,12 @@ export default function Collections({
           <h2
             className="
               font-sans
-              text-[28px]
+              text-[27px]
               font-bold
-              leading-none
-              tracking-[-0.03em]
+              leading-[1.08]
+              tracking-[-0.035em]
               text-[#171717]
-              sm:text-[32px]
+              sm:text-[31px]
               lg:text-[34px]
             "
           >
@@ -387,10 +475,11 @@ export default function Collections({
 
           <p
             className="
-              mt-2
-              text-[10px]
+              mt-2.5
+              text-[11px]
+              leading-relaxed
               text-neutral-500
-              sm:text-[11px]
+              sm:text-[12px]
             "
           >
             Find exactly what you're looking for.
@@ -404,7 +493,7 @@ export default function Collections({
             aria-label="Previous category"
             onClick={() =>
               categoryScrollRef.current?.scrollBy({
-                left: -210,
+                left: -280,
                 behavior: "smooth",
               })
             }
@@ -423,7 +512,7 @@ export default function Collections({
             aria-label="Next category"
             onClick={() =>
               categoryScrollRef.current?.scrollBy({
-                left: 210,
+                left: 280,
                 behavior: "smooth",
               })
             }
@@ -431,7 +520,7 @@ export default function Collections({
               flex h-8 w-8 items-center justify-center
               rounded-full border border-[#E2E6EB] bg-white
               text-[#171717] shadow-[0_2px_8px_rgba(15,23,42,0.05)]
-              transition-all active:scale-95 hover:bg-[#F8FAFC]
+              transition-all active:scale-95 hover:bg-white
             "
           >
             <ChevronRight size={14} strokeWidth={2} />
@@ -439,31 +528,17 @@ export default function Collections({
         </div>
       </div>
 
-      {/* CATEGORY CARDS */}
-
+      {/* SHOP BY CATEGORY — three balanced feature cards */}
       <div
         ref={categoryScrollRef}
         className="
-          mt-4
-          flex
-          snap-x
-          snap-mandatory
-          gap-4
-          overflow-x-auto
-          overscroll-x-contain
-          scroll-smooth
-          pb-1
-          pr-1
-          [scrollbar-width:none]
-          [&::-webkit-scrollbar]:hidden
-          sm:grid
-          sm:grid-cols-4
-          sm:justify-items-center
-          sm:gap-5
-          sm:overflow-visible
-          sm:pb-0
-          sm:pr-0
-          lg:gap-6
+          mt-5
+          -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto
+          overscroll-x-contain px-4 pb-2
+          [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
+          sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible
+          sm:px-0 sm:pb-0 sm:snap-none
+          lg:mt-6 lg:grid-cols-4 lg:gap-5
         "
       >
         {collections.map((item, index) => (
@@ -471,18 +546,75 @@ export default function Collections({
             key={item.slug}
             to="/shop"
             search={{ category: item.slug } as never}
-            className="group flex w-[92px] flex-none snap-start flex-col items-center gap-2 text-center sm:w-[112px] lg:w-[124px]"
+            className="
+              group flex min-h-[84px] w-[min(300px,84vw)] flex-none snap-start items-center gap-3
+              rounded-[16px] border border-[#E8E8E8]
+              bg-white p-2.5
+              shadow-[0_4px_14px_rgba(17,24,39,0.055),inset_0_1px_0_rgba(255,255,255,0.95)]
+              backdrop-blur-xl
+              transition-all duration-300
+              hover:-translate-y-0.5 hover:border-white
+              hover:bg-white
+              hover:shadow-[0_9px_22px_rgba(17,24,39,0.09),inset_0_1px_0_rgba(255,255,255,1)]
+              sm:min-h-[88px] sm:w-auto sm:min-w-0 sm:flex-auto sm:snap-align-none sm:gap-3 sm:p-2.5
+              lg:min-h-[92px] lg:gap-3 lg:p-3
+            "
           >
-            <div className="relative aspect-square w-full overflow-hidden rounded-full bg-[#F3F4F6] shadow-[0_3px_12px_rgba(15,23,42,0.08)] ring-1 ring-black/[0.04] transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-[0_7px_18px_rgba(15,23,42,0.12)]">
+            <div
+              className="
+                relative flex h-[58px] w-[58px] flex-none
+                items-center justify-center overflow-hidden
+                rounded-full border border-[#E8E8E8] bg-white
+                shadow-[0_3px_10px_rgba(17,24,39,0.06),inset_0_1px_0_rgba(255,255,255,0.95)]
+                transition-all duration-300
+                group-hover:scale-[1.03] group-hover:shadow-[0_6px_15px_rgba(17,24,39,0.10)]
+                sm:h-[62px] sm:w-[62px]
+                lg:h-[66px] lg:w-[66px]
+              "
+            >
               <img
-                src={categoryImages[index]}
+                src={index === 3 ? travelPowerImage : categoryImages[index]}
                 alt={item.title}
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 loading="lazy"
+                className="
+                  h-full w-full object-contain p-1.5
+                  transition-transform duration-500 ease-out
+                  group-hover:scale-[1.06]
+                "
               />
             </div>
-            <span className="w-full text-[10px] font-semibold leading-tight tracking-[-0.01em] text-[#242424] sm:text-[11px]">
-              {item.title}
+
+            <div className="min-w-0 flex-1">
+              <h3
+                className="
+                  truncate text-[12px] font-bold leading-5
+                  tracking-[-0.025em] text-[#171717]
+                  transition-colors group-hover:text-[#0066E6]
+                  sm:text-[12px] lg:text-[13px]
+                "
+              >
+                {item.title}
+              </h3>
+              <p className="mt-0.5 text-[10px] leading-4 text-[#7A8493] sm:text-[10px] lg:text-[11px]">
+                Explore collection
+              </p>
+            </div>
+
+            <span
+              className="
+                flex h-8 w-8 flex-none items-center justify-center
+                rounded-full border border-[#E8E8E8] bg-white
+                text-[#344054]
+                shadow-[0_3px_10px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,0.95)]
+                backdrop-blur-xl
+                transition-all duration-300
+                group-hover:scale-105 group-hover:border-white
+                group-hover:bg-white/95 group-hover:text-[#0066E6]
+                group-hover:shadow-[0_5px_14px_rgba(15,23,42,0.15),inset_0_1px_0_rgba(255,255,255,1)]
+              "
+              aria-hidden="true"
+            >
+              <ArrowRight size={13} strokeWidth={1.8} />
             </span>
           </Link>
         ))}
@@ -495,105 +627,66 @@ export default function Collections({
       <div className="mt-7 sm:mt-8">
         {/* HEADER */}
 
-        <div className="flex items-end justify-between gap-4 border-b border-[#E8E8E8] pb-4 sm:pb-5">
-          <div className="min-w-0">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="h-px w-5 bg-[#0066E6] sm:w-7" />
-              <span className="text-[8px] font-semibold uppercase tracking-[0.2em] text-[#777E87] sm:text-[9px]">
-                The INFIBETTER edit
-              </span>
-            </div>
+        <div className="flex items-end justify-between">
+          <div>
             <h2
               className="
-                font-sans text-[25px] font-bold leading-[1.06]
-                tracking-[-0.045em] text-[#171717]
-                sm:text-[32px] lg:text-[36px]
+                font-sans
+                text-[28px]
+                font-bold
+                leading-none
+                tracking-[-0.03em]
+                text-[#171717]
+                sm:text-[32px]
+                lg:text-[34px]
               "
             >
-              Find your next <span className="text-[#7B8189]">upgrade.</span>
+              Find your next upgrade
             </h2>
 
-            <p className="mt-2 text-[10px] leading-relaxed text-[#777E87] sm:text-[11px]">
+            <p
+              className="
+                mt-2
+                flex
+                items-center
+                gap-1.5
+                text-[10px]
+                text-neutral-500
+                sm:text-[11px]
+              "
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
               The products our customers love most.
             </p>
           </div>
 
-          {/* RIGHT SIDE: EDIT TAG + VIEW ALL */}
-          <div className="ml-auto flex shrink-0 items-center gap-3 sm:gap-4">
-            <div className="hidden shrink-0 items-center gap-2 rounded-full border border-[#E5E7EB] bg-white/70 px-3 py-2 text-[9px] font-medium tracking-wide text-[#737982] md:flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
-              EVERYDAY TECH, REFINED
-            </div>
-
-
-          </div>
         </div>
 
-       {/* TABS */}
+       {/* TABS — no surrounding white panel; keep only one View all link in the header */}
 
 <div
   className="
     mt-3
     flex
-    h-[36px]
-    w-full
+    h-9
+    w-fit
     items-center
     gap-1
-    rounded-[13px]
-    border border-white/80
-    bg-white/45
-    p-1
-    shadow-[0_5px_16px_rgba(20,30,50,0.08),inset_0_1px_0_rgba(255,255,255,0.95)]
-    backdrop-blur-xl
-    sm:h-9
-    sm:w-auto
-    sm:border-0
-    sm:bg-transparent
-    sm:p-0
-    sm:shadow-none
+    bg-transparent
+    p-0
   "
 >
   {/* BEST SELLERS */}
-
   <button
     type="button"
     onClick={() => changeTab("best")}
     className={`
-      flex
-      h-full
-      min-w-0
-      flex-1
-      items-center
-      justify-center
-      rounded-[8px]
-      px-2.5
-      text-[9px]
-      font-semibold
-      tracking-[-0.01em]
-      transition-all
-      duration-200
-
-      sm:h-7
-      sm:flex-none
-      sm:rounded-full
-      sm:px-4
-      sm:text-[9px]
-
+      flex h-8 flex-none items-center justify-center rounded-[7px] px-5
+      text-[9px] font-semibold tracking-[-0.01em] transition-all duration-200
       ${
         activeTab === "best"
-          ? `
-            bg-white/75
-            text-[#171717]
-            shadow-[0_3px_10px_rgba(20,30,50,0.10),inset_0_1px_0_rgba(255,255,255,1)]
-            ring-1
-            ring-white/90
-            backdrop-blur-xl
-          `
-          : `
-            bg-transparent
-            text-[#8A93A0]
-            hover:text-[#4B5563]
-          `
+          ? `bg-white text-[#171717] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED]`
+          : `bg-transparent text-[#8A93A0] hover:text-[#4B5563]`
       }
     `}
   >
@@ -601,87 +694,36 @@ export default function Collections({
   </button>
 
   {/* NEW ARRIVALS */}
-
   <button
     type="button"
     onClick={() => changeTab("new")}
     className={`
-      flex
-      h-full
-      min-w-0
-      flex-1
-      items-center
-      justify-center
-      rounded-[8px]
-      px-2.5
-      text-[9px]
-      font-semibold
-      tracking-[-0.01em]
-      transition-all
-      duration-200
-
-      sm:h-7
-      sm:flex-none
-      sm:rounded-full
-      sm:px-4
-      sm:text-[9px]
-
+      flex h-8 flex-none items-center justify-center rounded-[7px] px-5
+      text-[9px] font-semibold tracking-[-0.01em] transition-all duration-200
       ${
         activeTab === "new"
-          ? `
-            bg-white/75
-            text-[#171717]
-            shadow-[0_3px_10px_rgba(20,30,50,0.10),inset_0_1px_0_rgba(255,255,255,1)]
-            ring-1
-            ring-white/90
-            backdrop-blur-xl
-          `
-          : `
-            bg-transparent
-            text-[#8A93A0]
-            hover:text-[#4B5563]
-          `
+          ? `bg-white text-[#171717] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED]`
+          : `bg-transparent text-[#8A93A0] hover:text-[#4B5563]`
       }
     `}
   >
     New Arrivals
   </button>
 
-  {/* VIEW ALL */}
-
+  {/* VIEW ALL — aligned with the mirror-style tabs */}
   <Link
     to="/shop"
     className="
-      flex
-      h-full
-      shrink-0
-      items-center
-      justify-center
-      gap-1
-      rounded-[10px]
-      border border-white/60
-      bg-white/35
-      px-3
-      text-[9px]
-      font-semibold
-      text-[#0066E6]
-      transition-all
-      duration-200
-      shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]
-      backdrop-blur-xl
-      hover:bg-white/65
-
-      sm:h-8
-      sm:rounded-[7px]
-      sm:px-2
+      group flex h-8 flex-none items-center justify-center gap-1.5
+      rounded-[8px] border border-white/90 bg-white/65 px-3.5
+      text-[9px] font-semibold text-[#0066E6]
+      shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.95)]
+      backdrop-blur-xl transition-all duration-200
+      hover:bg-white/90 hover:shadow-[0_4px_12px_rgba(15,23,42,0.12)]
     "
   >
-    <span>View all</span>
-
-    <ArrowRight
-      size={11}
-      strokeWidth={2}
-    />
+    View all
+    <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
   </Link>
 </div>
 
@@ -696,7 +738,7 @@ export default function Collections({
                   className="
                     flex snap-x snap-mandatory gap-3
                     overflow-x-auto overscroll-x-contain
-                    pb-2 pr-4 scroll-smooth
+                    pb-2 pr-1.5 scroll-smooth
                     [scrollbar-width:none]
                     [&::-webkit-scrollbar]:hidden
                   "
@@ -715,62 +757,26 @@ export default function Collections({
                   ))}
                 </div>
 
-                {/* Single compact glass / mirror next control */}
-                {activeProducts.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={nextProducts}
-                    disabled={!canGoNext}
-                    aria-label="Next products"
-                    className="absolute right-2 top-[36%] z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/75 bg-white/45 text-[#202020] shadow-[0_2px_8px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-xl transition-all duration-200 active:scale-90 disabled:opacity-30 sm:hidden"
-                  >
-                    <ChevronRight size={13} strokeWidth={1.8} />
-                  </button>
-                )}
-
                 {activeProducts.length > 1 && (
-                  <div className="mt-1.5 flex items-center justify-between">
-                    <span className="text-[8px] font-medium text-neutral-400">
-                      Explore more
-                    </span>
-
-                    <div className="flex items-center gap-1.5">
-                      <span className="mr-1 text-[8px] text-neutral-400">
-                        {mobileIndex + 1} / {activeProducts.length}
-                      </span>
-
-                      <div className="hidden items-center gap-1.5 sm:flex">
-                      <button
-                        type="button"
-                        onClick={prevProducts}
-                        disabled={!canGoPrev}
-                        aria-label="Previous products"
-                        className="
-                          flex h-5 w-5 items-center justify-center rounded-full
-                          border border-[#E2E6EB] bg-white text-neutral-500
-                          shadow-sm transition-all active:scale-95
-                          disabled:cursor-not-allowed disabled:opacity-35
-                        "
-                      >
-                        <ChevronLeft size={7} />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={nextProducts}
-                        disabled={!canGoNext}
-                        aria-label="Next products"
-                        className="
-                          flex h-5 w-5 items-center justify-center rounded-full
-                          border border-[#E2E6EB] bg-white text-neutral-800
-                          shadow-sm transition-all active:scale-95
-                          disabled:cursor-not-allowed disabled:opacity-35
-                        "
-                      >
-                        <ChevronRight size={7} />
-                      </button>
-                      </div>
-                    </div>
+                  <div className="pointer-events-none absolute top-[132px] right-3 z-20 flex items-center">
+                    <button
+                      type="button"
+                      onClick={nextProducts}
+                      disabled={!canGoNext}
+                      aria-label="Next products"
+                      className="
+                        pointer-events-auto relative flex h-8 w-8 items-center justify-center
+                        overflow-hidden rounded-full border border-white/70
+                        bg-gradient-to-b from-white/75 via-white/55 to-white/40
+                        text-neutral-700/80
+                        shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]
+                        backdrop-blur-xl transition-all active:scale-95
+                        disabled:cursor-not-allowed disabled:opacity-35
+                      "
+                    >
+                      <span aria-hidden="true" className="pointer-events-none absolute inset-x-1 top-px h-1/2 rounded-full bg-gradient-to-b from-white/80 to-transparent" />
+                      <ChevronRight size={14} strokeWidth={1.8} className="relative z-10" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -811,7 +817,7 @@ export default function Collections({
                       className="
                         flex h-8 w-8 items-center justify-center rounded-full
                         border border-neutral-200 bg-white text-neutral-500
-                        transition-all hover:bg-neutral-50
+                        transition-all hover:bg-white
                         disabled:cursor-not-allowed disabled:opacity-40
                       "
                     >
@@ -826,7 +832,7 @@ export default function Collections({
                       className="
                         flex h-8 w-8 items-center justify-center rounded-full
                         border border-neutral-200 bg-white text-neutral-700
-                        transition-all hover:bg-neutral-50
+                        transition-all hover:bg-white
                         disabled:cursor-not-allowed disabled:opacity-40
                       "
                     >
@@ -841,7 +847,7 @@ export default function Collections({
               className="
                 flex min-h-[180px] items-center justify-center
                 rounded-xl border border-dashed border-neutral-200
-                bg-neutral-50 text-[11px] text-neutral-400
+                bg-white text-[11px] text-neutral-400
               "
             >
               No products available.

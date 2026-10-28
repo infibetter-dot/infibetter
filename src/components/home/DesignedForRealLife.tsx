@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 import banner01 from "@/assets/hero/banner01.png";
 import banner02 from "@/assets/hero/banner02.png";
 import banner03 from "@/assets/hero/banner03.png";
-import hero1 from "@/assets/hero/hero-1.png";
+import hero1 from "@/assets/hero/banner03.png";
 import hero2 from "@/assets/hero/hero_2.png";
 
 interface Product {

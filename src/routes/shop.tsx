@@ -4,9 +4,10 @@ import { useMemo } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { ProductCard } from "@/components/product-card";
-import banner04 from "@/assets/hero/banner04.png";
+import banner02 from "@/assets/hero/banner02.png";
 
 import {
+  ArrowRight,
   Battery,
   CheckCircle2,
   RotateCcw,
@@ -570,11 +571,11 @@ function ShopPage() {
           //
           // Only apply the legacy device keyword filter when the URL
           // is actually one of the legacy device filters.
+          // Only apply legacy keyword filters to legacy device IDs.
+          // "power-banks" is a real category slug and must be filtered
+          // by category_id above, not by product-name keywords.
           const isLegacyDevice =
-            DEVICE_FILTERS.some(
-              (item) =>
-                item.id === sp.category,
-            );
+            Boolean(sp.category && CATEGORY_KEYWORDS[sp.category]);
 
           if (
             isLegacyDevice &&
@@ -863,6 +864,20 @@ function ShopPage() {
   const isLoading =
     productsQ.isLoading;
 
+  const categoryBannerTitle: Record<string, string> = {
+    "iphone-cases": "iPhone Cases",
+    iphone: "iPhone Cases",
+    "power-banks": "Power Banks",
+    "wireless-charging": "Wireless Charging",
+    "wireless-chargers": "Wireless Charging",
+    "watch-bands": "Apple Watch Bands",
+    "travel-power": "Travel Power",
+  };
+
+  const currentCategoryTitle = sp.category
+    ? categoryBannerTitle[sp.category] ?? sp.category.replace(/-/g, " ")
+    : "Everyday tech, refined";
+
   /* =======================================================
      RENDER
   ======================================================= */
@@ -876,75 +891,63 @@ function ShopPage() {
 
       <section className="bg-white px-5 pb-8 pt-6 md:px-8 md:pb-10 md:pt-8">
         <div className="mx-auto max-w-[1240px]">
-
           <div
             className="
-              relative
-              overflow-hidden
-              rounded-[28px]
-              bg-[#F5F5F7]
-              aspect-[1273/434]
+              relative isolate min-h-[300px] overflow-hidden rounded-[28px]
+              border border-[#EEF0F3]
+              bg-[#F4F5F7]
+              shadow-[0_12px_32px_rgba(15,23,42,0.08)]
+              sm:min-h-[330px] md:min-h-[380px]
             "
           >
-            {/* BANNER 04 */}
             <img
-              src={banner04}
-              alt="INFIBETTER accessories"
-              className="
-                pointer-events-none
-                absolute
-                inset-0
-                h-full
-                w-full
-                object-cover
-                object-center
-                opacity-100
-                [filter:saturate(1.08)_contrast(1.05)]
-              "
+              src={banner02}
+              alt={`${currentCategoryTitle} banner`}
+              className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
             />
-
-            {/* BACKGROUND LIGHT */}
-
             <div
+              aria-hidden="true"
               className="
-                pointer-events-none
-                absolute
-                right-[-120px]
-                top-[-140px]
-                h-[420px]
-                w-[420px]
-                rounded-full
-                bg-white
-                opacity-60
-                blur-3xl
+                absolute inset-0 -z-10
+                bg-gradient-to-r from-white/90 via-white/65 to-white/0
+                md:from-white/90 md:via-white/55 md:to-transparent
               "
             />
-
-            <div
-              className="
-                pointer-events-none
-                absolute
-                bottom-[-180px]
-                left-[30%]
-                h-[360px]
-                w-[360px]
-                rounded-full
-                bg-white
-                opacity-50
-                blur-3xl
-              "
-            />
-
-            {/* CONTENT */}
-
-            <div className="relative z-10 max-w-[720px] pr-0 md:max-w-[560px]">
-
-
-
+            <div className="relative z-10 flex min-h-[300px] max-w-[600px] flex-col items-start justify-center px-6 py-8 sm:min-h-[330px] sm:px-9 md:min-h-[380px] md:px-12">
+              <p className="mb-3 text-[9px] font-semibold uppercase tracking-[0.22em] text-[#667085] sm:text-[10px]">
+                INFIBETTER · SHOP BY CATEGORY
+              </p>
+              <h1 className="max-w-[460px] text-[30px] font-semibold leading-[1.04] tracking-[-0.055em] text-[#17191D] sm:text-[38px] md:text-[44px]">
+                {currentCategoryTitle}
+              </h1>
+              <p className="mt-3 max-w-[390px] text-[12px] leading-5 text-[#566174] sm:text-[13px] sm:leading-6">
+                {sp.category === "power-banks"
+                  ? "Reliable power, wherever your day takes you. Discover compact charging essentials made to keep you connected."
+                  : sp.category === "wireless-charging" || sp.category === "wireless-chargers"
+                    ? "A simpler way to power your everyday setup, with effortless wireless charging and thoughtfully designed accessories."
+                    : sp.category === "watch-bands"
+                      ? "Refresh your everyday look with comfortable, considered accessories designed to fit your routine."
+                      : sp.category === "travel-power"
+                        ? "Stay powered on the move with compact charging essentials designed for work, travel, and everything between."
+                        : sp.category
+                          ? "Thoughtful protection, refined details, and everyday functionality — find the case that fits your style."
+                          : "Smart tech accessories designed to work beautifully together, wherever your day takes you."}
+              </p>
+              <Link
+                to="/shop"
+                className="
+                  mt-5 inline-flex h-9 items-center gap-2 rounded-full
+                  border border-white/90 bg-white/70 px-4
+                  text-[11px] font-semibold text-[#20242B]
+                  shadow-[0_4px_12px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,0.95)]
+                  backdrop-blur-xl transition-colors duration-200
+                  hover:bg-white/90
+                "
+              >
+                Explore collection <ArrowRight size={13} />
+              </Link>
             </div>
-
           </div>
-
         </div>
       </section>
 
@@ -958,7 +961,11 @@ function ShopPage() {
 
           <div className="flex gap-2 overflow-x-auto py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
-            {DEVICE_FILTERS.map(
+            {DEVICE_FILTERS.filter(
+              (item) =>
+                item.id === "all" ||
+                (deviceCounts[item.id] ?? 0) > 0,
+            ).map(
               (item) => {
                 const Icon =
                   item.icon;
@@ -979,14 +986,22 @@ function ShopPage() {
                       )
                     }
                     className={[
-                      "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium transition",
+                      "relative isolate flex shrink-0 items-center gap-2 overflow-hidden rounded-full border px-4 py-2 text-[13px] font-medium backdrop-blur-xl transition-[border-color,background-color,box-shadow] duration-200",
                       active
-                        ? "border-[#1D1D1F] bg-[#1D1D1F] text-white"
-                        : "border-[#D2D2D7] bg-white text-[#424245] hover:bg-[#F5F5F7]",
+                        ? "border-white/20 bg-gradient-to-b from-[#30323A] to-[#15171D] text-white shadow-[0_5px_12px_rgba(15,23,42,0.20),inset_0_1px_0_rgba(255,255,255,0.22)]"
+                        : "border-white/90 bg-white/55 text-[#424245] shadow-[0_3px_10px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,0.95)] hover:border-white hover:bg-white/80 hover:shadow-[0_5px_14px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,1)]",
                     ].join(
                       " ",
                     )}
                   >
+                    <span
+                      aria-hidden="true"
+                      className={
+                        active
+                          ? "pointer-events-none absolute inset-x-1 top-px h-1/2 rounded-full bg-gradient-to-b from-white/15 to-transparent"
+                          : "pointer-events-none absolute inset-x-1 top-px h-1/2 rounded-full bg-gradient-to-b from-white/90 to-transparent"
+                      }
+                    />
                     <Icon
                       size={15}
                       strokeWidth={
@@ -1175,7 +1190,7 @@ function ShopPage() {
         className="
           mx-auto
           max-w-[1240px]
-          px-5
+          px-4
           py-7
           md:px-8
           md:py-9
@@ -1185,19 +1200,24 @@ function ShopPage() {
         {/* CATEGORY */}
         {sp.category &&
           sp.category !== "all" && (
-            <div className="mb-5 flex items-center justify-between rounded-xl border border-[#E5E5E7] bg-white px-4 py-3">
-              <div>
+            <div className="relative isolate mb-5 flex items-center justify-between gap-3 overflow-hidden rounded-2xl border border-white/90 bg-gradient-to-br from-white/90 via-white/70 to-[#EEF2F7]/75 px-4 py-3 shadow-[0_5px_16px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-2xl">
+              {/* Subtle mirror-glass reflection */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-3 top-px h-1/2 rounded-full bg-gradient-to-b from-white/90 via-white/35 to-transparent"
+              />
+              <div className="relative z-10 min-w-0">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#86868B]">
                   CATEGORY
                 </p>
-                <p className="mt-0.5 text-[13px] font-medium capitalize text-[#1D1D1F]">
+                <p className="mt-0.5 break-words text-[13px] font-medium capitalize text-[#1D1D1F]">
                   {sp.category.replace(/-/g, " ")}
                 </p>
               </div>
 
               <Link
                 to="/shop"
-                className="text-[12px] font-medium text-[#0071E3] hover:underline"
+                className="relative z-10 inline-flex shrink-0 items-center justify-center rounded-full border border-white/90 bg-gradient-to-b from-white/95 to-white/65 px-3.5 py-2 text-[12px] font-semibold text-[#0071E3] shadow-[0_2px_7px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-xl transition-all duration-200 hover:from-white hover:to-white/85 hover:shadow-[0_4px_10px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,1)]"
               >
                 View all
               </Link>
@@ -1363,51 +1383,50 @@ function ShopPage() {
           BENEFITS
       =================================================== */}
 
-      <section className="border-t border-[#E5E5E7] bg-white px-4 py-3 sm:px-6 sm:py-4">
-        <div className="mx-auto grid max-w-[760px] grid-cols-2 overflow-hidden rounded-2xl border border-[#E8E8EA] bg-white shadow-[0_5px_18px_rgba(15,23,42,0.08)] md:grid-cols-4">
+      <section className="border-t border-[#E5E5E7] bg-white px-4 py-4 md:px-8 md:py-6">
+        <div className="mx-auto grid max-w-[1240px] grid-cols-2 gap-2 sm:grid-cols-4 md:gap-3">
           {[
             {
               icon: ShieldCheck,
               title: "Secure checkout",
-              description: "Protected payments",
+              description: "Safe and protected payments.",
             },
             {
               icon: Truck,
               title: "Tracked shipping",
-              description: "Track every order",
+              description: "Follow your order every step.",
             },
             {
               icon: RotateCcw,
               title: "Easy returns",
-              description: "Hassle-free returns",
+              description: "Simple support when you need it.",
             },
             {
               icon: CheckCircle2,
               title: "Built for everyday",
-              description: "Made for your setup",
+              description: "Accessories that fit your setup.",
             },
-          ].map((item, index) => {
+          ].map((item) => {
             const Icon = item.icon;
 
             return (
               <div
                 key={item.title}
-                className={[
-                  "flex min-w-0 flex-col items-center justify-center px-2 py-3 text-center sm:px-3 sm:py-3.5",
-                  index % 2 === 1 ? "border-l border-[#E9EAEC] md:border-l-0" : "",
-                  index > 1 ? "border-t border-[#E9EAEC] md:border-t-0" : "",
-                  index > 0 && index !== 2 ? "md:border-l md:border-[#E9EAEC]" : "",
-                ].join(" ")}
+                className="relative isolate flex min-h-[86px] flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl border border-white/90 bg-gradient-to-br from-white/90 via-white/65 to-[#EEF2F7]/80 px-2.5 py-3 text-center shadow-[0_4px_12px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-2xl md:min-h-[96px] md:px-4 md:py-4"
               >
-                <div className="mb-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-[#F5F5F7] text-[#424245] sm:h-8 sm:w-8">
-                  <Icon size={14} strokeWidth={1.7} />
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-2 top-px h-1/2 rounded-full bg-gradient-to-b from-white/95 via-white/35 to-transparent"
+                />
+                <div className="relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/90 bg-white/65 text-[#424245] shadow-[inset_0_1px_0_rgba(255,255,255,1)] md:h-8 md:w-8">
+                  <Icon size={15} strokeWidth={1.7} />
                 </div>
 
-                <p className="text-[10px] font-semibold leading-4 tracking-[-0.01em] text-[#1D1D1F] sm:text-[11px]">
+                <p className="relative z-10 text-[11px] font-semibold leading-4 tracking-[-0.01em] text-[#1D1D1F] md:text-[13px]">
                   {item.title}
                 </p>
 
-                <p className="mt-0.5 max-w-[140px] text-[9px] leading-[13px] text-[#6E6E73] sm:text-[10px] sm:leading-[14px]">
+                <p className="relative z-10 hidden max-w-[170px] text-[10px] leading-4 text-[#6E6E73] sm:block md:text-[11px]">
                   {item.description}
                 </p>
               </div>

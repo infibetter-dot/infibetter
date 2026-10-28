@@ -806,6 +806,7 @@ export function SiteHeader() {
 
 
 
+            {megaMenus.some((menu) => menu.menu_key === "cases" && menu.mega_menu_groups.length > 0) && (
             <button
 
               type="button"
@@ -854,7 +855,7 @@ export function SiteHeader() {
 
             >
 
-              Cases & Bands
+              {megaMenus.find((menu) => menu.menu_key === "cases")?.title ?? "Cases & Bands"}
 
 
 
@@ -877,9 +878,11 @@ export function SiteHeader() {
               />
 
             </button>
+            )}
 
 
 
+            {megaMenus.some((menu) => menu.menu_key === "charging" && menu.mega_menu_groups.length > 0) && (
             <button
 
               type="button"
@@ -928,7 +931,7 @@ export function SiteHeader() {
 
             >
 
-              Charging
+              {megaMenus.find((menu) => menu.menu_key === "charging")?.title ?? "Charging"}
 
 
 
@@ -951,9 +954,11 @@ export function SiteHeader() {
               />
 
             </button>
+            )}
 
 
 
+            {megaMenus.some((menu) => menu.menu_key === "lifestyle" && menu.mega_menu_groups.length > 0) && (
             <button
 
               type="button"
@@ -1002,7 +1007,7 @@ export function SiteHeader() {
 
             >
 
-              Lifestyle Gear
+              {megaMenus.find((menu) => menu.menu_key === "lifestyle")?.title ?? "Lifestyle Gear"}
 
 
 
@@ -1025,6 +1030,7 @@ export function SiteHeader() {
               />
 
             </button>
+            )}
 
           </nav>
 
@@ -1424,7 +1430,7 @@ export function SiteHeader() {
 
               w-[calc(100%-28px)]
 
-              max-w-[760px]
+              max-w-[1320px]
 
               -translate-x-1/2
 
@@ -1446,7 +1452,7 @@ export function SiteHeader() {
 
           >
 
-            <div className="grid grid-cols-[minmax(0,1fr)_120px] gap-2 p-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_190px] gap-3 p-3">
 
               {/* CATEGORY CARDS */}
 
@@ -1458,9 +1464,9 @@ export function SiteHeader() {
 
                   grid
 
-                  gap-x-2
+                  gap-x-3
 
-                  gap-y-2
+                  gap-y-3
 
                   p-0.5
 
@@ -1486,7 +1492,7 @@ export function SiteHeader() {
 
                       key={column.title}
 
-                      className="min-w-0"
+                      className="flex h-full min-w-0 flex-col overflow-hidden rounded-[14px] border border-[#E8EBF0] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.045)] transition-shadow duration-300 hover:shadow-[0_8px_22px_rgba(15,23,42,0.08)]"
 
                     >
 
@@ -1526,17 +1532,13 @@ export function SiteHeader() {
 
                             relative
 
-                            mb-1.5
-
-                            h-[145px]
+                            aspect-[3/2]
 
                             w-full
 
                             overflow-hidden
 
-                            rounded-[8px]
-
-                            shadow-[0_8px_22px_rgba(15,23,42,0.12)]
+                            rounded-t-[13px]
 
                             bg-[#F1F3F5]
 
@@ -1557,8 +1559,6 @@ export function SiteHeader() {
                               w-full
 
                               object-cover
-
-                              drop-shadow-[0_3px_8px_rgba(15,23,42,0.08)]
 
                               transition-transform
 
@@ -1582,11 +1582,16 @@ export function SiteHeader() {
 
                             items-center
 
-                            gap-1
+                            gap-1.5
 
-                            text-[12px]
-                            font-bold
-                            tracking-[-0.02em]
+                            px-3
+
+                            pt-3
+
+                            text-[13px]
+                            font-extrabold
+                            leading-[1.05]
+                            tracking-[-0.045em]
                             text-[#111827]
 
                             transition-colors
@@ -1629,7 +1634,9 @@ export function SiteHeader() {
 
 
 
-                      <div className="mt-2.5 flex flex-col gap-1.5">
+                      <p className="px-3 pt-1 text-[10px] leading-4 text-[#7B8493]">{column.title.toLowerCase().includes("case") ? "Stylish protection for every device." : column.title.toLowerCase().includes("charging") ? "Effortless power for everyday life." : column.title.toLowerCase().includes("bank") ? "Compact power, bigger possibilities." : column.title.toLowerCase().includes("travel") ? "Stay powered wherever you go." : "Smart accessories for everyday life."}</p>
+
+                      <div className="mt-2 flex flex-col gap-0.5 px-2.5">
 
                         {column.mega_menu_items.map((item) => {
 
@@ -1665,13 +1672,21 @@ export function SiteHeader() {
 
                               onClick={() => setActiveMenu(null)}
 
-                              className="
+                              className="group
 
-                                w-fit
+                                flex
 
-                                rounded-[6px]
+                                w-full
 
-                                py-0
+                                items-center
+
+                                justify-between
+
+                                rounded-[7px]
+
+                                px-2
+
+                                py-1
 
                                 text-[10px]
                                 font-medium
@@ -1682,15 +1697,14 @@ export function SiteHeader() {
 
                                 hover:bg-[#F5F7FA]
 
-                                hover:px-1.5
-
                                 hover:text-[#111827]
 
                               "
 
                             >
 
-                              {itemLabel}
+                              <span>{itemLabel}</span>
+                              <ArrowRight size={10} className="shrink-0 text-[#94A3B8] transition-transform group-hover:translate-x-0.5 group-hover:text-[#475467]" />
 
                             </Link>
 
@@ -1734,23 +1748,49 @@ export function SiteHeader() {
 
                         className="
 
-                          mt-2
+                          mx-3
 
-                          inline-flex
+                          mb-3
+
+                          mt-auto
+
+                          flex
+
+                          h-8
+
+                          shrink-0
 
                           items-center
 
-                          gap-1.5
+                          justify-between
 
-                          text-[9px]
+                          rounded-full
+
+                          border border-white/80
+
+                          bg-white/55
+
+                          px-3
+
+                          text-[10px]
 
                           font-semibold
 
-                          text-[#475467]
+                          text-[#344054]
 
-                          transition
+                          shadow-[0_3px_10px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,0.95)]
 
-                          hover:text-[#111827]
+                          backdrop-blur-xl
+
+                          transition-all
+
+                          duration-200
+
+                          hover:border-white
+
+                          hover:bg-white/80
+
+                          hover:shadow-[0_5px_14px_rgba(15,23,42,0.11),inset_0_1px_0_rgba(255,255,255,1)]
 
                         "
 
@@ -1760,7 +1800,7 @@ export function SiteHeader() {
 
 
 
-                        <ArrowRight size={8} />
+                        <ArrowRight size={11} />
 
                       </Link>
 
@@ -1810,11 +1850,11 @@ export function SiteHeader() {
 
                   relative
 
-                  min-h-[132px]
+                  min-h-[360px]
 
                   overflow-hidden
 
-                  rounded-[10px]
+                  rounded-[14px]
 
                   border
 
@@ -1894,7 +1934,7 @@ export function SiteHeader() {
 
                     bottom-0
 
-                    p-2
+                    p-3
 
                   "
 
@@ -1904,7 +1944,7 @@ export function SiteHeader() {
 
                     className="
 
-                      text-[8px]
+                      text-[9px]
 
                       font-semibold
 
@@ -1930,11 +1970,13 @@ export function SiteHeader() {
 
                       mt-0.5
 
-                      text-[12px]
+                      text-[16px]
 
-                      font-semibold
+                      font-extrabold
 
-                      tracking-[-0.035em]
+                      leading-[1.05]
+
+                      tracking-[-0.045em]
 
                       text-white
 
@@ -1956,7 +1998,7 @@ export function SiteHeader() {
 
                       inline-flex
 
-                      h-6
+                      h-7
 
                       items-center
 
@@ -2042,35 +2084,15 @@ export function SiteHeader() {
 
 
 
-              {([
-
-                ["cases", "Cases & Bands"],
-
-                ["charging", "Charging"],
-
-                ["lifestyle", "Lifestyle Gear"],
-
-              ] as const).map(([menuKey, label]) => {
+              {(["cases", "charging", "lifestyle"] as const).map((menuKey) => {
 
                 const section = megaMenus.find((menu) => menu.menu_key === menuKey);
 
+                if (!section || section.mega_menu_groups.length === 0) return null;
+
+                const label = section.title;
+
                 const expanded = mobileExpandedMenu === menuKey;
-
-
-
-                if (!section) {
-
-                  return (
-
-                    <Link key={menuKey} to="/shop" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="flex items-center justify-between rounded-[9px] px-3 py-3 text-[11px] font-medium text-[#111827] hover:bg-[#F8FAFC]">
-
-                      <span>{label}</span><ArrowRight size={13} className="text-[#94A3B8]" />
-
-                    </Link>
-
-                  );
-
-                }
 
 
 
@@ -2138,7 +2160,7 @@ export function SiteHeader() {
 
                               >
 
-                                <div className="h-[52px] w-[72px] shrink-0 overflow-hidden rounded-[8px] bg-white shadow-[0_4px_12px_rgba(15,23,42,0.12)]">
+                                <div className="h-[52px] w-[72px] shrink-0 overflow-hidden rounded-[8px] border border-[#E1E5EA] bg-white">
 
                                   <img src={group.image_url || getGroupFallback(section.menu_key, groupIndex)} alt={group.title} className="h-full w-full object-cover" />
 

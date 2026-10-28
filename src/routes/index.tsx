@@ -1,5 +1,4 @@
-﻿
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import {
   useSuspenseQuery,
   queryOptions,
@@ -119,18 +118,21 @@ function HomePage() {
   const { data } = useSuspenseQuery(homeData);
 
   return (
-    <main className="min-h-screen bg-[#F7F8FA]">
-      <Hero />
+    <main className="min-h-screen w-full bg-[#F7F8FA]">
+      <div className="mx-auto w-full max-w-[1440px]">
+        <Hero />
 
-      <Collections
-        products={data.products}
-        newArrivals={data.newArrivals}
-      />
+        <div className="px-4 sm:px-6 lg:px-8">
+          <Collections
+            products={data.products}
+            newArrivals={data.newArrivals}
+          />
+        </div>
 
-      <HomeVideoSection />
-
-      {/* Designed for real life đã được ẩn khỏi trang chủ */}
+        <div className="mt-8">
+          <HomeVideoSection />
+        </div>
+      </div>
     </main>
   );
 }
-
