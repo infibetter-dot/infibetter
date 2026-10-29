@@ -1,4967 +1,2675 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 
-
-
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-
-
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
-
-
 import {
 
+  ChevronDown,
 
+  CircleHelp,
 
-  ChevronDown,
+  BookOpen,
 
+  SlidersHorizontal,
 
+  Smartphone,
 
-  CircleHelp,
+  ChevronLeft,
 
+  ChevronRight,
 
+  Minus,
 
-  BookOpen,
+  Plus,
 
+  ShoppingBag,
 
+  Truck,
 
-  SlidersHorizontal,
+  ShieldCheck,
 
+  RotateCcw,
 
-
-  Smartphone,
-
-
-
-  ChevronLeft,
-
-
-
-  ChevronRight,
-
-
-
-  Minus,
-
-
-
-  Plus,
-
-
-
-  ShoppingBag,
-
-
-
-  Truck,
-
-
-
-  ShieldCheck,
-
-
-
-  RotateCcw,
-
-
-
-  Check,
-
-
+  Check,
 
 } from "lucide-react";
 
-
-
 import { toast } from "sonner";
-
-
 
 import { supabase } from "@/integrations/supabase/client";
 
-
-
 import {
 
+  getCurrency,
 
+  subscribeToCurrencyChange,
 
-  getCurrency,
-
-
-
-  subscribeToCurrencyChange,
-
-
-
-  type CurrencyCode,
-
-
+  type CurrencyCode,
 
 } from "@/lib/currency-system";
 
-
-
 import { useCart } from "@/lib/cart";
-
-
 
 import { getImageUrl } from "@/lib/storage";
 
-
-
 import ProductReviews from "@/components/ProductReviews";
-
-
+import { trackMetaEvent } from "@/lib/meta-pixel";
 
 // Product prices in Supabase are USD. This page formats them locally so the
 
-
-
 // product-detail price cannot be affected by a broken/stale shared formatter.
-
-
 
 const PRODUCT_CURRENCY_RATES: Record<CurrencyCode, number> = {
 
+  USD: 1,
 
+  VND: 25500,
 
-  USD: 1,
+  CAD: 1.38,
 
+  AUD: 1.52,
 
+  EUR: 0.88,
 
-  VND: 25500,
+  GBP: 0.75,
 
-
-
-  CAD: 1.38,
-
-
-
-  AUD: 1.52,
-
-
-
-  EUR: 0.88,
-
-
-
-  GBP: 0.75,
-
-
-
-  SGD: 1.28,
-
-
+  SGD: 1.28,
 
 };
-
-
 
 const PRODUCT_CURRENCY_LOCALES: Record<CurrencyCode, string> = {
 
+  USD: "en-US",
 
+  VND: "vi-VN",
 
-  USD: "en-US",
+  CAD: "en-CA",
 
+  AUD: "en-AU",
 
+  EUR: "de-DE",
 
-  VND: "vi-VN",
+  GBP: "en-GB",
 
-
-
-  CAD: "en-CA",
-
-
-
-  AUD: "en-AU",
-
-
-
-  EUR: "de-DE",
-
-
-
-  GBP: "en-GB",
-
-
-
-  SGD: "en-SG",
-
-
+  SGD: "en-SG",
 
 };
 
-
-
 function formatProductPrice(
 
+  value: number | string | null | undefined,
 
-
-  value: number | string | null | undefined,
-
-
-
-  currency: CurrencyCode,
-
-
+  currency: CurrencyCode,
 
 ): string {
 
+  const usd = Number(value);
 
+  const activeCurrency = PRODUCT_CURRENCY_RATES[currency] !== undefined
 
-  const usd = Number(value);
+    ? currency
 
+    : "USD";
 
+  if (!Number.isFinite(usd)) {
 
-  const activeCurrency = PRODUCT_CURRENCY_RATES[currency] !== undefined
+    return new Intl.NumberFormat("en-US", {
 
+      style: "currency",
 
+      currency: "USD",
 
-    ? currency
+      minimumFractionDigits: 2,
 
+      maximumFractionDigits: 2,
 
+    }).format(0);
 
-    : "USD";
+  }
 
+  const converted = usd * PRODUCT_CURRENCY_RATES[activeCurrency];
 
+  const fractionDigits = activeCurrency === "VND" ? 0 : 2;
 
-  if (!Number.isFinite(usd)) {
+  return new Intl.NumberFormat(PRODUCT_CURRENCY_LOCALES[activeCurrency], {
 
+    style: "currency",
 
+    currency: activeCurrency,
 
-    return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: fractionDigits,
 
+    maximumFractionDigits: fractionDigits,
 
-
-      style: "currency",
-
-
-
-      currency: "USD",
-
-
-
-      minimumFractionDigits: 2,
-
-
-
-      maximumFractionDigits: 2,
-
-
-
-    }).format(0);
-
-
-
-  }
-
-
-
-  const converted = usd * PRODUCT_CURRENCY_RATES[activeCurrency];
-
-
-
-  const fractionDigits = activeCurrency === "VND" ? 0 : 2;
-
-
-
-  return new Intl.NumberFormat(PRODUCT_CURRENCY_LOCALES[activeCurrency], {
-
-
-
-    style: "currency",
-
-
-
-    currency: activeCurrency,
-
-
-
-    minimumFractionDigits: fractionDigits,
-
-
-
-    maximumFractionDigits: fractionDigits,
-
-
-
-  }).format(converted);
-
-
+  }).format(converted);
 
 }
 
-
-
 const productOptions = (slug: string) =>
 
+  queryOptions({
 
+    queryKey: ["product", slug],
 
-  queryOptions({
+    queryFn: async () => {
 
+      const { data, error } = await supabase
 
+        .from("products")
 
-    queryKey: ["product", slug],
+        .select(`
 
+          short_description,
 
+          id,
 
-    queryFn: async () => {
+          slug,
 
+          name,
 
+          description,
 
-      const { data, error } = await supabase
+          price,
 
+          compare_at_price,
 
+          stock,
 
-        .from("products")
+          image_url,
 
+          dimensions,
 
+          material,
 
-        .select(`
+          color,
 
+          light_source,
 
+          power_source,
 
-          short_description,
+          warranty,
 
+          seo_title,
 
+          seo_description,
 
-          id,
+          category_id,
 
+          product_images(
 
+  id,
 
-          slug,
+  image_url,
 
+  sort_order,
 
+  color_id,
 
-          name,
+  is_lifestyle,
 
-
-
-          description,
-
-
-
-          price,
-
-
-
-          compare_at_price,
-
-
-
-          stock,
-
-
-
-          image_url,
-
-
-
-          dimensions,
-
-
-
-          material,
-
-
-
-          color,
-
-
-
-          light_source,
-
-
-
-          power_source,
-
-
-
-          warranty,
-
-
-
-          seo_title,
-
-
-
-          seo_description,
-
-
-
-          category_id,
-
-
-
-          product_images(
-
-  id,
-
-  image_url,
-
-  sort_order,
-
-  color_id,
-
-  is_lifestyle,
-
-  image_type
+  image_type
 
 )
 
+          product_colors(
 
+            id,
 
-          product_colors(
+            name,
 
+            hex
 
+          ),
 
-            id,
+          product_variants (
 
+            id,
 
+            device_model_id,
 
-            name,
+            color_id,
 
+            price,
 
+            compare_at_price,
 
-            hex
+            stock,
 
+            image_url,
 
+            sort_order,
 
-          ),
+            is_active
 
+          ),
 
+          product_specifications(
 
-          product_variants (
+            id,
 
+            label,
 
+            value,
 
-            id,
+            sort_order
 
+          ),
 
+          product_usps(
 
-            device_model_id,
+            id,
 
+            title,
 
+            icon,
 
-            color_id,
+            sort_order
 
+          ),
 
+          product_faqs(
 
-            price,
+            id,
 
+            question,
 
+            answer,
 
-            compare_at_price,
+            sort_order,
 
+            is_visible
 
+          )
 
-            stock,
+        `)
 
+        .eq("slug", slug)
 
+        .maybeSingle();
 
-            image_url,
+      if (error) {
 
+        console.error("PRODUCT QUERY ERROR:", error);
 
+        throw new Error(error.message);
 
-            sort_order,
+      }
 
+      if (!data) {
 
-
-            is_active
-
-
-
-          ),
-
-
-
-          product_specifications(
-
-
-
-            id,
-
-
-
-            label,
-
-
-
-            value,
-
-
-
-            sort_order
-
-
-
-          ),
-
-
-
-          product_usps(
-
-
-
-            id,
-
-
-
-            title,
-
-
-
-            icon,
-
-
-
-            sort_order
-
-
-
-          ),
-
-
-
-          product_faqs(
-
-
-
-            id,
-
-
-
-            question,
-
-
-
-            answer,
-
-
-
-            sort_order,
-
-
-
-            is_visible
-
-
-
-          )
-
-
-
-        `)
-
-
-
-        .eq("slug", slug)
-
-
-
-        .maybeSingle();
-
-
-
-      if (error) {
-
-
-
-        console.error("PRODUCT QUERY ERROR:", error);
-
-
-
-        throw new Error(error.message);
-
-
-
-      }
-
-
-
-      if (!data) {
         throw notFound();
+
       }
 
       // Fetch content tables separately to avoid incomplete nested relationship data.
+
       const [specificationsResult, faqsResult, uspsResult] = await Promise.all([
+
         supabase.from("product_specifications")
+
           .select("id, label, value, sort_order")
+
           .eq("product_id", data.id)
+
           .order("sort_order", { ascending: true }),
+
         supabase.from("product_faqs")
+
           .select("id, question, answer, sort_order, is_visible")
+
           .eq("product_id", data.id)
+
           .order("sort_order", { ascending: true }),
+
         supabase.from("product_usps")
+
           .select("id, title, icon, sort_order")
+
           .eq("product_id", data.id)
+
           .order("sort_order", { ascending: true }),
+
       ]);
 
       if (specificationsResult.error) console.error("PRODUCT SPECIFICATIONS QUERY ERROR:", specificationsResult.error);
+
       if (faqsResult.error) console.error("PRODUCT FAQS QUERY ERROR:", faqsResult.error);
+
       if (uspsResult.error) console.error("PRODUCT USPs QUERY ERROR:", uspsResult.error);
 
       // Load device models separately instead of relying on a nested
 
+      // Supabase relationship. product_variants stores only device_model_id.
 
+      const variants = data.product_variants ?? [];
 
-      // Supabase relationship. product_variants stores only device_model_id.
+      const deviceModelIds = Array.from(
 
+        new Set(
 
+          variants
 
-      const variants = data.product_variants ?? [];
+            .map((variant: any) => variant?.device_model_id)
 
+            .filter(Boolean)
 
+            .map((id: any) => String(id)),
 
-      const deviceModelIds = Array.from(
+        ),
 
+      );
 
+      let deviceModels: any[] = [];
 
-        new Set(
+      if (deviceModelIds.length > 0) {
 
+        const { data: modelData, error: modelError } = await supabase
 
+          .from("device_models")
 
-          variants
+          .select("id, name")
 
+          .in("id", deviceModelIds);
 
+        if (modelError) {
 
-            .map((variant: any) => variant?.device_model_id)
+          console.error("DEVICE MODEL QUERY ERROR:", modelError);
 
+        } else {
 
+          deviceModels = modelData ?? [];
 
-            .filter(Boolean)
+        }
 
+      }
 
+      const deviceModelMap = new Map(
 
-            .map((id: any) => String(id)),
+        deviceModels.map((model: any) => [
 
+          String(model.id),
 
+          model.name,
 
-        ),
+        ]),
 
+      );
 
+      const variantsWithModels = variants.map((variant: any) => ({
 
-      );
+        ...variant,
 
+        device_model_name:
 
+          deviceModelMap.get(
 
-      let deviceModels: any[] = [];
+            String(variant.device_model_id),
 
+          ) ?? null,
 
+      }));
 
-      if (deviceModelIds.length > 0) {
+      const relatedResult = await supabase
 
+        .from("products")
 
+        .select("id, slug, name, price, compare_at_price, image_url, stock")
 
-        const { data: modelData, error: modelError } = await supabase
+        .eq("category_id", data.category_id!)
 
+        .neq("id", data.id)
 
+        .limit(4);
 
-          .from("device_models")
+      return {
 
+        product: {
 
-
-          .select("id, name")
-
-
-
-          .in("id", deviceModelIds);
-
-
-
-        if (modelError) {
-
-
-
-          console.error("DEVICE MODEL QUERY ERROR:", modelError);
-
-
-
-        } else {
-
-
-
-          deviceModels = modelData ?? [];
-
-
-
-        }
-
-
-
-      }
-
-
-
-      const deviceModelMap = new Map(
-
-
-
-        deviceModels.map((model: any) => [
-
-
-
-          String(model.id),
-
-
-
-          model.name,
-
-
-
-        ]),
-
-
-
-      );
-
-
-
-      const variantsWithModels = variants.map((variant: any) => ({
-
-
-
-        ...variant,
-
-
-
-        device_model_name:
-
-
-
-          deviceModelMap.get(
-
-
-
-            String(variant.device_model_id),
-
-
-
-          ) ?? null,
-
-
-
-      }));
-
-
-
-      const relatedResult = await supabase
-
-
-
-        .from("products")
-
-
-
-        .select("id, slug, name, price, compare_at_price, image_url, stock")
-
-
-
-        .eq("category_id", data.category_id!)
-
-
-
-        .neq("id", data.id)
-
-
-
-        .limit(4);
-
-
-
-      return {
-
-
-
-        product: {
           ...data,
+
           product_variants: variantsWithModels,
+
           product_specifications: specificationsResult.data ?? data.product_specifications ?? [],
+
           product_faqs: faqsResult.data ?? data.product_faqs ?? [],
+
           product_usps: uspsResult.data ?? data.product_usps ?? [],
+
         },
 
+        related: relatedResult.data ?? [],
 
+      };
 
-        related: relatedResult.data ?? [],
+    },
 
-
-
-      };
-
-
-
-    },
-
-
-
-  });
-
-
+  });
 
 export const Route = createFileRoute("/products/$slug")({
 
+  loader: ({ context, params }) =>
 
+    context.queryClient.ensureQueryData(productOptions(params.slug)),
 
-  loader: ({ context, params }) =>
-
-
-
-    context.queryClient.ensureQueryData(productOptions(params.slug)),
-
-
-
-  component: ProductPage,
-
-
+  component: ProductPage,
 
 });
 
-
-
 function ProductPage() {
 
+  const { slug } = Route.useParams();
 
+  const navigate = useNavigate();
 
-  const { slug } = Route.useParams();
+  const cart = useCart();
 
+  // INFIBETTER product prices are stored as USD in Supabase.
 
+  const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
 
-  const navigate = useNavigate();
+    getCurrency(),
 
+  );
 
+  const safeCurrency: CurrencyCode =
 
-  const cart = useCart();
+    currency || getCurrency() || "USD";
 
+  useEffect(() => {
 
+    return subscribeToCurrencyChange(setCurrencyState);
 
-  // INFIBETTER product prices are stored as USD in Supabase.
+  }, []);
 
+  const { data } = useSuspenseQuery(productOptions(slug));
 
+  const { product, related } = data;
 
-  const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
+  // Meta Pixel: record a product detail view once this product is loaded.
+  useEffect(() => {
+    trackMetaEvent("ViewContent", {
+      content_type: "product",
+      content_ids: [String(product.id)],
+      content_name: product.name,
+      value: Number(product.price) || 0,
+      currency: "USD",
+    });
+  }, [product.id, product.name, product.price]);
 
+  const [selectedImage, setSelectedImage] = useState("");
 
+  const [selectedColor, setSelectedColor] = useState<any>(
 
-    getCurrency(),
+    product.product_colors?.[0] ?? null,
 
+  );
 
+  const [selectedModel, setSelectedModel] = useState("");
 
-  );
+  const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
 
+  const [activeModelIndex, setActiveModelIndex] = useState(0);
 
+  const modelSelectRef = useRef<HTMLDivElement | null>(null);
 
-  const safeCurrency: CurrencyCode =
+  const videoCarouselRef = useRef<HTMLDivElement | null>(null);
 
+  const [quantity, setQuantity] = useState(1);
 
+  const [openSpecs, setOpenSpecs] = useState(false);
 
-    currency || getCurrency() || "USD";
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  const [openProductFaq, setOpenProductFaq] = useState<string | null>(null);
 
+  const productImages = useMemo(() => {
 
-  useEffect(() => {
+    // Product gallery contains product images only. Lifestyle images are rendered
 
+    // separately in the Lifestyle section below and must not appear in thumbnails
 
+    // or the main gallery navigation.
 
-    return subscribeToCurrencyChange(setCurrencyState);
+    const images = (product.product_images ?? [])
 
+      .filter(
 
+        (item: any) =>
 
-  }, []);
+          item?.image_url &&
 
+          item?.is_lifestyle !== true &&
 
+          item?.image_type !== "video" &&
 
-  const { data } = useSuspenseQuery(productOptions(slug));
+          !/\.(mp4|webm)(?:$|[?#])/i.test(item.image_url),
 
+      )
 
+      .sort((a: any, b: any) => {
 
-  const { product, related } = data;
+        const sortDiff =
 
+          Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
 
+        if (sortDiff !== 0) return sortDiff;
 
-  const [selectedImage, setSelectedImage] = useState("");
+        return Number(Boolean(a.is_lifestyle)) - Number(Boolean(b.is_lifestyle));
 
+      });
 
+    if (images.length > 0) return images;
 
-  const [selectedColor, setSelectedColor] = useState<any>(
+    if (product.image_url) {
 
+      return [
 
+        {
 
-    product.product_colors?.[0] ?? null,
+          id: "main",
 
+          image_url: product.image_url,
 
+          color_id: null,
 
-  );
+          is_lifestyle: false,
 
+        },
 
+      ];
 
-  const [selectedModel, setSelectedModel] = useState("");
+    }
 
+    return [];
 
+  }, [product]);
 
-  const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
+  const lifestyleImages = useMemo(
 
+    () =>
 
+      (product.product_images ?? [])
 
-  const [activeModelIndex, setActiveModelIndex] = useState(0);
+        .filter(
 
+          (item: any) =>
 
+            item?.image_url &&
 
-  const modelSelectRef = useRef<HTMLDivElement | null>(null);
+            item?.is_lifestyle === true,
 
-  const videoCarouselRef = useRef<HTMLDivElement | null>(null);
+        )
 
+        .sort(
 
+          (a: any, b: any) =>
 
-  const [quantity, setQuantity] = useState(1);
+            Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
 
+        ),
 
+    [product],
 
-  const [openSpecs, setOpenSpecs] = useState(false);
+  );
 
+  // Product videos are displayed in their own horizontal carousel below Lifestyle.
 
+  const productVideos = useMemo(
 
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+    () =>
 
+      (product.product_images ?? [])
 
+        .filter(
 
-  const [openProductFaq, setOpenProductFaq] = useState<string | null>(null);
+          (item: any) =>
 
+            item?.image_url &&
 
+            (
 
-  const productImages = useMemo(() => {
+              item?.image_type === "video" ||
 
+              /\.(mp4|webm)(?:$|[?#])/i.test(item.image_url)
 
+            ),
 
-    // Product gallery contains product images only. Lifestyle images are rendered
+        )
 
-    // separately in the Lifestyle section below and must not appear in thumbnails
+        .sort(
 
-    // or the main gallery navigation.
+          (a: any, b: any) =>
 
-    const images = (product.product_images ?? [])
+            Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
 
+        ),
 
+    [product],
 
-      .filter(
+  );
 
-        (item: any) =>
+  useEffect(() => {
 
-          item?.image_url &&
+    const firstColor = product.product_colors?.[0] ?? null;
 
-          item?.is_lifestyle !== true &&
+    const firstColorImages = firstColor
 
-          item?.image_type !== "video" &&
+      ? productImages.filter(
 
-          !/\.(mp4|webm)(?:$|[?#])/i.test(item.image_url),
+          (image: any) =>
 
-      )
+            String(image?.color_id ?? "") === String(firstColor.id),
 
+        )
 
+      : [];
 
-      .sort((a: any, b: any) => {
+    const colorImage =
 
+      firstColorImages[0] ??
 
+      productImages[0];
 
-        const sortDiff =
+    setSelectedColor(firstColor);
 
+    setSelectedImage(
 
+      colorImage?.image_url ||
 
-          Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
+        product.image_url ||
 
+        productImages[0]?.image_url ||
 
+        "",
 
-        if (sortDiff !== 0) return sortDiff;
+    );
 
+    setQuantity(1);
 
+  }, [product.id]);
 
-        return Number(Boolean(a.is_lifestyle)) - Number(Boolean(b.is_lifestyle));
+  function handleColorChange(color: any) {
 
+    setSelectedColor(color);
 
+    // Keep the selected model valid for the newly selected color.
 
-      });
+    const modelsForColor = Array.from(
 
+      new Set(
 
+        (product.product_variants ?? [])
 
-    if (images.length > 0) return images;
+          .filter(
 
+            (variant: any) =>
 
+              variant?.is_active !== false &&
 
-    if (product.image_url) {
+              variant?.device_model_name &&
 
+              String(variant?.color_id ?? "") === String(color?.id ?? ""),
 
+          )
 
-      return [
+          .map((variant: any) =>
 
+            String(variant.device_model_name).trim(),
 
+          )
 
-        {
+          .filter(Boolean),
 
+      ),
 
+    );
 
-          id: "main",
+    setSelectedModel((current) =>
 
+      current && modelsForColor.includes(current)
 
+        ? current
 
-          image_url: product.image_url,
+        : modelsForColor[0] ?? "",
 
+    );
 
+    // Prefer a product image assigned to the selected color.
 
-          color_id: null,
+    // Lifestyle images are intentionally excluded from the product gallery.
 
+    const colorImages = productImages.filter(
 
+      (image: any) =>
 
-          is_lifestyle: false,
+        String(image?.color_id ?? "") === String(color?.id ?? ""),
 
+    );
 
+    const colorImage = colorImages[0];
 
-        },
+    if (colorImage?.image_url) {
 
+      setSelectedImage(colorImage.image_url);
 
+      return;
 
-      ];
+    }
 
+    // If the selected color has no linked image, keep the current gallery image.
 
+  }
 
-    }
+  const activeImage =
 
+    selectedImage ||
 
+    product.image_url ||
 
-    return [];
+    productImages[0]?.image_url ||
 
+    "";
 
+  const activeMedia = productImages.find(
 
-  }, [product]);
+    (item: any) => item?.image_url === activeImage,
 
+  );
 
+  const isActiveVideo =
 
-  const lifestyleImages = useMemo(
+    activeMedia?.image_type === "video" ||
 
-
-
-    () =>
-
-
-
-      (product.product_images ?? [])
-
-
-
-        .filter(
-
-
-
-          (item: any) =>
-
-
-
-            item?.image_url &&
-
-
-
-            item?.is_lifestyle === true,
-
-
-
-        )
-
-
-
-        .sort(
-
-
-
-          (a: any, b: any) =>
-
-
-
-            Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
-
-
-
-        ),
-
-
-
-    [product],
-
-
-
-  );
-
-
-
-  // Product videos are displayed in their own horizontal carousel below Lifestyle.
-
-  const productVideos = useMemo(
-
-    () =>
-
-      (product.product_images ?? [])
-
-        .filter(
-
-          (item: any) =>
-
-            item?.image_url &&
-
-            (
-
-              item?.image_type === "video" ||
-
-              /\.(mp4|webm)(?:$|[?#])/i.test(item.image_url)
-
-            ),
-
-        )
-
-        .sort(
-
-          (a: any, b: any) =>
-
-            Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
-
-        ),
-
-    [product],
-
-  );
-
-
-
-  useEffect(() => {
-
-
-
-    const firstColor = product.product_colors?.[0] ?? null;
-
-
-
-    const firstColorImages = firstColor
-
-
-
-      ? productImages.filter(
-
-
-
-          (image: any) =>
-
-
-
-            String(image?.color_id ?? "") === String(firstColor.id),
-
-
-
-        )
-
-
-
-      : [];
-
-
-
-    const colorImage =
-
-
-
-      firstColorImages[0] ??
-
-
-
-      productImages[0];
-
-
-
-    setSelectedColor(firstColor);
-
-
-
-    setSelectedImage(
-
-
-
-      colorImage?.image_url ||
-
-
-
-        product.image_url ||
-
-
-
-        productImages[0]?.image_url ||
-
-
-
-        "",
-
-
-
-    );
-
-
-
-    setQuantity(1);
-
-
-
-  }, [product.id]);
-
-
-
-  function handleColorChange(color: any) {
-
-
-
-    setSelectedColor(color);
-
-
-
-    // Keep the selected model valid for the newly selected color.
-
-
-
-    const modelsForColor = Array.from(
-
-
-
-      new Set(
-
-
-
-        (product.product_variants ?? [])
-
-
-
-          .filter(
-
-
-
-            (variant: any) =>
-
-
-
-              variant?.is_active !== false &&
-
-
-
-              variant?.device_model_name &&
-
-
-
-              String(variant?.color_id ?? "") === String(color?.id ?? ""),
-
-
-
-          )
-
-
-
-          .map((variant: any) =>
-
-
-
-            String(variant.device_model_name).trim(),
-
-
-
-          )
-
-
-
-          .filter(Boolean),
-
-
-
-      ),
-
-
-
-    );
-
-
-
-    setSelectedModel((current) =>
-
-
-
-      current && modelsForColor.includes(current)
-
-
-
-        ? current
-
-
-
-        : modelsForColor[0] ?? "",
-
-
-
-    );
-
-
-
-    // Prefer a product image assigned to the selected color.
-
-    // Lifestyle images are intentionally excluded from the product gallery.
-
-
-
-    const colorImages = productImages.filter(
-
-
-
-      (image: any) =>
-
-
-
-        String(image?.color_id ?? "") === String(color?.id ?? ""),
-
-
-
-    );
-
-
-
-    const colorImage = colorImages[0];
-
-
-
-    if (colorImage?.image_url) {
-
-
-
-      setSelectedImage(colorImage.image_url);
-
-
-
-      return;
-
-
-
-    }
-
-
-
-    // If the selected color has no linked image, keep the current gallery image.
-
-
-
-  }
-
-
-
-  const activeImage =
-
-    selectedImage ||
-
-    product.image_url ||
-
-    productImages[0]?.image_url ||
-
-    "";
-
-
-
-  const activeMedia = productImages.find(
-
-    (item: any) => item?.image_url === activeImage,
-
-  );
-
-
-
-  const isActiveVideo =
-
-    activeMedia?.image_type === "video" ||
-
-    /\.(mp4|webm)(?:$|[?#])/i.test(activeImage);
+    /\.(mp4|webm)(?:$|[?#])/i.test(activeImage);
 
 const price = Number(product.price) || 0;
 
+  const comparePrice = Number(product.compare_at_price) || 0;
 
+  // TEMP DEBUG: confirms this page is receiving the Supabase USD price.
 
-  const comparePrice = Number(product.compare_at_price) || 0;
+  console.log("INFIBETTER PRICE CHECK:", {
 
+    slug: product.slug,
 
+    name: product.name,
 
-  // TEMP DEBUG: confirms this page is receiving the Supabase USD price.
+    price: product.price,
 
+    compare_at_price: product.compare_at_price,
 
+    parsedPrice: price,
 
-  console.log("INFIBETTER PRICE CHECK:", {
+    parsedComparePrice: comparePrice,
 
+    currency: safeCurrency,
 
+    formattedPrice: formatProductPrice(price, safeCurrency),
 
-    slug: product.slug,
+    formattedComparePrice: formatProductPrice(comparePrice, safeCurrency),
 
+  });
 
+  const hasDiscount = comparePrice > price;
 
-    name: product.name,
+  const discountPercent = hasDiscount
 
+    ? Math.round(((comparePrice - price) / comparePrice) * 100)
 
+    : 0;
 
-    price: product.price,
+  const inStock = Number(product.stock ?? 0) > 0;
 
+  const compatibleModels = Array.from(
 
+    new Set(
 
-    compare_at_price: product.compare_at_price,
+      (product.product_variants ?? [])
 
+        .filter(
 
+          (variant: any) =>
 
-    parsedPrice: price,
+            variant?.is_active !== false &&
 
+            variant?.device_model_name &&
 
+            (!selectedColor?.id ||
 
-    parsedComparePrice: comparePrice,
+              String(variant?.color_id ?? "") === String(selectedColor.id)),
 
+        )
 
+        .map((variant: any) =>
 
-    currency: safeCurrency,
+          String(variant.device_model_name).trim(),
 
+        )
 
+        .filter(Boolean),
 
-    formattedPrice: formatProductPrice(price, safeCurrency),
+    ),
 
+  );
 
+  useEffect(() => {
 
-    formattedComparePrice: formatProductPrice(comparePrice, safeCurrency),
+    if (!isModelSelectOpen) return;
 
+    function handlePointerDown(event: PointerEvent) {
 
+      const target = event.target as Node;
 
-  });
+      if (!modelSelectRef.current?.contains(target)) {
 
+        setIsModelSelectOpen(false);
 
+      }
 
-  const hasDiscount = comparePrice > price;
+    }
 
+    function handleKeyDown(event: KeyboardEvent) {
 
+      if (event.key === "Escape") {
 
-  const discountPercent = hasDiscount
+        setIsModelSelectOpen(false);
 
+      }
 
+    }
 
-    ? Math.round(((comparePrice - price) / comparePrice) * 100)
+    document.addEventListener("pointerdown", handlePointerDown);
 
+    document.addEventListener("keydown", handleKeyDown);
 
+    return () => {
 
-    : 0;
+      document.removeEventListener("pointerdown", handlePointerDown);
 
+      document.removeEventListener("keydown", handleKeyDown);
 
+    };
 
-  const inStock = Number(product.stock ?? 0) > 0;
+  }, [isModelSelectOpen]);
 
+  const selectedModelIndex = Math.max(
 
+    0,
 
-  const compatibleModels = Array.from(
+    compatibleModels.findIndex((model) => model === selectedModel),
 
+  );
 
+  const openModelSelect = () => {
 
-    new Set(
+    const nextIndex = selectedModelIndex >= 0 ? selectedModelIndex : 0;
 
+    setActiveModelIndex(nextIndex);
 
+    setIsModelSelectOpen(true);
 
-      (product.product_variants ?? [])
+  };
 
+  const closeModelSelect = () => {
 
+    setIsModelSelectOpen(false);
 
-        .filter(
+  };
 
+  const handleModelSelect = (model: string) => {
 
+    setSelectedModel(model);
 
-          (variant: any) =>
+    closeModelSelect();
 
+  };
 
+  const handleModelKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
 
-            variant?.is_active !== false &&
+    if (!compatibleModels.length) return;
 
+    if (event.key === "Enter" || event.key === " ") {
 
+      event.preventDefault();
 
-            variant?.device_model_name &&
+      if (!isModelSelectOpen) {
 
+        openModelSelect();
 
+        return;
 
-            (!selectedColor?.id ||
+      }
 
+      handleModelSelect(compatibleModels[activeModelIndex] ?? compatibleModels[0]);
 
+      return;
 
-              String(variant?.color_id ?? "") === String(selectedColor.id)),
+    }
 
+    if (event.key === "ArrowDown") {
 
+      event.preventDefault();
 
-        )
+      if (!isModelSelectOpen) {
 
+        openModelSelect();
 
+        return;
 
-        .map((variant: any) =>
+      }
 
+      setActiveModelIndex((index) =>
 
+        Math.min(index + 1, compatibleModels.length - 1),
 
-          String(variant.device_model_name).trim(),
+      );
 
+      return;
 
+    }
 
-        )
+    if (event.key === "ArrowUp") {
 
+      event.preventDefault();
 
+      if (!isModelSelectOpen) {
 
-        .filter(Boolean),
+        openModelSelect();
 
+        return;
 
+      }
 
-    ),
+      setActiveModelIndex((index) => Math.max(index - 1, 0));
 
+      return;
 
+    }
 
-  );
+    if (event.key === "Home") {
 
+      event.preventDefault();
 
+      setActiveModelIndex(0);
 
-  useEffect(() => {
+      return;
 
+    }
 
+    if (event.key === "End") {
 
-    if (!isModelSelectOpen) return;
+      event.preventDefault();
 
+      setActiveModelIndex(compatibleModels.length - 1);
 
+    }
 
-    function handlePointerDown(event: PointerEvent) {
+  };
 
+  const specs = (product.product_specifications ?? [])
 
+    .slice()
 
-      const target = event.target as Node;
+    .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
 
+  const usps = (product.product_usps ?? [])
 
+    .slice()
 
-      if (!modelSelectRef.current?.contains(target)) {
+    .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
 
+    .slice(0, 4);
 
+  const faqItems = [
 
-        setIsModelSelectOpen(false);
+    {
 
+      question: "Tech specs",
 
+      type: "specs",
 
-      }
+    },
 
+    {
 
+      question: "FAQs",
 
-    }
+      type: "faq",
 
+    },
 
+    {
 
-    function handleKeyDown(event: KeyboardEvent) {
+      question: "How to use",
 
+      type: "howto",
 
+      answer:
 
-      if (event.key === "Escape") {
+        "Please follow the instructions included with the product. If instructions are not provided, contact our support team before use.",
 
+    },
 
+  ];
 
-        setIsModelSelectOpen(false);
+  const productFaqs = (product.product_faqs ?? [])
 
+    .filter((faq: any) => faq?.is_visible !== false)
 
+    .slice()
 
-      }
+    .sort(
 
+      (a: any, b: any) =>
 
+        Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
 
-    }
+    );
 
+  function addToCart() {
 
+    if (!inStock) {
 
-    document.addEventListener("pointerdown", handlePointerDown);
+      toast.error("This product is currently out of stock");
 
+      return;
 
+    }
 
-    document.addEventListener("keydown", handleKeyDown);
+    const image =
 
+      activeImage ||
 
+      product.image_url ||
 
-    return () => {
+      productImages[0]?.image_url ||
 
+      null;
 
+    cart.add(
 
-      document.removeEventListener("pointerdown", handlePointerDown);
+      {
 
+        id: product.id,
 
+        slug: product.slug,
 
-      document.removeEventListener("keydown", handleKeyDown);
+        name: product.name,
 
+        price,
 
+        image,
 
-    };
+        productColorId: selectedColor?.id,
 
+        colorName: selectedColor?.name,
 
+        colorHex: selectedColor?.hex,
 
-  }, [isModelSelectOpen]);
+      },
 
+      quantity,
 
+    );
 
-  const selectedModelIndex = Math.max(
+    toast.success("Added to cart");
 
+  }
 
+  function buyNow() {
 
-    0,
+  if (!inStock) {
 
+    toast.error("This product is currently out of stock");
 
+    return;
 
-    compatibleModels.findIndex((model) => model === selectedModel),
+  }
 
+  addToCart();
 
-
-  );
-
-
-
-  const openModelSelect = () => {
-
-
-
-    const nextIndex = selectedModelIndex >= 0 ? selectedModelIndex : 0;
-
-
-
-    setActiveModelIndex(nextIndex);
-
-
-
-    setIsModelSelectOpen(true);
-
-
-
-  };
-
-
-
-  const closeModelSelect = () => {
-
-
-
-    setIsModelSelectOpen(false);
-
-
-
-  };
-
-
-
-  const handleModelSelect = (model: string) => {
-
-
-
-    setSelectedModel(model);
-
-
-
-    closeModelSelect();
-
-
-
-  };
-
-
-
-  const handleModelKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-
-
-
-    if (!compatibleModels.length) return;
-
-
-
-    if (event.key === "Enter" || event.key === " ") {
-
-
-
-      event.preventDefault();
-
-
-
-      if (!isModelSelectOpen) {
-
-
-
-        openModelSelect();
-
-
-
-        return;
-
-
-
-      }
-
-
-
-      handleModelSelect(compatibleModels[activeModelIndex] ?? compatibleModels[0]);
-
-
-
-      return;
-
-
-
-    }
-
-
-
-    if (event.key === "ArrowDown") {
-
-
-
-      event.preventDefault();
-
-
-
-      if (!isModelSelectOpen) {
-
-
-
-        openModelSelect();
-
-
-
-        return;
-
-
-
-      }
-
-
-
-      setActiveModelIndex((index) =>
-
-
-
-        Math.min(index + 1, compatibleModels.length - 1),
-
-
-
-      );
-
-
-
-      return;
-
-
-
-    }
-
-
-
-    if (event.key === "ArrowUp") {
-
-
-
-      event.preventDefault();
-
-
-
-      if (!isModelSelectOpen) {
-
-
-
-        openModelSelect();
-
-
-
-        return;
-
-
-
-      }
-
-
-
-      setActiveModelIndex((index) => Math.max(index - 1, 0));
-
-
-
-      return;
-
-
-
-    }
-
-
-
-    if (event.key === "Home") {
-
-
-
-      event.preventDefault();
-
-
-
-      setActiveModelIndex(0);
-
-
-
-      return;
-
-
-
-    }
-
-
-
-    if (event.key === "End") {
-
-
-
-      event.preventDefault();
-
-
-
-      setActiveModelIndex(compatibleModels.length - 1);
-
-
-
-    }
-
-
-
-  };
-
-
-
-  const specs = (product.product_specifications ?? [])
-
-
-
-    .slice()
-
-
-
-    .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
-
-
-
-  const usps = (product.product_usps ?? [])
-
-
-
-    .slice()
-
-
-
-    .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
-
-
-
-    .slice(0, 4);
-
-
-
-  const faqItems = [
-
-
-
-    {
-
-
-
-      question: "Tech specs",
-
-
-
-      type: "specs",
-
-
-
-    },
-
-
-
-    {
-
-
-
-      question: "FAQs",
-
-
-
-      type: "faq",
-
-
-
-    },
-
-
-
-    {
-
-
-
-      question: "How to use",
-
-
-
-      type: "howto",
-
-
-
-      answer:
-
-
-
-        "Please follow the instructions included with the product. If instructions are not provided, contact our support team before use.",
-
-
-
-    },
-
-
-
-  ];
-
-
-
-  const productFaqs = (product.product_faqs ?? [])
-
-
-
-    .filter((faq: any) => faq?.is_visible !== false)
-
-
-
-    .slice()
-
-
-
-    .sort(
-
-
-
-      (a: any, b: any) =>
-
-
-
-        Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
-
-
-
-    );
-
-
-
-  function addToCart() {
-
-
-
-    if (!inStock) {
-
-
-
-      toast.error("This product is currently out of stock");
-
-
-
-      return;
-
-
-
-    }
-
-
-
-    const image =
-
-
-
-      activeImage ||
-
-
-
-      product.image_url ||
-
-
-
-      productImages[0]?.image_url ||
-
-
-
-      null;
-
-
-
-    cart.add(
-
-
-
-      {
-
-
-
-        id: product.id,
-
-
-
-        slug: product.slug,
-
-
-
-        name: product.name,
-
-
-
-        price,
-
-
-
-        image,
-
-
-
-        productColorId: selectedColor?.id,
-
-
-
-        colorName: selectedColor?.name,
-
-
-
-        colorHex: selectedColor?.hex,
-
-
-
-      },
-
-
-
-      quantity,
-
-
-
-    );
-
-
-
-    toast.success("Added to cart");
-
-
-
-  }
-
-
-
-  function buyNow() {
-
-
-
-  if (!inStock) {
-
-
-
-    toast.error("This product is currently out of stock");
-
-
-
-    return;
-
-
-
-  }
-
-
-
-  addToCart();
-
-
-
-  window.dispatchEvent(new Event("infibetter:open-cart"));
-
-
+  window.dispatchEvent(new Event("infibetter:open-cart"));
 
 }
 
+  function changeImage(direction: "next" | "prev") {
 
+    if (productImages.length < 2) return;
 
-  function changeImage(direction: "next" | "prev") {
+    const currentIndex = Math.max(
 
+      0,
 
+      productImages.findIndex((item: any) => item.image_url === activeImage),
 
-    if (productImages.length < 2) return;
+    );
 
+    const nextIndex =
 
+      direction === "next"
 
-    const currentIndex = Math.max(
+        ? (currentIndex + 1) % productImages.length
 
+        : (currentIndex - 1 + productImages.length) % productImages.length;
 
+    setSelectedImage(productImages[nextIndex].image_url);
 
-      0,
+  }
 
+  return (
 
+    <main className="min-h-screen bg-white text-[#1D1D1F]">
 
-      productImages.findIndex((item: any) => item.image_url === activeImage),
+      {/* Breadcrumb */}
 
+      <div className="mx-auto max-w-[1240px] px-5 pb-4 pt-5 md:px-8 lg:pt-7">
 
+        <nav className="flex items-center gap-2 overflow-hidden text-[12px] text-[#6E6E73]">
 
-    );
+          <Link to="/" className="shrink-0 hover:text-[#1D1D1F]">
 
+            Home
 
+          </Link>
 
-    const nextIndex =
+          <span>/</span>
 
+          <Link to="/shop" className="shrink-0 hover:text-[#1D1D1F]">
 
+            Shop
 
-      direction === "next"
+          </Link>
 
+          <span>/</span>
 
+          <span className="truncate text-[#1D1D1F]">{product.name}</span>
 
-        ? (currentIndex + 1) % productImages.length
+        </nav>
 
+      </div>
 
+      {/* Product hero */}
 
-        : (currentIndex - 1 + productImages.length) % productImages.length;
+      <section className="mx-auto max-w-[1240px] px-5 pb-12 md:px-8 lg:pb-16">
 
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)] lg:gap-12 xl:gap-16">
 
+          {/* Gallery */}
 
-    setSelectedImage(productImages[nextIndex].image_url);
+          <div className="min-w-0">
 
+            <div className="relative w-full overflow-hidden rounded-[26px] bg-white">
 
+              <div className="aspect-square w-full">
 
-  }
+                {activeImage ? (
 
+                  isActiveVideo ? (
 
+                    <video
 
-  return (
+                      key={activeImage}
 
+                      src={activeImage}
 
+                      controls
 
-    <main className="min-h-screen bg-white text-[#1D1D1F]">
+                      playsInline
 
+                      preload="metadata"
 
+                      aria-label={`${product.name} video`}
 
-      {/* Breadcrumb */}
+                      className="h-full w-full bg-white object-contain"
 
+                    />
 
+                  ) : (
 
-      <div className="mx-auto max-w-[1240px] px-5 pb-4 pt-5 md:px-8 lg:pt-7">
+                    <img
 
+                      src={getImageUrl(activeImage, "large") || activeImage}
 
+                      alt={product.name}
 
-        <nav className="flex items-center gap-2 overflow-hidden text-[12px] text-[#6E6E73]">
+                      className="h-full w-full object-contain scale-[0.78] p-0"
 
+                    />
 
+                  )
 
-          <Link to="/" className="shrink-0 hover:text-[#1D1D1F]">
+                ) : (
 
+                  <div className="flex h-full items-center justify-center text-sm text-[#86868B]">
 
+                    No image available
 
-            Home
+                  </div>
 
+                )}
 
+              </div>
 
-          </Link>
+              {productImages.length > 1 && (
 
+                <>
 
+                  <button
 
-          <span>/</span>
+                    type="button"
 
+                    onClick={() => changeImage("prev")}
 
+                    aria-label="Previous image"
 
-          <Link to="/shop" className="shrink-0 hover:text-[#1D1D1F]">
+                    className="absolute left-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1D1D1F] shadow-sm backdrop-blur transition hover:bg-white"
 
+                  >
 
+                    <ChevronLeft size={17} />
 
-            Shop
+                  </button>
 
+                  <button
 
+                    type="button"
 
-          </Link>
+                    onClick={() => changeImage("next")}
 
+                    aria-label="Next image"
 
+                    className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1D1D1F] shadow-sm backdrop-blur transition hover:bg-white"
 
-          <span>/</span>
+                  >
 
+                    <ChevronRight size={17} />
 
+                  </button>
 
-          <span className="truncate text-[#1D1D1F]">{product.name}</span>
+                </>
 
+              )}
 
+            </div>
 
-        </nav>
+            {productImages.length > 1 && (
 
+              <div className="mt-3 flex flex-wrap items-end gap-2 pb-1">
 
+                {productImages.map((image: any, index: number) => {
 
-      </div>
+                  const isActive = activeImage === image.image_url;
 
+                  return (
 
+                    <button
 
-      {/* Product hero */}
+                      key={`${image.id ?? index}-${image.image_url}`}
 
+                      type="button"
 
+                      onClick={() => setSelectedImage(image.image_url)}
 
-      <section className="mx-auto max-w-[1240px] px-5 pb-12 md:px-8 lg:pb-16">
+                      aria-label={`View image ${index + 1}`}
 
+                      aria-current={isActive ? "true" : undefined}
 
+                      className={`group relative h-[56px] w-[56px] shrink-0 overflow-visible bg-transparent p-0 transition-all duration-200 ease-out focus-visible:outline-none ${
 
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)] lg:gap-12 xl:gap-16">
+                        isActive
 
+                          ? "scale-[1.06] opacity-100"
 
+                          : "opacity-65 hover:scale-[1.05] hover:opacity-100"
 
-          {/* Gallery */}
+                      }`}
 
+                    >
 
+                      {image?.image_type === "video" ||
 
-          <div className="min-w-0">
+                      /\.(mp4|webm)(?:$|[?#])/i.test(image.image_url) ? (
 
+                        <span className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[#F5F5F7]">
 
+                          <video
 
-            <div className="relative w-full overflow-hidden rounded-[26px] bg-white">
+                            src={image.image_url}
 
+                            preload="metadata"
 
+                            muted
 
-              <div className="aspect-square w-full">
+                            playsInline
 
+                            aria-hidden="true"
 
+                            className="h-full w-full object-contain"
 
-                {activeImage ? (
+                          />
 
-                  isActiveVideo ? (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/[0.08]">
 
-                    <video
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[#1D1D1F] shadow-sm">
 
-                      key={activeImage}
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 
-                      src={activeImage}
+                                <path d="M8 5v14l11-7z" />
 
-                      controls
+                              </svg>
 
-                      playsInline
+                            </span>
 
-                      preload="metadata"
+                          </span>
 
-                      aria-label={`${product.name} video`}
+                        </span>
 
-                      className="h-full w-full bg-white object-contain"
+                      ) : (
 
-                    />
+                        <img
 
-                  ) : (
+                          src={getImageUrl(image.image_url, "thumb") || image.image_url}
 
-                    <img
+                          alt={`${product.name} ${index + 1}`}
 
-                      src={getImageUrl(activeImage, "large") || activeImage}
+                          className="h-full w-full object-contain bg-transparent p-0 transition-transform duration-200 ease-out group-hover:scale-[1.03]"
 
-                      alt={product.name}
+                        />
 
-                      className="h-full w-full object-contain scale-[0.78] p-0"
+                      )}
 
-                    />
+                      {isActive && (
 
-                  )
+                        <span
 
-                ) : (
+                          aria-hidden="true"
 
+                          className="absolute -bottom-[5px] left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-[#0071E3]"
 
+                        />
 
-                  <div className="flex h-full items-center justify-center text-sm text-[#86868B]">
+                      )}
 
+                    </button>
 
+                  );
 
-                    No image available
+                })}
 
+              </div>
 
+            )}
 
-                  </div>
+          </div>
 
+          {/* Product information */}
 
+          <aside className="min-w-0 lg:sticky lg:top-24">
 
-                )}
+            <div className="max-w-[520px]">
 
+              <div className="mb-4 flex items-center gap-2 text-[11px] text-[#6E6E73]">
 
+                <span
 
-              </div>
+                  className={`h-1.5 w-1.5 rounded-full ${
 
+                    inStock ? "bg-[#34C759]" : "bg-[#FF3B30]"
 
+                  }`}
 
-              {productImages.length > 1 && (
+                />
 
+                {inStock ? "In stock" : "Out of stock"}
 
+              </div>
 
-                <>
+              <h1 className="text-[32px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[36px] lg:text-[38px]">
 
+                {product.name}
 
+              </h1>
 
-                  <button
+              {product.short_description && (
 
+                <p className="mt-4 max-w-[480px] text-[15px] leading-6 text-[#6E6E73]">
 
+                  {product.short_description}
 
-                    type="button"
+                </p>
 
+              )}
 
+              <div className="mt-6">
 
-                    onClick={() => changeImage("prev")}
+                <div className="flex flex-wrap items-baseline gap-3">
 
+                  <span className="text-[28px] font-semibold tracking-[-0.025em]">
 
+                    {formatProductPrice(price, safeCurrency)}
 
-                    aria-label="Previous image"
+                  </span>
 
+                  {hasDiscount && (
 
+                    <>
 
-                    className="absolute left-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1D1D1F] shadow-sm backdrop-blur transition hover:bg-white"
+                      <span className="text-[14px] text-[#86868B] line-through">
 
+                        {formatProductPrice(comparePrice, safeCurrency)}
 
+                      </span>
 
-                  >
+                      <span className="text-[12px] font-medium text-[#6E6E73]">
 
+                        -{discountPercent}%
 
+                      </span>
 
-                    <ChevronLeft size={17} />
+                    </>
 
+                  )}
 
+                </div>
 
-                  </button>
+                <p className="mt-1 text-[12px] text-[#86868B]">
 
+                  Price includes VAT where applicable.
 
+                </p>
 
-                  <button
+              </div>
 
+              {/* Color */}
 
+              {product.product_colors?.length > 0 && (
 
-                    type="button"
+                <div className="mt-8 pt-1">
 
+                  <div className="flex items-center justify-between">
 
+                    <span className="text-[13px] font-semibold">
 
-                    onClick={() => changeImage("next")}
+                      Color
 
+                    </span>
 
+                    <span className="text-[12px] text-[#6E6E73]">
 
-                    aria-label="Next image"
+                      {selectedColor?.name || "Select color"}
 
+                    </span>
 
+                  </div>
 
-                    className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1D1D1F] shadow-sm backdrop-blur transition hover:bg-white"
+                  <div className="mt-3 flex flex-wrap gap-2.5">
 
+                    {product.product_colors.map((color: any) => (
 
+                      <button
 
-                  >
+                        key={color.id}
 
+                        type="button"
 
+                        title={color.name}
 
-                    <ChevronRight size={17} />
+                        onClick={() => handleColorChange(color)}
 
+                        className={`h-9 w-9 rounded-full border-2 p-[2px] transition ${
 
+                          selectedColor?.id === color.id
 
-                  </button>
+                            ? "border-[#1D1D1F]"
 
+                            : "border-transparent"
 
+                        }`}
 
-                </>
+                      >
 
+                        <span
 
+                          className="block h-full w-full rounded-full border border-black/10"
 
-              )}
+                          style={{ backgroundColor: color.hex || "#D2D2D7" }}
 
+                        />
 
+                      </button>
 
-            </div>
+                    ))}
 
+                  </div>
 
+                </div>
 
-            {productImages.length > 1 && (
+              )}
 
+              {/* Compatible device models */}
 
+              {compatibleModels.length > 0 && (
 
-              <div className="mt-3 flex flex-wrap items-end gap-2 pb-1">
+                <div className="mt-6 pt-0">
 
+                  <label
 
+                    htmlFor="compatible-model-select"
 
-                {productImages.map((image: any, index: number) => {
+                    className="mb-2 block text-[14px] font-semibold leading-5 text-[#222222]"
 
+                  >
 
+                    Compatible model
 
-                  const isActive = activeImage === image.image_url;
+                  </label>
 
+                  <div
 
+                    ref={modelSelectRef}
 
-                  return (
+                    className="relative w-full"
 
+                  >
 
+                    <button
 
-                    <button
+                      id="compatible-model-select"
 
+                      type="button"
 
+                      aria-haspopup="listbox"
 
-                      key={`${image.id ?? index}-${image.image_url}`}
+                      aria-expanded={isModelSelectOpen}
 
+                      aria-controls="compatible-model-options"
 
+                      onClick={() => {
 
-                      type="button"
+                        if (isModelSelectOpen) {
 
+                          closeModelSelect();
 
+                        } else {
 
-                      onClick={() => setSelectedImage(image.image_url)}
+                          openModelSelect();
 
+                        }
 
+                      }}
 
-                      aria-label={`View image ${index + 1}`}
+                      onKeyDown={handleModelKeyDown}
 
+                      className={`flex h-12 w-full items-center justify-between gap-3 rounded-[10px] border bg-white px-3.5 text-left text-[13px] font-medium text-[#222222] outline-none transition-colors duration-150 touch-manipulation sm:h-[46px] sm:px-3.5 ${
 
+                        isModelSelectOpen
 
-                      aria-current={isActive ? "true" : undefined}
+                          ? "border-[#B8B8B8] ring-2 ring-[#111111]/[0.05]"
 
+                          : "border-[#E2E2E2] hover:border-[#B8B8B8]"
 
+                      } focus-visible:border-[#111111] focus-visible:ring-2 focus-visible:ring-[#111111]/10`}
 
-                      className={`group relative h-[56px] w-[56px] shrink-0 overflow-visible bg-transparent p-0 transition-all duration-200 ease-out focus-visible:outline-none ${
+                    >
 
+                      <span className="min-w-0 flex-1 truncate">
 
+                        {selectedModel || "Select model"}
 
-                        isActive
+                      </span>
 
+                      <ChevronDown
 
+                        size={16}
 
-                          ? "scale-[1.06] opacity-100"
+                        strokeWidth={1.9}
 
+                        className={`shrink-0 text-[#666666] transition-transform duration-150 ${
 
+                          isModelSelectOpen ? "rotate-180" : ""
 
-                          : "opacity-65 hover:scale-[1.05] hover:opacity-100"
+                        }`}
 
+                        aria-hidden="true"
 
+                      />
 
-                      }`}
+                    </button>
 
+                    {isModelSelectOpen && (
 
+                      <div
 
-                    >
+                        id="compatible-model-options"
 
+                        role="listbox"
 
+                        aria-label="Compatible models"
 
-                      {image?.image_type === "video" ||
+                        className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[280px] overflow-y-auto overscroll-contain rounded-[10px] border border-[#E2E2E2] bg-white p-1.5 shadow-[0_6px_18px_rgba(0,0,0,0.07)]"
 
-                      /\.(mp4|webm)(?:$|[?#])/i.test(image.image_url) ? (
+                      >
 
-                        <span className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[#F5F5F7]">
+                        {compatibleModels.map((model, index) => {
 
-                          <video
+                          const isSelected = selectedModel === model;
 
-                            src={image.image_url}
+                          const isActive = activeModelIndex === index;
 
-                            preload="metadata"
+                          return (
 
-                            muted
+                            <button
 
-                            playsInline
+                              key={model}
 
-                            aria-hidden="true"
+                              type="button"
 
-                            className="h-full w-full object-contain"
+                              role="option"
 
-                          />
+                              aria-selected={isSelected}
 
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/[0.08]">
+                              onMouseEnter={() => setActiveModelIndex(index)}
 
-                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[#1D1D1F] shadow-sm">
+                              onClick={() => handleModelSelect(model)}
 
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                              className={`flex min-h-[44px] w-full items-center justify-between gap-3 rounded-[7px] px-3 py-2 text-left text-[13px] leading-5 transition-colors duration-100 touch-manipulation sm:min-h-[42px] sm:text-[14px] ${
 
-                                <path d="M8 5v14l11-7z" />
+                                isSelected
 
-                              </svg>
+                                  ? "bg-[#F7F7F7] font-semibold text-[#222222]"
 
-                            </span>
+                                  : isActive
 
-                          </span>
+                                    ? "bg-[#F7F7F7] text-[#222222]"
 
-                        </span>
+                                    : "text-[#222222] hover:bg-[#F7F7F7]"
 
-                      ) : (
+                              }`}
 
-                        <img
+                            >
 
-                          src={getImageUrl(image.image_url, "thumb") || image.image_url}
+                              <span className="min-w-0 flex-1 truncate">
 
-                          alt={`${product.name} ${index + 1}`}
+                                {model}
 
-                          className="h-full w-full object-contain bg-transparent p-0 transition-transform duration-200 ease-out group-hover:scale-[1.03]"
+                              </span>
 
-                        />
+                              {isSelected && (
 
-                      )}
+                                <Check
 
+                                  size={15}
 
+                                  strokeWidth={2}
 
-                      {isActive && (
+                                  className="shrink-0 text-[#111111]"
 
+                                  aria-hidden="true"
 
+                                />
 
-                        <span
+                              )}
 
+                            </button>
 
+                          );
 
-                          aria-hidden="true"
+                        })}
 
+                      </div>
 
+                    )}
 
-                          className="absolute -bottom-[5px] left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-[#0071E3]"
+                  </div>
 
+                </div>
 
+              )}
 
-                        />
+              {/* Quantity + CTA */}
 
+              <div className="mt-8 pt-1">
 
+                <div className="flex items-center justify-between">
 
-                      )}
+                  <span className="text-[13px] font-semibold">Quantity</span>
 
+                  <div className="flex h-10 items-center rounded-[12px] border border-[#D2D2D7] bg-white">
 
+                    <button
 
-                    </button>
+                      type="button"
 
+                      onClick={() => setQuantity((value) => Math.max(1, value - 1))}
 
+                      className="flex h-10 w-10 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
 
-                  );
+                    >
 
+                      <Minus size={14} />
 
+                    </button>
 
-                })}
+                    <span className="w-8 text-center text-[13px] font-medium">
 
+                      {quantity}
 
+                    </span>
 
-              </div>
+                    <button
 
+                      type="button"
 
+                      onClick={() =>
 
-            )}
+                        setQuantity((value) =>
 
+                          Math.min(Math.max(1, Number(product.stock ?? 1)), value + 1),
 
+                        )
 
-          </div>
+                      }
 
+                      className="flex h-10 w-10 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
 
+                    >
 
-          {/* Product information */}
+                      <Plus size={14} />
 
+                    </button>
 
+                  </div>
 
-          <aside className="min-w-0 lg:sticky lg:top-24">
+                </div>
 
+                <button
 
+                  type="button"
 
-            <div className="max-w-[520px]">
+                  onClick={addToCart}
 
+                  disabled={!inStock}
 
+                  className="mt-4 flex h-[50px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#0071E3] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0077ED] disabled:cursor-not-allowed disabled:bg-[#D2D2D7]"
 
-              <div className="mb-4 flex items-center gap-2 text-[11px] text-[#6E6E73]">
+                >
 
+                  <ShoppingBag size={16} />
 
+                  Add to cart
 
-                <span
+                </button>
 
+                <button
 
+                  type="button"
 
-                  className={`h-1.5 w-1.5 rounded-full ${
+                  onClick={buyNow}
 
+                  disabled={!inStock}
 
+                  className="mt-2 flex h-[46px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#FFC439] px-6 text-[14px] font-semibold text-[#003087] transition hover:bg-[#F7B928] disabled:cursor-not-allowed disabled:opacity-50"
 
-                    inStock ? "bg-[#34C759]" : "bg-[#FF3B30]"
+                  aria-label="Pay with PayPal"
 
+                >
 
+                  <span className="font-bold tracking-[-0.04em]">PayPal</span>
 
-                  }`}
+                </button>
 
+              </div>
 
-
-                />
-
-
-
-                {inStock ? "In stock" : "Out of stock"}
-
-
-
-              </div>
-
-
-
-              <h1 className="text-[32px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[36px] lg:text-[38px]">
-
-
-
-                {product.name}
-
-
-
-              </h1>
-
-
-
-              {product.short_description && (
-
-
-
-                <p className="mt-4 max-w-[480px] text-[15px] leading-6 text-[#6E6E73]">
-
-
-
-                  {product.short_description}
-
-
-
-                </p>
-
-
-
-              )}
-
-
-
-              <div className="mt-6">
-
-
-
-                <div className="flex flex-wrap items-baseline gap-3">
-
-
-
-                  <span className="text-[28px] font-semibold tracking-[-0.025em]">
-
-
-
-                    {formatProductPrice(price, safeCurrency)}
-
-
-
-                  </span>
-
-
-
-                  {hasDiscount && (
-
-
-
-                    <>
-
-
-
-                      <span className="text-[14px] text-[#86868B] line-through">
-
-
-
-                        {formatProductPrice(comparePrice, safeCurrency)}
-
-
-
-                      </span>
-
-
-
-                      <span className="text-[12px] font-medium text-[#6E6E73]">
-
-
-
-                        -{discountPercent}%
-
-
-
-                      </span>
-
-
-
-                    </>
-
-
-
-                  )}
-
-
-
-                </div>
-
-
-
-                <p className="mt-1 text-[12px] text-[#86868B]">
-
-
-
-                  Price includes VAT where applicable.
-
-
-
-                </p>
-
-
-
-              </div>
-
-
-
-              {/* Color */}
-
-
-
-              {product.product_colors?.length > 0 && (
-
-
-
-                <div className="mt-8 pt-1">
-
-
-
-                  <div className="flex items-center justify-between">
-
-
-
-                    <span className="text-[13px] font-semibold">
-
-
-
-                      Color
-
-
-
-                    </span>
-
-
-
-                    <span className="text-[12px] text-[#6E6E73]">
-
-
-
-                      {selectedColor?.name || "Select color"}
-
-
-
-                    </span>
-
-
-
-                  </div>
-
-
-
-                  <div className="mt-3 flex flex-wrap gap-2.5">
-
-
-
-                    {product.product_colors.map((color: any) => (
-
-
-
-                      <button
-
-
-
-                        key={color.id}
-
-
-
-                        type="button"
-
-
-
-                        title={color.name}
-
-
-
-                        onClick={() => handleColorChange(color)}
-
-
-
-                        className={`h-9 w-9 rounded-full border-2 p-[2px] transition ${
-
-
-
-                          selectedColor?.id === color.id
-
-
-
-                            ? "border-[#1D1D1F]"
-
-
-
-                            : "border-transparent"
-
-
-
-                        }`}
-
-
-
-                      >
-
-
-
-                        <span
-
-
-
-                          className="block h-full w-full rounded-full border border-black/10"
-
-
-
-                          style={{ backgroundColor: color.hex || "#D2D2D7" }}
-
-
-
-                        />
-
-
-
-                      </button>
-
-
-
-                    ))}
-
-
-
-                  </div>
-
-
-
-                </div>
-
-
-
-              )}
-
-
-
-              {/* Compatible device models */}
-
-
-
-              {compatibleModels.length > 0 && (
-
-
-
-                <div className="mt-6 pt-0">
-
-
-
-                  <label
-
-
-
-                    htmlFor="compatible-model-select"
-
-
-
-                    className="mb-2 block text-[14px] font-semibold leading-5 text-[#222222]"
-
-
-
-                  >
-
-
-
-                    Compatible model
-
-
-
-                  </label>
-
-
-
-                  <div
-
-
-
-                    ref={modelSelectRef}
-
-
-
-                    className="relative w-full"
-
-
-
-                  >
-
-
-
-                    <button
-
-
-
-                      id="compatible-model-select"
-
-
-
-                      type="button"
-
-
-
-                      aria-haspopup="listbox"
-
-
-
-                      aria-expanded={isModelSelectOpen}
-
-
-
-                      aria-controls="compatible-model-options"
-
-
-
-                      onClick={() => {
-
-
-
-                        if (isModelSelectOpen) {
-
-
-
-                          closeModelSelect();
-
-
-
-                        } else {
-
-
-
-                          openModelSelect();
-
-
-
-                        }
-
-
-
-                      }}
-
-
-
-                      onKeyDown={handleModelKeyDown}
-
-
-
-                      className={`flex h-12 w-full items-center justify-between gap-3 rounded-[10px] border bg-white px-3.5 text-left text-[13px] font-medium text-[#222222] outline-none transition-colors duration-150 touch-manipulation sm:h-[46px] sm:px-3.5 ${
-
-
-
-                        isModelSelectOpen
-
-
-
-                          ? "border-[#B8B8B8] ring-2 ring-[#111111]/[0.05]"
-
-
-
-                          : "border-[#E2E2E2] hover:border-[#B8B8B8]"
-
-
-
-                      } focus-visible:border-[#111111] focus-visible:ring-2 focus-visible:ring-[#111111]/10`}
-
-
-
-                    >
-
-
-
-                      <span className="min-w-0 flex-1 truncate">
-
-
-
-                        {selectedModel || "Select model"}
-
-
-
-                      </span>
-
-
-
-                      <ChevronDown
-
-
-
-                        size={16}
-
-
-
-                        strokeWidth={1.9}
-
-
-
-                        className={`shrink-0 text-[#666666] transition-transform duration-150 ${
-
-
-
-                          isModelSelectOpen ? "rotate-180" : ""
-
-
-
-                        }`}
-
-
-
-                        aria-hidden="true"
-
-
-
-                      />
-
-
-
-                    </button>
-
-
-
-                    {isModelSelectOpen && (
-
-
-
-                      <div
-
-
-
-                        id="compatible-model-options"
-
-
-
-                        role="listbox"
-
-
-
-                        aria-label="Compatible models"
-
-
-
-                        className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[280px] overflow-y-auto overscroll-contain rounded-[10px] border border-[#E2E2E2] bg-white p-1.5 shadow-[0_6px_18px_rgba(0,0,0,0.07)]"
-
-
-
-                      >
-
-
-
-                        {compatibleModels.map((model, index) => {
-
-
-
-                          const isSelected = selectedModel === model;
-
-
-
-                          const isActive = activeModelIndex === index;
-
-
-
-                          return (
-
-
-
-                            <button
-
-
-
-                              key={model}
-
-
-
-                              type="button"
-
-
-
-                              role="option"
-
-
-
-                              aria-selected={isSelected}
-
-
-
-                              onMouseEnter={() => setActiveModelIndex(index)}
-
-
-
-                              onClick={() => handleModelSelect(model)}
-
-
-
-                              className={`flex min-h-[44px] w-full items-center justify-between gap-3 rounded-[7px] px-3 py-2 text-left text-[13px] leading-5 transition-colors duration-100 touch-manipulation sm:min-h-[42px] sm:text-[14px] ${
-
-
-
-                                isSelected
-
-
-
-                                  ? "bg-[#F7F7F7] font-semibold text-[#222222]"
-
-
-
-                                  : isActive
-
-
-
-                                    ? "bg-[#F7F7F7] text-[#222222]"
-
-
-
-                                    : "text-[#222222] hover:bg-[#F7F7F7]"
-
-
-
-                              }`}
-
-
-
-                            >
-
-
-
-                              <span className="min-w-0 flex-1 truncate">
-
-
-
-                                {model}
-
-
-
-                              </span>
-
-
-
-                              {isSelected && (
-
-
-
-                                <Check
-
-
-
-                                  size={15}
-
-
-
-                                  strokeWidth={2}
-
-
-
-                                  className="shrink-0 text-[#111111]"
-
-
-
-                                  aria-hidden="true"
-
-
-
-                                />
-
-
-
-                              )}
-
-
-
-                            </button>
-
-
-
-                          );
-
-
-
-                        })}
-
-
-
-                      </div>
-
-
-
-                    )}
-
-
-
-                  </div>
-
-
-
-                </div>
-
-
-
-              )}
-
-
-
-              {/* Quantity + CTA */}
-
-
-
-              <div className="mt-8 pt-1">
-
-
-
-                <div className="flex items-center justify-between">
-
-
-
-                  <span className="text-[13px] font-semibold">Quantity</span>
-
-
-
-                  <div className="flex h-10 items-center rounded-[12px] border border-[#D2D2D7] bg-white">
-
-
-
-                    <button
-
-
-
-                      type="button"
-
-
-
-                      onClick={() => setQuantity((value) => Math.max(1, value - 1))}
-
-
-
-                      className="flex h-10 w-10 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
-
-
-
-                    >
-
-
-
-                      <Minus size={14} />
-
-
-
-                    </button>
-
-
-
-                    <span className="w-8 text-center text-[13px] font-medium">
-
-
-
-                      {quantity}
-
-
-
-                    </span>
-
-
-
-                    <button
-
-
-
-                      type="button"
-
-
-
-                      onClick={() =>
-
-
-
-                        setQuantity((value) =>
-
-
-
-                          Math.min(Math.max(1, Number(product.stock ?? 1)), value + 1),
-
-
-
-                        )
-
-
-
-                      }
-
-
-
-                      className="flex h-10 w-10 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
-
-
-
-                    >
-
-
-
-                      <Plus size={14} />
-
-
-
-                    </button>
-
-
-
-                  </div>
-
-
-
-                </div>
-
-
-
-                <button
-
-
-
-                  type="button"
-
-
-
-                  onClick={addToCart}
-
-
-
-                  disabled={!inStock}
-
-
-
-                  className="mt-4 flex h-[50px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#0071E3] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0077ED] disabled:cursor-not-allowed disabled:bg-[#D2D2D7]"
-
-
-
-                >
-
-
-
-                  <ShoppingBag size={16} />
-
-
-
-                  Add to cart
-
-
-
-                </button>
-
-
-
-                <button
-
-
-
-                  type="button"
-
-
-
-                  onClick={buyNow}
-
-
-
-                  disabled={!inStock}
-
-
-
-                  className="mt-2 flex h-[46px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#FFC439] px-6 text-[14px] font-semibold text-[#003087] transition hover:bg-[#F7B928] disabled:cursor-not-allowed disabled:opacity-50"
-
-
-
-                  aria-label="Pay with PayPal"
-
-
-
-                >
-
-
-
-                  <span className="font-bold tracking-[-0.04em]">PayPal</span>
-
-
-
-                </button>
-
-
-
-              </div>
-
-
-
-              {/* Benefits / Trust Features */}
-
-
+              {/* Benefits / Trust Features */}
 
 <div
 
+  className="
 
+    mt-6
 
-  className="
+    w-full
 
+    min-w-0
 
+    box-border
 
-    mt-6
+    overflow-hidden
 
+    rounded-[12px]
 
+    border
 
-    w-full
+    border-[#E8E8EA]
 
+    bg-[#FBFBFC]
 
+    px-4
 
-    min-w-0
+    py-3.5
 
+    shadow-[0_2px_10px_rgba(0,0,0,0.035)]
 
+    sm:px-5
 
-    box-border
+    sm:py-4
 
-
-
-    overflow-hidden
-
-
-
-    rounded-[12px]
-
-
-
-    border
-
-
-
-    border-[#E8E8EA]
-
-
-
-    bg-[#FBFBFC]
-
-
-
-    px-4
-
-
-
-    py-3.5
-
-
-
-    shadow-[0_2px_10px_rgba(0,0,0,0.035)]
-
-
-
-    sm:px-5
-
-
-
-    sm:py-4
-
-
-
-  "
-
-
+  "
 
 >
 
+  <div className="grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-3 sm:gap-x-6 sm:gap-y-3.5">
 
+    {[
 
-  <div className="grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-3 sm:gap-x-6 sm:gap-y-3.5">
+      { icon: Truck, text: "Tracked shipping" },
 
+      { icon: RotateCcw, text: "30-day returns" },
 
+      { icon: ShieldCheck, text: "Secure payments" },
 
-    {[
+      { icon: Check, text: "Product support" },
 
+    ].map(({ icon: Icon, text }) => (
 
+      <div
 
-      { icon: Truck, text: "Tracked shipping" },
+        key={text}
 
+        className="flex min-w-0 items-center gap-2.5"
 
+      >
 
-      { icon: RotateCcw, text: "30-day returns" },
+        <Icon
 
+          size={16}
 
+          strokeWidth={1.6}
 
-      { icon: ShieldCheck, text: "Secure payments" },
+          className="shrink-0 text-[#55585D]"
 
+        />
 
+        <span className="min-w-0 truncate text-[12px] font-normal leading-4 text-[#55585D] sm:text-[12px]">
 
-      { icon: Check, text: "Product support" },
+          {text}
 
+        </span>
 
+      </div>
 
-    ].map(({ icon: Icon, text }) => (
+    ))}
 
-
-
-      <div
-
-
-
-        key={text}
-
-
-
-        className="flex min-w-0 items-center gap-2.5"
-
-
-
-      >
-
-
-
-        <Icon
-
-
-
-          size={16}
-
-
-
-          strokeWidth={1.6}
-
-
-
-          className="shrink-0 text-[#55585D]"
-
-
-
-        />
-
-
-
-        <span className="min-w-0 truncate text-[12px] font-normal leading-4 text-[#55585D] sm:text-[12px]">
-
-
-
-          {text}
-
-
-
-        </span>
-
-
-
-      </div>
-
-
-
-    ))}
-
-
-
-  </div>
-
-
+  </div>
 
 </div>
 
+              {/* Description */}
 
+              {product.description && (
 
-              {/* Description */}
+                <div className="mt-7 border-b border-[#D2D2D7] pb-5">
 
+                  <button
 
+                    type="button"
 
-              {product.description && (
+                    onClick={() => setOpenSpecs((value) => !value)}
 
+                    className="flex w-full items-center justify-between text-left"
 
+                  >
 
-                <div className="mt-7 border-b border-[#D2D2D7] pb-5">
+                    <span className="text-[14px] font-semibold">
 
+                      Product description
 
+                    </span>
 
-                  <button
+                    <ChevronDown
 
+                      size={17}
 
+                      className={`transition-transform ${
 
-                    type="button"
+                        openSpecs ? "rotate-180" : ""
 
+                      }`}
 
+                    />
 
-                    onClick={() => setOpenSpecs((value) => !value)}
+                  </button>
 
+                  {openSpecs && (
 
+                    <div
 
-                    className="flex w-full items-center justify-between text-left"
+                      className="prose prose-sm mt-4 max-w-none text-[13px] leading-6 text-[#6E6E73]"
 
+                      dangerouslySetInnerHTML={{ __html: product.description }}
 
+                    />
 
-                  >
+                  )}
 
+                </div>
 
+              )}
 
-                    <span className="text-[14px] font-semibold">
+            </div>
 
+          </aside>
 
+        </div>
 
-                      Product description
+      </section>
 
+      {/* Product USPs */}
 
+      {usps.length > 0 && (
 
-                    </span>
+        <section className="border-y border-[#D2D2D7] bg-[#F5F5F7]">
 
+          <div className="mx-auto grid max-w-[1240px] grid-cols-2 px-5 md:grid-cols-4 md:px-8">
 
+            {usps.map((item: any) => (
 
-                    <ChevronDown
+              <div
 
+                key={item.id}
 
+                className="border-b border-[#D2D2D7] px-4 py-6 text-center md:border-b-0 md:border-r md:last:border-r-0"
 
-                      size={17}
+              >
 
+                <p className="text-[13px] font-semibold text-[#1D1D1F]">
 
+                  {item.title}
 
-                      className={`transition-transform ${
+                </p>
 
+              </div>
 
+            ))}
 
-                        openSpecs ? "rotate-180" : ""
+          </div>
 
+        </section>
 
+      )}
 
-                      }`}
+            {/* Product video carousel — displayed above Lifestyle */}
 
+      {productVideos.length > 0 && (
 
+        <section className="bg-white">
 
-                    />
+          <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
 
+            <div className="mb-6 flex items-end justify-between gap-4">
 
+              <div>
 
-                  </button>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
 
+                  WATCH
 
+                </p>
 
-                  {openSpecs && (
+                <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[#1D1D1F] sm:text-[28px]">
 
+                  Product videos
 
+                </h2>
 
-                    <div
+                <p className="mt-2 text-[13px] text-[#6E6E73]">
 
+                  See the details in motion.
 
+                </p>
 
-                      className="prose prose-sm mt-4 max-w-none text-[13px] leading-6 text-[#6E6E73]"
+              </div>
 
+              {productVideos.length > 1 && (
 
+                <div className="hidden shrink-0 gap-2 sm:flex">
 
-                      dangerouslySetInnerHTML={{ __html: product.description }}
+                  <button type="button" onClick={() => videoCarouselRef.current?.scrollBy({ left: -360, behavior: "smooth" })} aria-label="Scroll videos left" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D2D2D7] bg-white text-[#1D1D1F] transition hover:bg-[#F5F5F7]">
 
+                    <ChevronLeft size={18} />
 
+                  </button>
 
-                    />
+                  <button type="button" onClick={() => videoCarouselRef.current?.scrollBy({ left: 360, behavior: "smooth" })} aria-label="Scroll videos right" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D2D2D7] bg-white text-[#1D1D1F] transition hover:bg-[#F5F5F7]">
 
+                    <ChevronRight size={18} />
 
+                  </button>
 
-                  )}
+                </div>
 
+              )}
 
+            </div>
 
-                </div>
+            <div ref={videoCarouselRef} className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Product videos">
 
+              {productVideos.map((video: any, index: number) => (
 
+                <article key={`${video.id ?? index}-${video.image_url}`} className="w-[78vw] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[16px] bg-[#F5F5F7] ring-1 ring-black/[0.06] sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]">
 
-              )}
+                  <div className="relative aspect-[4/5] overflow-hidden bg-[#E8E8EA]">
 
+                    <video
 
+                      src={video.image_url}
 
-            </div>
+                      autoPlay
 
+                      muted
 
+                      loop
 
-          </aside>
+                      playsInline
 
+                      preload="auto"
 
+                      aria-label={`${product.name} product video ${index + 1}`}
 
-        </div>
-
-
-
-      </section>
-
-
-
-      {/* Product USPs */}
-
-
-
-      {usps.length > 0 && (
-
-
-
-        <section className="border-y border-[#D2D2D7] bg-[#F5F5F7]">
-
-
-
-          <div className="mx-auto grid max-w-[1240px] grid-cols-2 px-5 md:grid-cols-4 md:px-8">
-
-
-
-            {usps.map((item: any) => (
-
-
-
-              <div
-
-
-
-                key={item.id}
-
-
-
-                className="border-b border-[#D2D2D7] px-4 py-6 text-center md:border-b-0 md:border-r md:last:border-r-0"
-
-
-
-              >
-
-
-
-                <p className="text-[13px] font-semibold text-[#1D1D1F]">
-
-
-
-                  {item.title}
-
-
-
-                </p>
-
-
-
-              </div>
-
-
-
-            ))}
-
-
-
-          </div>
-
-
-
-        </section>
-
-
-
-      )}
-
-
-
-            {/* Product video carousel — displayed above Lifestyle */}
-
-      {productVideos.length > 0 && (
-
-        <section className="bg-white">
-
-          <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
-
-            <div className="mb-6 flex items-end justify-between gap-4">
-
-              <div>
-
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
-
-                  WATCH
-
-                </p>
-
-                <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[#1D1D1F] sm:text-[28px]">
-
-                  Product videos
-
-                </h2>
-
-                <p className="mt-2 text-[13px] text-[#6E6E73]">
-
-                  See the details in motion.
-
-                </p>
-
-              </div>
-
-              {productVideos.length > 1 && (
-
-                <div className="hidden shrink-0 gap-2 sm:flex">
-
-                  <button type="button" onClick={() => videoCarouselRef.current?.scrollBy({ left: -360, behavior: "smooth" })} aria-label="Scroll videos left" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D2D2D7] bg-white text-[#1D1D1F] transition hover:bg-[#F5F5F7]">
-
-                    <ChevronLeft size={18} />
-
-                  </button>
-
-                  <button type="button" onClick={() => videoCarouselRef.current?.scrollBy({ left: 360, behavior: "smooth" })} aria-label="Scroll videos right" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D2D2D7] bg-white text-[#1D1D1F] transition hover:bg-[#F5F5F7]">
-
-                    <ChevronRight size={18} />
-
-                  </button>
-
-                </div>
-
-              )}
-
-            </div>
-
-            <div ref={videoCarouselRef} className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Product videos">
-
-              {productVideos.map((video: any, index: number) => (
-
-                <article key={`${video.id ?? index}-${video.image_url}`} className="w-[78vw] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[16px] bg-[#F5F5F7] ring-1 ring-black/[0.06] sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]">
-
-                  <div className="relative aspect-[4/5] overflow-hidden bg-[#E8E8EA]">
-
-                    <video
-
-                      src={video.image_url}
-
-                      autoPlay
-
-                      muted
-
-                      loop
-
-                      playsInline
-
-                      preload="auto"
-
-                      aria-label={`${product.name} product video ${index + 1}`}
-
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover"
 
 />
 
-                    <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white">Video {index + 1}</span>
+                    <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white">Video {index + 1}</span>
 
-                  </div>
+                  </div>
 
-                  <div className="p-4 sm:p-5">
+                  <div className="p-4 sm:p-5">
 
-                    <h3 className="text-[14px] font-semibold leading-5 text-[#1D1D1F]">{video.title || `${product.name} — Video ${index + 1}`}</h3>
+                    <h3 className="text-[14px] font-semibold leading-5 text-[#1D1D1F]">{video.title || `${product.name} — Video ${index + 1}`}</h3>
 
-                    <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">Discover the product from every angle.</p>
+                    <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">Discover the product from every angle.</p>
 
-                  </div>
+                  </div>
 
-                </article>
+                </article>
 
-              ))}
+              ))}
 
-            </div>
+            </div>
 
-            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos →</p>}
+            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos →</p>}
 
-          </div>
+          </div>
 
-        </section>
+        </section>
 
-      )}
-
-
+      )}
 
 {/* Lifestyle gallery — only Lifestyle images */}
 
+      {lifestyleImages.length > 0 && (
 
+        <section className="bg-white">
 
-      {lifestyleImages.length > 0 && (
+          <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
 
+            <div className="mx-auto max-w-[920px]">
 
+              <div className="mb-6 text-center">
 
-        <section className="bg-white">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
 
+                  LIFESTYLE
 
+                </p>
 
-          <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
+                <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[#1D1D1F] sm:text-[28px]">
 
+                  See it in real life
 
+                </h2>
 
-            <div className="mx-auto max-w-[920px]">
+              </div>
 
+              <div
 
+                className={
 
-              <div className="mb-6 text-center">
+                  lifestyleImages.length === 1
 
+                    ? "mx-auto max-w-[760px]"
 
+                    : "grid grid-cols-1 gap-5 md:grid-cols-2"
 
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
+                }
 
+              >
 
+                {lifestyleImages.map((image: any, index: number) => (
 
-                  LIFESTYLE
+                  <div
 
+                    key={`${image.id ?? index}-${image.image_url}`}
 
+                    className="relative aspect-[4/5] w-full min-w-0 overflow-hidden rounded-[12px] bg-[#F5F5F7] shadow-[0_8px_24px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.05] sm:rounded-[16px]"
 
-                </p>
+                  >
 
+                    <img
 
+                      src={
 
-                <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[#1D1D1F] sm:text-[28px]">
+                        getImageUrl(image.image_url, "large") ||
 
+                        image.image_url
 
+                      }
 
-                  See it in real life
+                      alt={`${product.name} lifestyle ${index + 1}`}
 
+                      className="absolute inset-0 block h-full w-full object-cover object-center"
 
+                      loading="lazy"
 
-                </h2>
+                    />
 
+                  </div>
 
+                ))}
 
-              </div>
+              </div>
 
+            </div>
 
+          </div>
 
-              <div
+        </section>
 
-
-
-                className={
-
-
-
-                  lifestyleImages.length === 1
-
-
-
-                    ? "mx-auto max-w-[760px]"
-
-
-
-                    : "grid grid-cols-1 gap-5 md:grid-cols-2"
-
-
-
-                }
-
-
-
-              >
-
-
-
-                {lifestyleImages.map((image: any, index: number) => (
-
-
-
-                  <div
-
-
-
-                    key={`${image.id ?? index}-${image.image_url}`}
-
-
-
-                    className="relative aspect-[4/5] w-full min-w-0 overflow-hidden rounded-[12px] bg-[#F5F5F7] shadow-[0_8px_24px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.05] sm:rounded-[16px]"
-
-
-
-                  >
-
-
-
-                    <img
-
-
-
-                      src={
-
-
-
-                        getImageUrl(image.image_url, "large") ||
-
-
-
-                        image.image_url
-
-
-
-                      }
-
-
-
-                      alt={`${product.name} lifestyle ${index + 1}`}
-
-
-
-                      className="absolute inset-0 block h-full w-full object-cover object-center"
-
-
-
-                      loading="lazy"
-
-
-
-                    />
-
-
-
-                  </div>
-
-
-
-                ))}
-
-
-
-              </div>
-
-
-
-            </div>
-
-
-
-          </div>
-
-
-
-        </section>
-
-
-
-      )}
-
-
+      )}
 
 {/* FAQ / Product information */}
 
+      <section className="bg-[#F8F8F9]">
 
+        <div className="mx-auto max-w-[1240px] px-5 py-16 md:px-8 md:py-20 lg:py-24">
 
-      <section className="bg-[#F8F8F9]">
+          <div className="mx-auto max-w-[860px]">
 
+            <div className="text-center">
 
+              <h2 className="text-[28px] font-semibold tracking-[-0.035em] text-[#1D1D1F] sm:text-[32px]">
 
-        <div className="mx-auto max-w-[1240px] px-5 py-16 md:px-8 md:py-20 lg:py-24">
+                Need to know more?
 
+              </h2>
 
+              <p className="mt-2 text-[14px] leading-6 text-[#6E6E73]">
 
-          <div className="mx-auto max-w-[860px]">
+                Everything you need to know about this product.
 
+              </p>
 
+            </div>
 
-            <div className="text-center">
+            <div className="mt-8 overflow-hidden rounded-[14px] border border-[#E5E5EA] bg-white">
 
+              {faqItems.map((faq, index) => (
 
+                <div
 
-              <h2 className="text-[28px] font-semibold tracking-[-0.035em] text-[#1D1D1F] sm:text-[32px]">
+                  key={faq.question}
 
+                  className={index < faqItems.length - 1 ? "border-b border-[#E5E5EA]" : ""}
 
+                >
 
-                Need to know more?
+                  <button
 
+                    type="button"
 
+                    onClick={() =>
 
-              </h2>
+                      setOpenFaq((value) => (value === index ? null : index))
 
+                    }
 
+                    className="group flex min-h-[64px] w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA] sm:px-6"
 
-              <p className="mt-2 text-[14px] leading-6 text-[#6E6E73]">
+                  >
 
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#6E6E73]">
 
+                      {index === 0 && (
 
-                Everything you need to know about this product.
+                        <SlidersHorizontal size={19} strokeWidth={1.5} />
 
+                      )}
 
+                      {index === 1 && (
 
-              </p>
+                        <Smartphone size={19} strokeWidth={1.5} />
 
+                      )}
 
+                      {index === 2 && (
 
-            </div>
+                        <CircleHelp size={19} strokeWidth={1.5} />
 
+                      )}
 
+                      {index === 3 && (
 
-            <div className="mt-8 overflow-hidden rounded-[14px] border border-[#E5E5EA] bg-white">
+                        <BookOpen size={19} strokeWidth={1.5} />
 
+                      )}
 
+                    </span>
 
-              {faqItems.map((faq, index) => (
+                    <span className="flex-1 text-[14px] font-medium text-[#1D1D1F]">
 
+                      {faq.question}
 
+                    </span>
 
-                <div
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#6E6E73]">
 
+                      <Plus
 
+                        size={18}
 
-                  key={faq.question}
+                        strokeWidth={1.6}
 
+                        className={`transition-transform duration-200 ${
 
+                          openFaq === index ? "rotate-45" : ""
 
-                  className={index < faqItems.length - 1 ? "border-b border-[#E5E5EA]" : ""}
+                        }`}
 
+                      />
 
+                    </span>
 
-                >
+                  </button>
 
+                  {openFaq === index && (
 
+                    <div
 
-                  <button
+                      className={`px-5 pb-6 pt-1 sm:px-6 ${
 
+                        faq.type === "specs" || faq.type === "faq"
 
+                          ? ""
 
-                    type="button"
+                          : "pl-[68px] sm:pl-[76px]"
 
+                      }`}
 
+                    >
 
-                    onClick={() =>
+                      {faq.type === "specs" ? (
 
+                        specs.length > 0 ||
 
+                        product.material ||
 
-                      setOpenFaq((value) => (value === index ? null : index))
+                        product.dimensions ||
 
+                        product.color ||
 
+                        product.light_source ||
 
-                    }
+                        product.power_source ||
 
+                        product.warranty ? (
 
+                          <div className="overflow-hidden rounded-[10px] border border-[#ECECF0]">
 
-                    className="group flex min-h-[64px] w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA] sm:px-6"
+                            {[
 
+                              ...specs.map((spec: any) => ({
 
+                                id: spec.id,
 
-                  >
+                                label: spec.label,
 
+                                value: spec.value,
 
+                              })),
 
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#6E6E73]">
+                              ...(product.material
 
+                                ? [{ id: "material", label: "Material", value: product.material }]
 
+                                : []),
 
-                      {index === 0 && (
+                              ...(product.dimensions
 
+                                ? [{ id: "dimensions", label: "Dimensions", value: product.dimensions }]
 
+                                : []),
 
-                        <SlidersHorizontal size={19} strokeWidth={1.5} />
+                              ...(product.color
 
+                                ? [{ id: "color", label: "Color", value: product.color }]
 
+                                : []),
 
-                      )}
+                              ...(product.light_source
 
+                                ? [{ id: "light_source", label: "Light source", value: product.light_source }]
 
+                                : []),
 
-                      {index === 1 && (
+                              ...(product.power_source
 
+                                ? [{ id: "power_source", label: "Power source", value: product.power_source }]
 
+                                : []),
 
-                        <Smartphone size={19} strokeWidth={1.5} />
+                              ...(product.warranty
 
+                                ? [{ id: "warranty", label: "Warranty", value: product.warranty }]
 
+                                : []),
 
-                      )}
+                            ].map((item: any, index: number, items: any[]) => (
 
+                              <div
 
+                                key={item.id}
 
-                      {index === 2 && (
+                                className={`grid grid-cols-[43%_57%] items-start text-[13px] sm:grid-cols-[38%_62%] ${
 
+                                  index < items.length - 1
 
+                                    ? "border-b border-[#ECECF0]"
 
-                        <CircleHelp size={19} strokeWidth={1.5} />
+                                    : ""
 
+                                } ${index % 2 === 0 ? "bg-white" : "bg-[#FAFAFB]"}`}
 
+                              >
 
-                      )}
+                                <span className="min-w-0 px-3 py-3.5 text-[#77777C] sm:px-4">
 
+                                  {item.label}
 
+                                </span>
 
-                      {index === 3 && (
+                                <span className="min-w-0 border-l border-[#F0F0F2] px-3 py-3.5 text-left font-medium leading-5 text-[#1D1D1F] sm:px-4">
 
+                                  {item.value}
 
+                                </span>
 
-                        <BookOpen size={19} strokeWidth={1.5} />
+                              </div>
 
+                            ))}
 
+                          </div>
 
-                      )}
+                        ) : (
 
+                          <p className="text-[13px] leading-6 text-[#6E6E73]">
 
+                            No technical specifications have been added for this product yet.
 
-                    </span>
+                          </p>
 
+                        )
 
+                      ) : faq.type === "faq" ? (
 
-                    <span className="flex-1 text-[14px] font-medium text-[#1D1D1F]">
+                        productFaqs.length > 0 ? (
 
+                          <div className="overflow-hidden rounded-[10px] border border-[#ECECF0]">
 
+                            {productFaqs.map((item: any, faqIndex: number) => {
 
-                      {faq.question}
+                              const itemOpen = openProductFaq === item.id;
 
+                              return (
 
+                                <div
 
-                    </span>
+                                  key={item.id}
 
+                                  className={
 
+                                    faqIndex < productFaqs.length - 1
 
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#6E6E73]">
+                                      ? "border-b border-[#ECECF0]"
 
+                                      : ""
 
+                                  }
 
-                      <Plus
+                                >
 
+                                  <button
 
+                                    type="button"
 
-                        size={18}
+                                    onClick={() =>
 
+                                      setOpenProductFaq((value) =>
 
+                                        value === item.id ? null : item.id,
 
-                        strokeWidth={1.6}
+                                      )
 
+                                    }
 
+                                    className="flex min-h-[56px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FAFAFA]"
 
-                        className={`transition-transform duration-200 ${
+                                  >
 
+                                    <span className="flex-1 text-[13px] font-medium text-[#1D1D1F]">
 
+                                      {item.question}
 
-                          openFaq === index ? "rotate-45" : ""
+                                    </span>
 
+                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#6E6E73]">
 
+                                      <Plus
 
-                        }`}
+                                        size={16}
 
+                                        strokeWidth={1.6}
 
+                                        className={`transition-transform duration-200 ${
 
-                      />
+                                          itemOpen ? "rotate-45" : ""
 
+                                        }`}
 
+                                      />
 
-                    </span>
+                                    </span>
 
+                                  </button>
 
+                                  {itemOpen && (
 
-                  </button>
+                                    <div className="px-4 pb-5 pr-10">
 
+                                      <p className="whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
 
+                                        {item.answer}
 
-                  {openFaq === index && (
+                                      </p>
 
+                                    </div>
 
+                                  )}
 
-                    <div
+                                </div>
 
+                              );
 
+                            })}
 
-                      className={`px-5 pb-6 pt-1 sm:px-6 ${
+                          </div>
 
+                        ) : (
 
+                          <p className="text-[13px] leading-6 text-[#6E6E73]">
 
-                        faq.type === "specs" || faq.type === "faq"
+                            No FAQs have been added for this product yet.
 
+                          </p>
 
+                        )
 
-                          ? ""
+                      ) : (
 
+                        <p className="max-w-[760px] whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
 
+                          {faq.answer}
 
-                          : "pl-[68px] sm:pl-[76px]"
+                        </p>
 
+                      )}
 
+                    </div>
 
-                      }`}
+                  )}
 
+                </div>
 
+              ))}
 
-                    >
+            </div>
 
+          </div>
 
+        </div>
 
-                      {faq.type === "specs" ? (
+      </section>
 
+      {/* Product Reviews */}
 
+      <ProductReviews productId={product.id} />
 
-                        specs.length > 0 ||
+      {/* Related */}
 
+      {related.length > 0 && (
 
+        <section className="border-t border-[#D2D2D7] bg-white">
 
-                        product.material ||
+          <div className="mx-auto max-w-[1240px] px-5 py-14 md:px-8 lg:py-16">
 
+            <div className="flex items-end justify-between gap-6">
 
+              <div>
 
-                        product.dimensions ||
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6E6E73]">
 
+                  You may also like
 
+                </p>
 
-                        product.color ||
+                <h2 className="mt-2 text-[28px] font-semibold tracking-[-0.03em]">
 
+                  Complete your setup.
 
+                </h2>
 
-                        product.light_source ||
+              </div>
 
+              <Link
 
+                to="/shop"
 
-                        product.power_source ||
+                className="hidden text-[13px] font-medium text-[#0071E3] sm:block"
 
+              >
 
+                View all →
 
-                        product.warranty ? (
+              </Link>
 
+            </div>
 
+            <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
 
-                          <div className="overflow-hidden rounded-[10px] border border-[#ECECF0]">
+              {related.map((item: any) => {
 
+                const relatedPrice = Number(item.price) || 0;
 
+                return (
 
-                            {[
+                  <Link
 
+                    key={item.id}
 
+                    to="/products/$slug"
 
-                              ...specs.map((spec: any) => ({
+                    params={{ slug: item.slug }}
 
+                    className="group min-w-0"
 
+                  >
 
-                                id: spec.id,
+                    <div className="aspect-square w-full overflow-hidden rounded-[18px] bg-[#F5F5F7]">
 
+                      {item.image_url ? (
 
+                        <img
 
-                                label: spec.label,
+                          src={getImageUrl(item.image_url, "card") || item.image_url}
 
+                          alt={item.name}
 
+                          className="h-full w-full object-contain p-0 transition-transform duration-500 group-hover:scale-[1.03]"
 
-                                value: spec.value,
+                        />
 
+                      ) : (
 
+                        <div className="flex h-full items-center justify-center text-xs text-[#86868B]">
 
-                              })),
+                          No image
 
+                        </div>
 
+                      )}
 
-                              ...(product.material
+                    </div>
 
+                    <h3 className="mt-3 line-clamp-2 text-[13px] font-semibold leading-5">
 
+                      {item.name}
 
-                                ? [{ id: "material", label: "Material", value: product.material }]
+                    </h3>
 
+                    <p className="mt-1 text-[13px] text-[#424245]">
 
+                      {formatProductPrice(relatedPrice, safeCurrency)}
 
-                                : []),
+                    </p>
 
+                  </Link>
 
+                );
 
-                              ...(product.dimensions
+              })}
 
+            </div>
 
+          </div>
 
-                                ? [{ id: "dimensions", label: "Dimensions", value: product.dimensions }]
+        </section>
 
+      )}
 
+    </main>
 
-                                : []),
-
-
-
-                              ...(product.color
-
-
-
-                                ? [{ id: "color", label: "Color", value: product.color }]
-
-
-
-                                : []),
-
-
-
-                              ...(product.light_source
-
-
-
-                                ? [{ id: "light_source", label: "Light source", value: product.light_source }]
-
-
-
-                                : []),
-
-
-
-                              ...(product.power_source
-
-
-
-                                ? [{ id: "power_source", label: "Power source", value: product.power_source }]
-
-
-
-                                : []),
-
-
-
-                              ...(product.warranty
-
-
-
-                                ? [{ id: "warranty", label: "Warranty", value: product.warranty }]
-
-
-
-                                : []),
-
-
-
-                            ].map((item: any, index: number, items: any[]) => (
-
-
-
-                              <div
-
-
-
-                                key={item.id}
-
-
-
-                                className={`grid grid-cols-[43%_57%] items-start text-[13px] sm:grid-cols-[38%_62%] ${
-
-
-
-                                  index < items.length - 1
-
-
-
-                                    ? "border-b border-[#ECECF0]"
-
-
-
-                                    : ""
-
-
-
-                                } ${index % 2 === 0 ? "bg-white" : "bg-[#FAFAFB]"}`}
-
-
-
-                              >
-
-
-
-                                <span className="min-w-0 px-3 py-3.5 text-[#77777C] sm:px-4">
-
-
-
-                                  {item.label}
-
-
-
-                                </span>
-
-
-
-                                <span className="min-w-0 border-l border-[#F0F0F2] px-3 py-3.5 text-left font-medium leading-5 text-[#1D1D1F] sm:px-4">
-
-
-
-                                  {item.value}
-
-
-
-                                </span>
-
-
-
-                              </div>
-
-
-
-                            ))}
-
-
-
-                          </div>
-
-
-
-                        ) : (
-
-
-
-                          <p className="text-[13px] leading-6 text-[#6E6E73]">
-
-
-
-                            No technical specifications have been added for this product yet.
-
-
-
-                          </p>
-
-
-
-                        )
-
-
-
-                      ) : faq.type === "faq" ? (
-
-
-
-                        productFaqs.length > 0 ? (
-
-
-
-                          <div className="overflow-hidden rounded-[10px] border border-[#ECECF0]">
-
-
-
-                            {productFaqs.map((item: any, faqIndex: number) => {
-
-
-
-                              const itemOpen = openProductFaq === item.id;
-
-
-
-                              return (
-
-
-
-                                <div
-
-
-
-                                  key={item.id}
-
-
-
-                                  className={
-
-
-
-                                    faqIndex < productFaqs.length - 1
-
-
-
-                                      ? "border-b border-[#ECECF0]"
-
-
-
-                                      : ""
-
-
-
-                                  }
-
-
-
-                                >
-
-
-
-                                  <button
-
-
-
-                                    type="button"
-
-
-
-                                    onClick={() =>
-
-
-
-                                      setOpenProductFaq((value) =>
-
-
-
-                                        value === item.id ? null : item.id,
-
-
-
-                                      )
-
-
-
-                                    }
-
-
-
-                                    className="flex min-h-[56px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FAFAFA]"
-
-
-
-                                  >
-
-
-
-                                    <span className="flex-1 text-[13px] font-medium text-[#1D1D1F]">
-
-
-
-                                      {item.question}
-
-
-
-                                    </span>
-
-
-
-                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#6E6E73]">
-
-
-
-                                      <Plus
-
-
-
-                                        size={16}
-
-
-
-                                        strokeWidth={1.6}
-
-
-
-                                        className={`transition-transform duration-200 ${
-
-
-
-                                          itemOpen ? "rotate-45" : ""
-
-
-
-                                        }`}
-
-
-
-                                      />
-
-
-
-                                    </span>
-
-
-
-                                  </button>
-
-
-
-                                  {itemOpen && (
-
-
-
-                                    <div className="px-4 pb-5 pr-10">
-
-
-
-                                      <p className="whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
-
-
-
-                                        {item.answer}
-
-
-
-                                      </p>
-
-
-
-                                    </div>
-
-
-
-                                  )}
-
-
-
-                                </div>
-
-
-
-                              );
-
-
-
-                            })}
-
-
-
-                          </div>
-
-
-
-                        ) : (
-
-
-
-                          <p className="text-[13px] leading-6 text-[#6E6E73]">
-
-
-
-                            No FAQs have been added for this product yet.
-
-
-
-                          </p>
-
-
-
-                        )
-
-
-
-                      ) : (
-
-
-
-                        <p className="max-w-[760px] whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
-
-
-
-                          {faq.answer}
-
-
-
-                        </p>
-
-
-
-                      )}
-
-
-
-                    </div>
-
-
-
-                  )}
-
-
-
-                </div>
-
-
-
-              ))}
-
-
-
-            </div>
-
-
-
-          </div>
-
-
-
-        </div>
-
-
-
-      </section>
-
-
-
-      {/* Product Reviews */}
-
-
-
-      <ProductReviews productId={product.id} />
-
-
-
-      {/* Related */}
-
-
-
-      {related.length > 0 && (
-
-
-
-        <section className="border-t border-[#D2D2D7] bg-white">
-
-
-
-          <div className="mx-auto max-w-[1240px] px-5 py-14 md:px-8 lg:py-16">
-
-
-
-            <div className="flex items-end justify-between gap-6">
-
-
-
-              <div>
-
-
-
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6E6E73]">
-
-
-
-                  You may also like
-
-
-
-                </p>
-
-
-
-                <h2 className="mt-2 text-[28px] font-semibold tracking-[-0.03em]">
-
-
-
-                  Complete your setup.
-
-
-
-                </h2>
-
-
-
-              </div>
-
-
-
-              <Link
-
-
-
-                to="/shop"
-
-
-
-                className="hidden text-[13px] font-medium text-[#0071E3] sm:block"
-
-
-
-              >
-
-
-
-                View all →
-
-
-
-              </Link>
-
-
-
-            </div>
-
-
-
-            <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
-
-
-
-              {related.map((item: any) => {
-
-
-
-                const relatedPrice = Number(item.price) || 0;
-
-
-
-                return (
-
-
-
-                  <Link
-
-
-
-                    key={item.id}
-
-
-
-                    to="/products/$slug"
-
-
-
-                    params={{ slug: item.slug }}
-
-
-
-                    className="group min-w-0"
-
-
-
-                  >
-
-
-
-                    <div className="aspect-square w-full overflow-hidden rounded-[18px] bg-[#F5F5F7]">
-
-
-
-                      {item.image_url ? (
-
-
-
-                        <img
-
-
-
-                          src={getImageUrl(item.image_url, "card") || item.image_url}
-
-
-
-                          alt={item.name}
-
-
-
-                          className="h-full w-full object-contain p-0 transition-transform duration-500 group-hover:scale-[1.03]"
-
-
-
-                        />
-
-
-
-                      ) : (
-
-
-
-                        <div className="flex h-full items-center justify-center text-xs text-[#86868B]">
-
-
-
-                          No image
-
-
-
-                        </div>
-
-
-
-                      )}
-
-
-
-                    </div>
-
-
-
-                    <h3 className="mt-3 line-clamp-2 text-[13px] font-semibold leading-5">
-
-
-
-                      {item.name}
-
-
-
-                    </h3>
-
-
-
-                    <p className="mt-1 text-[13px] text-[#424245]">
-
-
-
-                      {formatProductPrice(relatedPrice, safeCurrency)}
-
-
-
-                    </p>
-
-
-
-                  </Link>
-
-
-
-                );
-
-
-
-              })}
-
-
-
-            </div>
-
-
-
-          </div>
-
-
-
-        </section>
-
-
-
-      )}
-
-
-
-    </main>
-
-
-
-  );
-
-
+  );
 
 }

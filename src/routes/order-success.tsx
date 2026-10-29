@@ -1,332 +1,216 @@
 import {
 
-  createFileRoute,
+  createFileRoute,
 
-  Link,
+  Link,
 
 } from "@tanstack/react-router";
 
-
-
 import {
 
-  useEffect,
+  useEffect,
 
-  useState,
+  useState,
 
 } from "react";
 
-
-
 import {
 
-  CheckCircle2,
+  CheckCircle2,
 
-  Home,
+  Home,
 
-  ShoppingBag,
+  ShoppingBag,
 
-  Truck,
+  Truck,
 
-  ShieldCheck,
+  ShieldCheck,
 
-  PackageCheck,
+  PackageCheck,
 
-  CreditCard,
+  CreditCard,
 
 } from "lucide-react";
 
-
-
 import { formatUSDFromVND } from "@/lib/format";
-
-
 
 export const Route = createFileRoute(
 
-  "/order-success"
+  "/order-success"
 
 )({
 
-  component: OrderSuccessPage,
+  component: OrderSuccessPage,
 
 });
 
-
-
 type OrderItem = {
 
-  id: string;
+  id: string;
 
-  product_name: string;
+  product_name: string;
 
-  product_image: string;
+  product_image: string;
 
-  quantity: number;
+  quantity: number;
 
-  unit_price: number;
+  unit_price: number;
 
+  color_name?: string;
 
-
-  color_name?: string;
-
-  color_hex?: string;
+  color_hex?: string;
 
 };
-
-
 
 type VoucherInfo = {
 
-  code: string;
+  code: string;
 
-  title?: string;
+  title?: string;
 
 };
-
-
 
 type OrderData = {
 
-  id: string;
+  id: string;
 
-  created_at: string;
+  created_at: string;
 
+  full_name: string;
 
+  phone: string;
 
-  full_name: string;
+  email?: string;
 
-  phone: string;
-
-  email?: string;
-
-
-
-  address: string;
-
-
+  address: string;
 
 ward: string;
 
-
-
 district: string;
-
-
 
 city: string;
 
+  payment_method: string;
 
+  subtotal: number;
 
-  payment_method: string;
+  shipping: number;
 
+  discountAmount: number;
 
+  shippingDiscount: number;
 
-  subtotal: number;
+  total: number;
 
+  discountVoucher?: VoucherInfo | null;
 
+  shippingVoucher?: VoucherInfo | null;
 
-  shipping: number;
-
-
-
-  discountAmount: number;
-
-
-
-  shippingDiscount: number;
-
-
-
-  total: number;
-
-
-
-  discountVoucher?: VoucherInfo | null;
-
-
-
-  shippingVoucher?: VoucherInfo | null;
-
-
-
-  items: OrderItem[];
+  items: OrderItem[];
 
 };
 
-
-
 function OrderSuccessPage() {
 
+  const [order, setOrder] =
 
+    useState<OrderData | null>(null);
 
-  const [order, setOrder] =
+  useEffect(() => {
 
-    useState<OrderData | null>(null);
+    const raw =
 
+      localStorage.getItem(
 
+        "infibetter_last_order"
 
-  useEffect(() => {
+      );
 
+    if (!raw) return;
 
+    try {
 
-    const raw =
+      setOrder(
 
-      localStorage.getItem(
+        JSON.parse(raw)
 
-        "olive_last_order"
+      );
 
-      );
+    } catch {
 
+      localStorage.removeItem(
 
+        "infibetter_last_order"
 
-    if (!raw) return;
+      );
 
+    }
 
+  }, []);
 
-    try {
+  if (!order) {
 
+    return (
 
+      <div className="flex min-h-screen items-center justify-center bg-[#F8F6F3] px-6">
 
-      setOrder(
+        <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-sm">
 
-        JSON.parse(raw)
+          <PackageCheck
 
-      );
+            className="mx-auto mb-5 text-neutral-300"
 
+            size={54}
 
+          />
 
-    } catch {
+          <h2 className="text-xl font-semibold">
 
+            Order not found
 
+          </h2>
 
-      localStorage.removeItem(
+          <p className="mt-3 text-sm leading-6 text-neutral-500">
 
-        "olive_last_order"
+            Your session may have expired
 
-      );
+            or you may have opened this page directly
 
+          </p>
 
+          <Link
 
-    }
+            to="/"
 
+            className="mt-8 inline-flex w-full items-center justify-center rounded-full bg-black px-6 py-3 text-white transition hover:opacity-90"
 
+          >
 
-  }, []);
+            Back to Home
 
+          </Link>
 
+        </div>
 
-  if (!order) {
+      </div>
 
+    );
 
+  }
 
-    return (
-
-
-
-      <div className="flex min-h-screen items-center justify-center bg-[#F8F6F3] px-6">
-
-
-
-        <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-sm">
-
-
-
-          <PackageCheck
-
-            className="mx-auto mb-5 text-neutral-300"
-
-            size={54}
-
-          />
-
-
-
-          <h2 className="text-xl font-semibold">
-
-
-
-            Order not found
-
-
-
-          </h2>
-
-
-
-          <p className="mt-3 text-sm leading-6 text-neutral-500">
-
-
-
-            Your session may have expired
-
-            or you may have opened this page directly
-
-
-
-
-
-          </p>
-
-
-
-          <Link
-
-            to="/"
-
-            className="mt-8 inline-flex w-full items-center justify-center rounded-full bg-black px-6 py-3 text-white transition hover:opacity-90"
-
-          >
-
-            Back to Home
-
-          </Link>
-
-
-
-        </div>
-
-
-
-      </div>
-
-
-
-    );
-
-
-
-  }
-
-
-
-  return (
-
-
+  return (
 
 <div className="min-h-screen bg-[#F8F6F3] pb-28">
 
-
-
 <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-
-
 
 {/* Success */}
 
-
-
 <div className="rounded-[28px] bg-white p-6 shadow-sm sm:p-10">
-
-
 
 <div className="flex justify-center">
 
-
-
 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
-
-
 
 <CheckCircle2
 
@@ -336,15 +220,9 @@ className="text-green-600"
 
 />
 
-
-
 </div>
 
-
-
 </div>
-
-
 
 <h1
 
@@ -366,15 +244,9 @@ sm:text-4xl
 
 >
 
-
-
 Order Placed Successfully
 
-
-
 </h1>
-
-
 
 <p
 
@@ -400,35 +272,21 @@ sm:text-base
 
 >
 
-
-
 Thank you for choosing
 
 <b> INFIBETTER</b>.
 
-
-
 <br />
 
-
-
 Your order has been received.
-
-
 
 We will contact you to confirm your order
 
 as soon as possible.
 
-
-
 </p>
 
-
-
 {/* Status */}
-
-
 
 <div
 
@@ -446,15 +304,9 @@ sm:grid-cols-3
 
 >
 
-
-
 <div className="rounded-2xl border bg-[#FAFAFA] p-5">
 
-
-
 <div className="flex items-center gap-3">
-
-
 
 <PackageCheck
 
@@ -462,47 +314,25 @@ size={22}
 
 />
 
-
-
 <h3 className="font-medium">
-
-
 
 Order Received
 
-
-
 </h3>
 
-
-
 </div>
-
-
 
 <p className="mt-3 text-sm text-neutral-500">
 
-
-
 Your order has been recorded.
-
-
 
 </p>
 
-
-
 </div>
-
-
 
 <div className="rounded-2xl border bg-[#FAFAFA] p-5">
 
-
-
 <div className="flex items-center gap-3">
-
-
 
 <Truck
 
@@ -510,47 +340,25 @@ size={22}
 
 />
 
-
-
 <h3 className="font-medium">
-
-
 
 Preparing for Shipment
 
-
-
 </h3>
 
-
-
 </div>
-
-
 
 <p className="mt-3 text-sm text-neutral-500">
 
-
-
 Your items will be carefully packed.
-
-
 
 </p>
 
-
-
 </div>
-
-
 
 <div className="rounded-2xl border bg-[#FAFAFA] p-5">
 
-
-
 <div className="flex items-center gap-3">
-
-
 
 <ShieldCheck
 
@@ -558,1322 +366,776 @@ size={22}
 
 />
 
-
-
 <h3 className="font-medium">
-
-
 
 Warranty
 
-
-
 </h3>
 
-
-
 </div>
-
-
 
 <p className="mt-3 text-sm text-neutral-500">
 
-
-
 Replacement support for manufacturing defects.
-
-
 
 </p>
 
-
+</div>
 
 </div>
 
-
-
 </div>
-
-
-
-</div>
-
-
 
 {/* ================= ORDER SUMMARY ================= */}
 
-
-
 <div className="mt-8 grid gap-6 lg:grid-cols-2">
 
+  {/* Order Summary */}
 
+  <div className="rounded-[28px] bg-white p-6 shadow-sm">
 
-  {/* Order Summary */}
+    <h2 className="mb-6 text-xl font-semibold">
 
+      Order Summary
 
+    </h2>
 
-  <div className="rounded-[28px] bg-white p-6 shadow-sm">
+    <div className="space-y-5">
 
+      <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
 
+        <span className="text-neutral-500">
 
-    <h2 className="mb-6 text-xl font-semibold">
+          Order Number
 
-      Order Summary
+        </span>
 
-    </h2>
+        <span className="font-semibold tracking-wider">
 
+          #{order.id.slice(0,8).toUpperCase()}
 
+        </span>
 
-    <div className="space-y-5">
+      </div>
 
+      <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
 
+        <span className="text-neutral-500">
 
-      <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
+          Order Date
 
+        </span>
 
+        <span>
 
-        <span className="text-neutral-500">
+          {new Date(order.created_at).toLocaleDateString(
 
-          Order Number
+            "en-US"
 
-        </span>
+          )}
 
+        </span>
 
+      </div>
 
-        <span className="font-semibold tracking-wider">
+      <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
 
-          #{order.id.slice(0,8).toUpperCase()}
+        <span className="text-neutral-500">
 
-        </span>
+          Thanh toán
 
+        </span>
 
+        <span className="flex items-center gap-2">
 
-      </div>
+          <CreditCard size={18} />
 
+          {order.payment_method === "cod"
 
+            ? "Cash on Delivery"
 
-      <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
+            : "Bank Transfer"}
 
+        </span>
 
+      </div>
 
-        <span className="text-neutral-500">
+      <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
 
-          Order Date
+        <span className="text-neutral-500">
 
-        </span>
+          Subtotal
 
+        </span>
 
+        <span>
 
-        <span>
+          {formatUSDFromVND(order.subtotal)}
 
+        </span>
 
+      </div>
 
-          {new Date(order.created_at).toLocaleDateString(
+      <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
 
-            "en-US"
+  <span className="text-neutral-500">
 
-          )}
+    Shipping
 
+  </span>
 
+  <span>
 
-        </span>
+    {formatUSDFromVND(order.shipping)}
 
-
-
-      </div>
-
-
-
-      <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
-
-
-
-        <span className="text-neutral-500">
-
-          Thanh toán
-
-        </span>
-
-
-
-
-
-
-
-        <span className="flex items-center gap-2">
-
-
-
-          <CreditCard size={18} />
-
-
-
-          {order.payment_method === "cod"
-
-            ? "Cash on Delivery"
-
-            : "Bank Transfer"}
-
-
-
-        </span>
-
-
-
-      </div>
-
-
-
-      <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
-
-
-
-        <span className="text-neutral-500">
-
-          Subtotal
-
-        </span>
-
-
-
-        <span>
-
-
-
-          {formatUSDFromVND(order.subtotal)}
-
-
-
-        </span>
-
-
-
-      </div>
-
-
-
-      <div className="flex flex-col gap-1 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
-
-
-
-  <span className="text-neutral-500">
-
-    Shipping
-
-  </span>
-
-
-
-  <span>
-
-    {formatUSDFromVND(order.shipping)}
-
-  </span>
-
-
+  </span>
 
 </div>
 
+     {order.discountVoucher && (
 
+    <div className="flex items-center justify-between border-b pb-3">
 
-     {order.discountVoucher && (
+        <div>
 
-    <div className="flex items-center justify-between border-b pb-3">
+            <p className="text-neutral-500">
 
+                Discount Voucher
 
+            </p>
 
-        <div>
+            <p className="font-medium">
 
-            <p className="text-neutral-500">
+                {order.discountVoucher.code}
 
-                Discount Voucher
+            </p>
 
-            </p>
+        </div>
 
+        <span className="text-green-600">
 
+            -{formatUSDFromVND(order.discountAmount)}
 
-            <p className="font-medium">
+        </span>
 
-                {order.discountVoucher.code}
-
-            </p>
-
-        </div>
-
-
-
-        <span className="text-green-600">
-
-            -{formatUSDFromVND(order.discountAmount)}
-
-        </span>
-
-
-
-    </div>
+    </div>
 
 )}
-
-
 
 {order.shippingVoucher && (
 
-    <div className="flex items-center justify-between border-b pb-3">
+    <div className="flex items-center justify-between border-b pb-3">
 
+        <div>
 
+            <p className="text-neutral-500">
 
-        <div>
+                Shipping Voucher
 
-            <p className="text-neutral-500">
+            </p>
 
-                Shipping Voucher
+            <p className="font-medium">
 
-            </p>
+                {order.shippingVoucher.code}
 
+            </p>
 
+        </div>
 
-            <p className="font-medium">
+        <span className="text-green-600">
 
-                {order.shippingVoucher.code}
+            -{formatUSDFromVND(order.shippingDiscount)}
 
-            </p>
+        </span>
 
-        </div>
-
-
-
-        <span className="text-green-600">
-
-            -{formatUSDFromVND(order.shippingDiscount)}
-
-        </span>
-
-
-
-    </div>
+    </div>
 
 )}
 
+      <div className="flex items-center justify-between pt-2">
 
+        <span className="text-lg font-semibold">
 
-      <div className="flex items-center justify-between pt-2">
+          Total
 
+        </span>
 
+        <span className="text-2xl font-bold">
 
-        <span className="text-lg font-semibold">
+          {formatUSDFromVND(order.total)}
 
-          Total
+        </span>
 
-        </span>
+      </div>
 
+    </div>
 
+  </div>
 
-        <span className="text-2xl font-bold">
+  {/* Thông tin khách hàng */}
 
+  <div className="rounded-[28px] bg-white p-6 shadow-sm">
 
+    <h2 className="mb-6 text-xl font-semibold">
 
-          {formatUSDFromVND(order.total)}
+      Shipping Information
 
+    </h2>
 
+    <div className="space-y-5">
 
-        </span>
+      <div>
 
+        <p className="text-sm text-neutral-500">
 
+          Recipient
 
-      </div>
+        </p>
 
+        <p className="mt-1 text-lg font-medium">
 
+          {order.full_name}
 
-    </div>
+        </p>
 
+      </div>
 
+      <div>
 
-  </div>
+        <p className="text-sm text-neutral-500">
 
+          Phone Number
 
+        </p>
 
+        <p className="mt-1">
 
+          {order.phone}
 
+        </p>
 
+      </div>
 
-  {/* Thông tin khách hàng */}
+      {order.email && (
 
+        <div>
 
+          <p className="text-sm text-neutral-500">
 
-  <div className="rounded-[28px] bg-white p-6 shadow-sm">
+            Email
 
+          </p>
 
+          <p className="mt-1">
 
-    <h2 className="mb-6 text-xl font-semibold">
+            {order.email}
 
-      Shipping Information
+          </p>
 
-    </h2>
+        </div>
 
+      )}
 
+      <div>
 
-    <div className="space-y-5">
+        <p className="text-sm text-neutral-500">
 
+          Shipping Address
 
+        </p>
 
-      <div>
+        <p className="mt-1 leading-7">
 
+  {order.address}
 
+  <br />
 
-        <p className="text-sm text-neutral-500">
+  {[order.ward, order.district, order.city]
 
+    .filter(Boolean)
 
-
-          Recipient
-
-
-
-        </p>
-
-
-
-        <p className="mt-1 text-lg font-medium">
-
-
-
-          {order.full_name}
-
-
-
-        </p>
-
-
-
-      </div>
-
-
-
-      <div>
-
-
-
-        <p className="text-sm text-neutral-500">
-
-
-
-          Phone Number
-
-
-
-        </p>
-
-
-
-        <p className="mt-1">
-
-
-
-          {order.phone}
-
-
-
-        </p>
-
-
-
-      </div>
-
-
-
-      {order.email && (
-
-
-
-        <div>
-
-
-
-          <p className="text-sm text-neutral-500">
-
-
-
-            Email
-
-
-
-          </p>
-
-
-
-          <p className="mt-1">
-
-
-
-            {order.email}
-
-
-
-          </p>
-
-
-
-        </div>
-
-
-
-      )}
-
-
-
-      <div>
-
-
-
-        <p className="text-sm text-neutral-500">
-
-
-
-          Shipping Address
-
-
-
-        </p>
-
-
-
-        <p className="mt-1 leading-7">
-
-
-
-  {order.address}
-
-
-
-  <br />
-
-
-
-  {[order.ward, order.district, order.city]
-
-    .filter(Boolean)
-
-    .join(", ")}
-
-
+    .join(", ")}
 
 </p>
 
+      </div>
 
+      <div className="rounded-2xl bg-[#F7F4EF] p-5 sm:p-6">
 
-      </div>
+        <p className="text-sm leading-7 text-neutral-600">
 
+          INFIBETTER will contact you before
 
+          delivery to confirm your order.
 
-      <div className="rounded-2xl bg-[#F7F4EF] p-5 sm:p-6">
+        </p>
 
+      </div>
 
+    </div>
 
-        <p className="text-sm leading-7 text-neutral-600">
-
-
-
-          INFIBETTER will contact you before
-
-          delivery to confirm your order.
-
-
-
-        </p>
-
-
-
-      </div>
-
-
-
-    </div>
-
-
-
-  </div>
-
-
+  </div>
 
 </div>
-
-
 
 {/* ================= DANH SÁCH SẢN PHẨM ================= */}
 
-
-
 <div className="mt-8 rounded-[28px] bg-white p-6 shadow-sm">
 
+  <h2 className="text-xl font-semibold">
 
+    Items Ordered
 
-  <h2 className="text-xl font-semibold">
+  </h2>
 
-    Items Ordered
+    <div className="mt-6 space-y-4">
 
-  </h2>
+  {order.items.map((item) => (
 
+  <div
 
+    key={item.id}
 
-    <div className="mt-6 space-y-4">
+    className="rounded-2xl border border-neutral-200 p-4"
 
+  >
 
+    <div className="flex gap-4">
 
-  {order.items.map((item) => (
+      {/* Ảnh */}
 
-  <div
+      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
 
-    key={item.id}
+        {item.product_image && (
 
-    className="rounded-2xl border border-neutral-200 p-4"
+          <img
 
-  >
+            src={item.product_image}
 
-    <div className="flex gap-4">
+            alt={item.product_name}
 
+            className="h-full w-full object-cover"
 
+          />
 
-      {/* Ảnh */}
+        )}
 
-      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
+      </div>
 
-        {item.product_image && (
+      {/* Nội dung */}
 
-          <img
+      <div className="min-w-0 flex-1">
 
-            src={item.product_image}
+        <h3 className="break-words text-base font-semibold leading-6">
 
-            alt={item.product_name}
+          {item.product_name}
 
-            className="h-full w-full object-cover"
+        </h3>
 
-          />
+        {item.color_name && (
 
-        )}
+          <div className="mt-2 flex items-center gap-2">
 
-      </div>
+            <span
 
+              className="h-3 w-3 rounded-full border"
 
+              style={{ background: item.color_hex }}
 
-      {/* Nội dung */}
+            />
 
-      <div className="min-w-0 flex-1">
+            <span className="text-sm text-neutral-500">
 
+              {item.color_name}
 
+            </span>
 
-        <h3 className="break-words text-base font-semibold leading-6">
+          </div>
 
-          {item.product_name}
+        )}
 
-        </h3>
+        <p className="mt-2 text-sm text-neutral-500">
 
+          Quantity: {item.quantity}
 
+        </p>
 
-        {item.color_name && (
+        <p className="mt-3 text-lg font-semibold">
 
-          <div className="mt-2 flex items-center gap-2">
+          {formatUSDFromVND(item.unit_price * item.quantity)}
 
-            <span
+        </p>
 
-              className="h-3 w-3 rounded-full border"
+      </div>
 
-              style={{ background: item.color_hex }}
+    </div>
 
-            />
-
-            <span className="text-sm text-neutral-500">
-
-              {item.color_name}
-
-            </span>
-
-          </div>
-
-        )}
-
-
-
-        <p className="mt-2 text-sm text-neutral-500">
-
-          Quantity: {item.quantity}
-
-        </p>
-
-
-
-        <p className="mt-3 text-lg font-semibold">
-
-          {formatUSDFromVND(item.unit_price * item.quantity)}
-
-        </p>
-
-
-
-      </div>
-
-
-
-    </div>
-
-  </div>
+  </div>
 
 ))}
 
-
-
 </div>
 
-
-
 </div>
-
-
-
-
-
-
-
-
-
-
 
 {/* ================= TIMELINE ================= */}
 
-
-
 <div className="mt-8 rounded-[28px] bg-white p-6 shadow-sm">
 
-
-
 <h2 className="text-xl font-semibold">
-
-
 
 Order Status
 
-
-
 </h2>
-
-
 
 <div className="mt-8 space-y-8">
 
-
-
 <div className="flex gap-5">
 
-
-
 <div className="flex flex-col items-center">
-
-
 
 <div className="h-5 w-5 rounded-full bg-green-600" />
 
-
-
 <div className="mt-1 h-16 w-[2px] bg-neutral-200" />
-
-
 
 </div>
 
-
-
 <div>
 
-
-
 <h3 className="font-semibold">
-
-
 
 Order Received
 
-
-
 </h3>
 
-
-
 <p className="mt-1 text-sm leading-6 text-neutral-500">
-
-
 
 INFIBETTER has received your order.
 
-
-
 </p>
 
-
-
 </div>
 
-
-
 </div>
-
-
 
 <div className="flex gap-5 opacity-70">
 
-
-
 <div className="flex flex-col items-center">
-
-
 
 <div className="h-5 w-5 rounded-full border-2 border-neutral-300 bg-white" />
 
-
-
 <div className="mt-1 h-16 w-[2px] bg-neutral-200" />
-
-
 
 </div>
 
-
-
 <div>
 
-
-
 <h3 className="font-semibold">
-
-
 
 Preparing Your Order
 
-
-
 </h3>
 
-
-
 <p className="mt-1 text-sm leading-6 text-neutral-500">
-
-
 
 Your items will be inspected and packed.
 
-
-
 </p>
 
-
-
 </div>
 
-
-
 </div>
-
-
 
 <div className="flex gap-5 opacity-70">
 
-
-
 <div className="flex flex-col items-center">
 
-
-
 <div className="h-5 w-5 rounded-full border-2 border-neutral-300 bg-white" />
-
-
 
 <div className="mt-1 h-16 w-[2px] bg-neutral-200" />
 
-
-
 </div>
-
-
 
 <div>
 
-
-
 <h3 className="font-semibold">
-
-
 
 Handed to the Carrier
 
-
-
 </h3>
 
-
-
 <p className="mt-1 text-sm leading-6 text-neutral-500">
-
-
 
 You will receive a call before delivery.
 
-
-
 </p>
 
-
-
 </div>
 
-
-
 </div>
-
-
 
 <div className="flex gap-5 opacity-70">
 
-
-
 <div className="flex flex-col items-center">
-
-
 
 <div className="h-5 w-5 rounded-full border-2 border-neutral-300 bg-white" />
 
-
-
 </div>
-
-
 
 <div>
 
-
-
 <h3 className="font-semibold">
-
-
 
 Delivered
 
-
-
 </h3>
-
-
 
 <p className="mt-1 text-sm leading-6 text-neutral-500">
 
-
-
 Thank you for shopping with INFIBETTER.
-
-
 
 </p>
 
-
+</div>
 
 </div>
 
-
-
 </div>
 
-
-
 </div>
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
 
 {/* ================= CAM KẾT ================= */}
 
-
-
 <div className="mt-8 rounded-[28px] bg-white p-6 shadow-sm">
-
-
 
 <h2 className="text-xl font-semibold">
 
-
-
 The INFIBETTER Promise
-
-
 
 </h2>
 
-
-
 <div className="mt-6 grid gap-4 md:grid-cols-2">
-
-
 
 <div className="rounded-2xl bg-[#F8F6F3] p-5">
 
-
-
 <h3 className="font-medium">
-
-
 
 Quality Checked Before Shipping
 
-
-
 </h3>
 
-
-
 <p className="mt-2 text-sm leading-6 text-neutral-500">
-
-
 
 Every item is quality-checked before packing.
 
-
-
 </p>
-
-
 
 </div>
 
-
-
 <div className="rounded-2xl bg-[#F8F6F3] p-5">
 
-
-
 <h3 className="font-medium">
-
-
 
 30-Day Replacement
 
-
-
 </h3>
 
-
-
 <p className="mt-2 text-sm leading-6 text-neutral-500">
-
-
 
 Replacement support for products with manufacturing defects.
 
-
-
 </p>
-
-
 
 </div>
 
-
-
 <div className="rounded-2xl bg-[#F8F6F3] p-5">
 
-
-
 <h3 className="font-medium">
-
-
 
 Protective Packaging
 
-
-
 </h3>
 
-
-
 <p className="mt-2 text-sm leading-6 text-neutral-500">
-
-
 
 Packed carefully to help prevent damage during transit.
 
-
-
 </p>
 
-
-
 </div>
-
-
 
 <div className="rounded-2xl bg-[#F8F6F3] p-5">
 
-
-
 <h3 className="font-medium">
-
-
 
 Customer Support
 
-
-
 </h3>
-
-
 
 <p className="mt-2 text-sm leading-6 text-neutral-500">
 
-
-
 Our INFIBETTER team is always ready to help.
-
-
 
 </p>
 
-
+</div>
 
 </div>
 
-
-
 </div>
-
-
-
-</div>
-
-
 
 {/* ================= CÓ THỂ BẠN SẼ THÍCH ================= */}
 
-
-
-
-
 {/* ================= BUTTON ================= */}
-
-
 
 <div className="mt-10 flex flex-col gap-4 sm:flex-row">
 
+  <Link
 
+    to="/shop"
 
-  <Link
+    className="
 
-    to="/shop"
+    flex
 
-    className="
+    flex-1
 
-    flex
+    items-center
 
-    flex-1
+    justify-center
 
-    items-center
+    rounded-full
 
-    justify-center
+    bg-black
 
-    rounded-full
+    h-14
 
-    bg-black
+    text-white
 
-    h-14
+    transition
 
-    text-white
+    hover:opacity-90
 
-    transition
+    "
 
-    hover:opacity-90
+  >
 
-    "
+    <ShoppingBag
 
-  >
+      size={20}
 
+      className="mr-2"
 
+    />
 
-    <ShoppingBag
+    Continue Shopping
 
-      size={20}
+  </Link>
 
-      className="mr-2"
+  <Link
 
-    />
+    to="/"
 
+    className="
 
+    flex
 
-    Continue Shopping
+    flex-1
 
+    items-center
 
+    justify-center
 
-  </Link>
+    rounded-full
 
+    border
 
+    border-neutral-300
 
+    bg-white
 
+    h-14
 
+    transition
 
+    hover:bg-neutral-100
 
-  <Link
+    "
 
-    to="/"
+  >
 
-    className="
+    <Home
 
-    flex
+      size={20}
 
-    flex-1
+      className="mr-2"
 
-    items-center
+    />
 
-    justify-center
+    Back to Home
 
-    rounded-full
-
-    border
-
-    border-neutral-300
-
-    bg-white
-
-    h-14
-
-    transition
-
-    hover:bg-neutral-100
-
-    "
-
-  >
-
-
-
-    <Home
-
-      size={20}
-
-      className="mr-2"
-
-    />
-
-
-
-    Back to Home
-
-
-
-  </Link>
-
-
+  </Link>
 
 </div>
-
-
-
-
-
-
 
 {/* ================= FOOTER ================= */}
 
-
-
 <div className="mt-12 border-t pt-8">
 
+  <div className="text-center">
 
+    <h3 className="text-lg font-semibold">
 
-  <div className="text-center">
+      Need Help?
 
+    </h3>
 
+    <p className="mt-3 text-sm leading-7 text-neutral-500">
 
-    <h3 className="text-lg font-semibold">
+      If you have any questions about your order,
 
+      please contact INFIBETTER.
 
+    </p>
 
-      Need Help?
+    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
 
+      <a
 
+        href="tel:0934643451"
 
-    </h3>
+        className="rounded-full border px-6 py-3 transition hover:bg-neutral-100"
 
+      >
 
+        📞 0799379179
 
-    <p className="mt-3 text-sm leading-7 text-neutral-500">
+      </a>
 
+      <a
 
+        href="https://zalo.me/"
 
-      If you have any questions about your order,
+        target="_blank"
 
-      please contact INFIBETTER.
+        className="rounded-full bg-[#0068FF] px-6 py-3 text-white transition hover:opacity-90"
 
+      >
 
+        Chat on Zalo
 
-    </p>
+      </a>
 
+    </div>
 
-
-    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-
-
-
-      <a
-
-        href="tel:0934643451"
-
-        className="rounded-full border px-6 py-3 transition hover:bg-neutral-100"
-
-      >
-
-        📞 0799379179
-
-      </a>
-
-
-
-      <a
-
-        href="https://zalo.me/"
-
-        target="_blank"
-
-        className="rounded-full bg-[#0068FF] px-6 py-3 text-white transition hover:opacity-90"
-
-      >
-
-        Chat on Zalo
-
-      </a>
-
-
-
-    </div>
-
-
-
-  </div>
-
-
+  </div>
 
 </div>
 
-
+</div>
 
 </div>
 
-
-
-</div>
-
- );
+ );
 
 }

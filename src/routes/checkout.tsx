@@ -30,6 +30,7 @@ import {
 
 import { toast } from "sonner";
 import { useCart } from "@/lib/cart";
+import { trackMetaEvent } from "@/lib/meta-pixel";
 import { supabase } from "@/integrations/supabase/client";
 
 // Keep PayPal SDK configuration stable for the entire checkout page lifetime.
@@ -124,8 +125,6 @@ const REST_OF_WORLD: CountryOption = {
 
 const PROCESSING_DAYS: [number, number] = [1, 2];
 const OFFER_DISCOUNT = 0.15;
-
-
 
 function flagUrl(code: string) {
   return code === "ROW"
@@ -229,7 +228,6 @@ function PaymentMethodIcons() {
   );
 }
 
-
 function CheckoutPage() {
   const { items, clear, count, add } = useCart();
   const navigate = useNavigate();
@@ -247,6 +245,8 @@ function CheckoutPage() {
   const [offerDismissed, setOfferDismissed] = useState(false);
   const [legalModal, setLegalModal] = useState<LegalDocumentKey | null>(null);
 
+  const checkoutEventSent = useRef(false);
+
   const country = getCountry(countryCode);
   const shippingFeeUsd =
     shippingMethod === "express" ? country.express : 0;
@@ -257,6 +257,20 @@ function CheckoutPage() {
     0,
   );
   const totalUsd = subtotalUsd + shippingFeeUsd;
+
+  // Meta Pixel: fire InitiateCheckout once per checkout-page visit.
+  useEffect(() => {
+    if (count <= 0 || checkoutEventSent.current) return;
+
+    checkoutEventSent.current = true;
+    trackMetaEvent("InitiateCheckout", {
+      content_type: "product",
+      content_ids: items.map((item) => String(item.id)),
+      num_items: count,
+      value: Number(totalUsd.toFixed(2)),
+      currency: "USD",
+    });
+  }, [count, items, totalUsd]);
 
   const deliveryRange = useMemo(
     () => getDeliveryRange(country, shippingMethod),
@@ -380,7 +394,35 @@ function CheckoutPage() {
       if (!["COMPLETED", "PENDING"].includes(data.captureStatus)) {
         throw new Error("PayPal capture has not been accepted.");
       }
-      localStorage.setItem("olive_last_order", JSON.stringify({
+
+      // Only count a completed, non-pending payment as a Purchase.
+      // Deduplicate by the database order ID in this browser.
+      if (
+        data.captureStatus === "COMPLETED" &&
+        data.paymentStatus !== "pending"
+      ) {
+        const purchaseEventKey = `infibetter_purchase_tracked_${data.dbOrderId}`;
+        if (!localStorage.getItem(purchaseEventKey)) {
+          trackMetaEvent(
+            "Purchase",
+            {
+              content_type: "product",
+              content_ids: items.map((item) => String(item.id)),
+              contents: items.map((item) => ({
+                id: String(item.id),
+                quantity: Number(item.quantity),
+              })),
+              num_items: count,
+              value: Number(totalUsd.toFixed(2)),
+              currency: "USD",
+            },
+            String(data.dbOrderId),
+          );
+          localStorage.setItem(purchaseEventKey, "1");
+        }
+      }
+
+      localStorage.setItem("infibetter_last_order", JSON.stringify({
         id: data.dbOrderId,
         created_at: new Date().toISOString(),
         full_name: checkout.full_name,
@@ -1176,7 +1218,6 @@ function CheckoutPage() {
     </div>
   );
 }
-
 
 /* =========================================================
    LEGAL LINKS + MODALS
