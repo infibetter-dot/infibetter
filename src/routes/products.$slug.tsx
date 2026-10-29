@@ -1,2440 +1,4967 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 
+
+
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+
+
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
+
+
 import {
 
-  ChevronDown,
 
-  CircleHelp,
 
-  BookOpen,
+  ChevronDown,
 
-  SlidersHorizontal,
 
-  Smartphone,
 
-  ChevronLeft,
+  CircleHelp,
 
-  ChevronRight,
 
-  Minus,
 
-  Plus,
+  BookOpen,
 
-  ShoppingBag,
 
-  Truck,
 
-  ShieldCheck,
+  SlidersHorizontal,
 
-  RotateCcw,
 
-  Check,
+
+  Smartphone,
+
+
+
+  ChevronLeft,
+
+
+
+  ChevronRight,
+
+
+
+  Minus,
+
+
+
+  Plus,
+
+
+
+  ShoppingBag,
+
+
+
+  Truck,
+
+
+
+  ShieldCheck,
+
+
+
+  RotateCcw,
+
+
+
+  Check,
+
+
 
 } from "lucide-react";
 
+
+
 import { toast } from "sonner";
+
+
 
 import { supabase } from "@/integrations/supabase/client";
 
+
+
 import {
 
-  getCurrency,
 
-  subscribeToCurrencyChange,
 
-  type CurrencyCode,
+  getCurrency,
+
+
+
+  subscribeToCurrencyChange,
+
+
+
+  type CurrencyCode,
+
+
 
 } from "@/lib/currency-system";
 
+
+
 import { useCart } from "@/lib/cart";
+
+
 
 import { getImageUrl } from "@/lib/storage";
 
+
+
 import ProductReviews from "@/components/ProductReviews";
+
+
 
 // Product prices in Supabase are USD. This page formats them locally so the
 
+
+
 // product-detail price cannot be affected by a broken/stale shared formatter.
+
+
 
 const PRODUCT_CURRENCY_RATES: Record<CurrencyCode, number> = {
 
-  USD: 1,
 
-  VND: 25500,
 
-  CAD: 1.38,
+  USD: 1,
 
-  AUD: 1.52,
 
-  EUR: 0.88,
 
-  GBP: 0.75,
+  VND: 25500,
 
-  SGD: 1.28,
+
+
+  CAD: 1.38,
+
+
+
+  AUD: 1.52,
+
+
+
+  EUR: 0.88,
+
+
+
+  GBP: 0.75,
+
+
+
+  SGD: 1.28,
+
+
 
 };
+
+
 
 const PRODUCT_CURRENCY_LOCALES: Record<CurrencyCode, string> = {
 
-  USD: "en-US",
 
-  VND: "vi-VN",
 
-  CAD: "en-CA",
+  USD: "en-US",
 
-  AUD: "en-AU",
 
-  EUR: "de-DE",
 
-  GBP: "en-GB",
+  VND: "vi-VN",
 
-  SGD: "en-SG",
+
+
+  CAD: "en-CA",
+
+
+
+  AUD: "en-AU",
+
+
+
+  EUR: "de-DE",
+
+
+
+  GBP: "en-GB",
+
+
+
+  SGD: "en-SG",
+
+
 
 };
 
+
+
 function formatProductPrice(
 
-  value: number | string | null | undefined,
 
-  currency: CurrencyCode,
+
+  value: number | string | null | undefined,
+
+
+
+  currency: CurrencyCode,
+
+
 
 ): string {
 
-  const usd = Number(value);
 
-  const activeCurrency = PRODUCT_CURRENCY_RATES[currency] !== undefined
 
-    ? currency
+  const usd = Number(value);
 
-    : "USD";
 
-  if (!Number.isFinite(usd)) {
 
-    return new Intl.NumberFormat("en-US", {
+  const activeCurrency = PRODUCT_CURRENCY_RATES[currency] !== undefined
 
-      style: "currency",
 
-      currency: "USD",
 
-      minimumFractionDigits: 2,
+    ? currency
 
-      maximumFractionDigits: 2,
 
-    }).format(0);
 
-  }
+    : "USD";
 
-  const converted = usd * PRODUCT_CURRENCY_RATES[activeCurrency];
 
-  const fractionDigits = activeCurrency === "VND" ? 0 : 2;
 
-  return new Intl.NumberFormat(PRODUCT_CURRENCY_LOCALES[activeCurrency], {
+  if (!Number.isFinite(usd)) {
 
-    style: "currency",
 
-    currency: activeCurrency,
 
-    minimumFractionDigits: fractionDigits,
+    return new Intl.NumberFormat("en-US", {
 
-    maximumFractionDigits: fractionDigits,
 
-  }).format(converted);
+
+      style: "currency",
+
+
+
+      currency: "USD",
+
+
+
+      minimumFractionDigits: 2,
+
+
+
+      maximumFractionDigits: 2,
+
+
+
+    }).format(0);
+
+
+
+  }
+
+
+
+  const converted = usd * PRODUCT_CURRENCY_RATES[activeCurrency];
+
+
+
+  const fractionDigits = activeCurrency === "VND" ? 0 : 2;
+
+
+
+  return new Intl.NumberFormat(PRODUCT_CURRENCY_LOCALES[activeCurrency], {
+
+
+
+    style: "currency",
+
+
+
+    currency: activeCurrency,
+
+
+
+    minimumFractionDigits: fractionDigits,
+
+
+
+    maximumFractionDigits: fractionDigits,
+
+
+
+  }).format(converted);
+
+
 
 }
+
+
 
 const productOptions = (slug: string) =>
 
-  queryOptions({
 
-    queryKey: ["product", slug],
 
-    queryFn: async () => {
+  queryOptions({
 
-      const { data, error } = await supabase
 
-        .from("products")
 
-        .select(`
+    queryKey: ["product", slug],
 
-          short_description,
 
-          id,
 
-          slug,
+    queryFn: async () => {
 
-          name,
 
-          description,
 
-          price,
+      const { data, error } = await supabase
 
-          compare_at_price,
 
-          stock,
 
-          image_url,
+        .from("products")
 
-          dimensions,
 
-          material,
 
-          color,
+        .select(`
 
-          light_source,
 
-          power_source,
 
-          warranty,
+          short_description,
 
-          seo_title,
 
-          seo_description,
 
-          category_id,
+          id,
 
-          product_images(
-  id,
-  image_url,
-  sort_order,
-  color_id,
-  is_lifestyle,
-  image_type
+
+
+          slug,
+
+
+
+          name,
+
+
+
+          description,
+
+
+
+          price,
+
+
+
+          compare_at_price,
+
+
+
+          stock,
+
+
+
+          image_url,
+
+
+
+          dimensions,
+
+
+
+          material,
+
+
+
+          color,
+
+
+
+          light_source,
+
+
+
+          power_source,
+
+
+
+          warranty,
+
+
+
+          seo_title,
+
+
+
+          seo_description,
+
+
+
+          category_id,
+
+
+
+          product_images(
+
+  id,
+
+  image_url,
+
+  sort_order,
+
+  color_id,
+
+  is_lifestyle,
+
+  image_type
+
 )
 
-          product_colors(
 
-            id,
 
-            name,
+          product_colors(
 
-            hex
 
-          ),
 
-          product_variants (
+            id,
 
-            id,
 
-            device_model_id,
 
-            color_id,
+            name,
 
-            price,
 
-            compare_at_price,
 
-            stock,
+            hex
 
-            image_url,
 
-            sort_order,
 
-            is_active
+          ),
 
-          ),
 
-          product_specifications(
 
-            id,
+          product_variants (
 
-            label,
 
-            value,
 
-            sort_order
+            id,
 
-          ),
 
-          product_usps(
 
-            id,
+            device_model_id,
 
-            title,
 
-            icon,
 
-            sort_order
+            color_id,
 
-          ),
 
-          product_faqs(
 
-            id,
+            price,
 
-            question,
 
-            answer,
 
-            sort_order,
+            compare_at_price,
 
-            is_visible
 
-          )
 
-        `)
+            stock,
 
-        .eq("slug", slug)
 
-        .maybeSingle();
 
-      if (error) {
+            image_url,
 
-        console.error("PRODUCT QUERY ERROR:", error);
 
-        throw new Error(error.message);
 
-      }
+            sort_order,
 
-      if (!data) {
 
+
+            is_active
+
+
+
+          ),
+
+
+
+          product_specifications(
+
+
+
+            id,
+
+
+
+            label,
+
+
+
+            value,
+
+
+
+            sort_order
+
+
+
+          ),
+
+
+
+          product_usps(
+
+
+
+            id,
+
+
+
+            title,
+
+
+
+            icon,
+
+
+
+            sort_order
+
+
+
+          ),
+
+
+
+          product_faqs(
+
+
+
+            id,
+
+
+
+            question,
+
+
+
+            answer,
+
+
+
+            sort_order,
+
+
+
+            is_visible
+
+
+
+          )
+
+
+
+        `)
+
+
+
+        .eq("slug", slug)
+
+
+
+        .maybeSingle();
+
+
+
+      if (error) {
+
+
+
+        console.error("PRODUCT QUERY ERROR:", error);
+
+
+
+        throw new Error(error.message);
+
+
+
+      }
+
+
+
+      if (!data) {
         throw notFound();
-
       }
+
+      // Fetch content tables separately to avoid incomplete nested relationship data.
+      const [specificationsResult, faqsResult, uspsResult] = await Promise.all([
+        supabase.from("product_specifications")
+          .select("id, label, value, sort_order")
+          .eq("product_id", data.id)
+          .order("sort_order", { ascending: true }),
+        supabase.from("product_faqs")
+          .select("id, question, answer, sort_order, is_visible")
+          .eq("product_id", data.id)
+          .order("sort_order", { ascending: true }),
+        supabase.from("product_usps")
+          .select("id, title, icon, sort_order")
+          .eq("product_id", data.id)
+          .order("sort_order", { ascending: true }),
+      ]);
+
+      if (specificationsResult.error) console.error("PRODUCT SPECIFICATIONS QUERY ERROR:", specificationsResult.error);
+      if (faqsResult.error) console.error("PRODUCT FAQS QUERY ERROR:", faqsResult.error);
+      if (uspsResult.error) console.error("PRODUCT USPs QUERY ERROR:", uspsResult.error);
 
       // Load device models separately instead of relying on a nested
 
-      // Supabase relationship. product_variants stores only device_model_id.
 
-      const variants = data.product_variants ?? [];
 
-      const deviceModelIds = Array.from(
+      // Supabase relationship. product_variants stores only device_model_id.
 
-        new Set(
 
-          variants
 
-            .map((variant: any) => variant?.device_model_id)
+      const variants = data.product_variants ?? [];
 
-            .filter(Boolean)
 
-            .map((id: any) => String(id)),
 
-        ),
+      const deviceModelIds = Array.from(
 
-      );
 
-      let deviceModels: any[] = [];
 
-      if (deviceModelIds.length > 0) {
+        new Set(
 
-        const { data: modelData, error: modelError } = await supabase
 
-          .from("device_models")
 
-          .select("id, name")
+          variants
 
-          .in("id", deviceModelIds);
 
-        if (modelError) {
 
-          console.error("DEVICE MODEL QUERY ERROR:", modelError);
+            .map((variant: any) => variant?.device_model_id)
 
-        } else {
 
-          deviceModels = modelData ?? [];
 
-        }
+            .filter(Boolean)
 
-      }
 
-      const deviceModelMap = new Map(
 
-        deviceModels.map((model: any) => [
+            .map((id: any) => String(id)),
 
-          String(model.id),
 
-          model.name,
 
-        ]),
+        ),
 
-      );
 
-      const variantsWithModels = variants.map((variant: any) => ({
 
-        ...variant,
+      );
 
-        device_model_name:
 
-          deviceModelMap.get(
 
-            String(variant.device_model_id),
+      let deviceModels: any[] = [];
 
-          ) ?? null,
 
-      }));
 
-      const relatedResult = await supabase
+      if (deviceModelIds.length > 0) {
 
-        .from("products")
 
-        .select("id, slug, name, price, compare_at_price, image_url, stock")
 
-        .eq("category_id", data.category_id!)
+        const { data: modelData, error: modelError } = await supabase
 
-        .neq("id", data.id)
 
-        .limit(4);
 
-      return {
+          .from("device_models")
 
-        product: {
 
+
+          .select("id, name")
+
+
+
+          .in("id", deviceModelIds);
+
+
+
+        if (modelError) {
+
+
+
+          console.error("DEVICE MODEL QUERY ERROR:", modelError);
+
+
+
+        } else {
+
+
+
+          deviceModels = modelData ?? [];
+
+
+
+        }
+
+
+
+      }
+
+
+
+      const deviceModelMap = new Map(
+
+
+
+        deviceModels.map((model: any) => [
+
+
+
+          String(model.id),
+
+
+
+          model.name,
+
+
+
+        ]),
+
+
+
+      );
+
+
+
+      const variantsWithModels = variants.map((variant: any) => ({
+
+
+
+        ...variant,
+
+
+
+        device_model_name:
+
+
+
+          deviceModelMap.get(
+
+
+
+            String(variant.device_model_id),
+
+
+
+          ) ?? null,
+
+
+
+      }));
+
+
+
+      const relatedResult = await supabase
+
+
+
+        .from("products")
+
+
+
+        .select("id, slug, name, price, compare_at_price, image_url, stock")
+
+
+
+        .eq("category_id", data.category_id!)
+
+
+
+        .neq("id", data.id)
+
+
+
+        .limit(4);
+
+
+
+      return {
+
+
+
+        product: {
           ...data,
-
           product_variants: variantsWithModels,
-
+          product_specifications: specificationsResult.data ?? data.product_specifications ?? [],
+          product_faqs: faqsResult.data ?? data.product_faqs ?? [],
+          product_usps: uspsResult.data ?? data.product_usps ?? [],
         },
 
-        related: relatedResult.data ?? [],
 
-      };
 
-    },
+        related: relatedResult.data ?? [],
 
-  });
+
+
+      };
+
+
+
+    },
+
+
+
+  });
+
+
 
 export const Route = createFileRoute("/products/$slug")({
 
-  loader: ({ context, params }) =>
 
-    context.queryClient.ensureQueryData(productOptions(params.slug)),
 
-  component: ProductPage,
+  loader: ({ context, params }) =>
+
+
+
+    context.queryClient.ensureQueryData(productOptions(params.slug)),
+
+
+
+  component: ProductPage,
+
+
 
 });
 
+
+
 function ProductPage() {
 
-  const { slug } = Route.useParams();
 
-  const navigate = useNavigate();
 
-  const cart = useCart();
+  const { slug } = Route.useParams();
 
-  // INFIBETTER product prices are stored as USD in Supabase.
 
-  const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
 
-    getCurrency(),
+  const navigate = useNavigate();
 
-  );
 
-  const safeCurrency: CurrencyCode =
 
-    currency || getCurrency() || "USD";
+  const cart = useCart();
 
-  useEffect(() => {
 
-    return subscribeToCurrencyChange(setCurrencyState);
 
-  }, []);
+  // INFIBETTER product prices are stored as USD in Supabase.
 
-  const { data } = useSuspenseQuery(productOptions(slug));
 
-  const { product, related } = data;
 
-  const [selectedImage, setSelectedImage] = useState("");
+  const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
 
-  const [selectedColor, setSelectedColor] = useState<any>(
 
-    product.product_colors?.[0] ?? null,
 
-  );
+    getCurrency(),
 
-  const [selectedModel, setSelectedModel] = useState("");
 
-  const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
 
-  const [activeModelIndex, setActiveModelIndex] = useState(0);
+  );
 
-  const modelSelectRef = useRef<HTMLDivElement | null>(null);
-  const videoCarouselRef = useRef<HTMLDivElement | null>(null);
 
-  const [quantity, setQuantity] = useState(1);
 
-  const [openSpecs, setOpenSpecs] = useState(false);
+  const safeCurrency: CurrencyCode =
 
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const [openProductFaq, setOpenProductFaq] = useState<string | null>(null);
 
-  const productImages = useMemo(() => {
+    currency || getCurrency() || "USD";
 
-    // Product gallery contains product images only. Lifestyle images are rendered
-    // separately in the Lifestyle section below and must not appear in thumbnails
-    // or the main gallery navigation.
-    const images = (product.product_images ?? [])
 
-      .filter(
-        (item: any) =>
-          item?.image_url &&
-          item?.is_lifestyle !== true &&
-          item?.image_type !== "video" &&
-          !/\.(mp4|webm)(?:$|[?#])/i.test(item.image_url),
-      )
 
-      .sort((a: any, b: any) => {
+  useEffect(() => {
 
-        const sortDiff =
 
-          Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
 
-        if (sortDiff !== 0) return sortDiff;
+    return subscribeToCurrencyChange(setCurrencyState);
 
-        return Number(Boolean(a.is_lifestyle)) - Number(Boolean(b.is_lifestyle));
 
-      });
 
-    if (images.length > 0) return images;
+  }, []);
 
-    if (product.image_url) {
 
-      return [
 
-        {
+  const { data } = useSuspenseQuery(productOptions(slug));
 
-          id: "main",
 
-          image_url: product.image_url,
 
-          color_id: null,
+  const { product, related } = data;
 
-          is_lifestyle: false,
 
-        },
 
-      ];
+  const [selectedImage, setSelectedImage] = useState("");
 
-    }
 
-    return [];
 
-  }, [product]);
+  const [selectedColor, setSelectedColor] = useState<any>(
 
-  const lifestyleImages = useMemo(
 
-    () =>
 
-      (product.product_images ?? [])
+    product.product_colors?.[0] ?? null,
 
-        .filter(
 
-          (item: any) =>
 
-            item?.image_url &&
+  );
 
-            item?.is_lifestyle === true,
 
-        )
 
-        .sort(
+  const [selectedModel, setSelectedModel] = useState("");
 
-          (a: any, b: any) =>
 
-            Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
 
-        ),
+  const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
 
-    [product],
 
-  );
 
-  // Product videos are displayed in their own horizontal carousel below Lifestyle.
-  const productVideos = useMemo(
-    () =>
-      (product.product_images ?? [])
-        .filter(
-          (item: any) =>
-            item?.image_url &&
-            (
-              item?.image_type === "video" ||
-              /\.(mp4|webm)(?:$|[?#])/i.test(item.image_url)
-            ),
-        )
-        .sort(
-          (a: any, b: any) =>
-            Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
-        ),
-    [product],
-  );
+  const [activeModelIndex, setActiveModelIndex] = useState(0);
 
-  useEffect(() => {
 
-    const firstColor = product.product_colors?.[0] ?? null;
 
-    const firstColorImages = firstColor
+  const modelSelectRef = useRef<HTMLDivElement | null>(null);
 
-      ? productImages.filter(
+  const videoCarouselRef = useRef<HTMLDivElement | null>(null);
 
-          (image: any) =>
 
-            String(image?.color_id ?? "") === String(firstColor.id),
 
-        )
+  const [quantity, setQuantity] = useState(1);
 
-      : [];
 
-    const colorImage =
 
-      firstColorImages[0] ??
+  const [openSpecs, setOpenSpecs] = useState(false);
 
-      productImages[0];
 
-    setSelectedColor(firstColor);
 
-    setSelectedImage(
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-      colorImage?.image_url ||
 
-        product.image_url ||
 
-        productImages[0]?.image_url ||
+  const [openProductFaq, setOpenProductFaq] = useState<string | null>(null);
 
-        "",
 
-    );
 
-    setQuantity(1);
+  const productImages = useMemo(() => {
 
-  }, [product.id]);
 
-  function handleColorChange(color: any) {
 
-    setSelectedColor(color);
+    // Product gallery contains product images only. Lifestyle images are rendered
 
-    // Keep the selected model valid for the newly selected color.
+    // separately in the Lifestyle section below and must not appear in thumbnails
 
-    const modelsForColor = Array.from(
+    // or the main gallery navigation.
 
-      new Set(
+    const images = (product.product_images ?? [])
 
-        (product.product_variants ?? [])
 
-          .filter(
 
-            (variant: any) =>
+      .filter(
 
-              variant?.is_active !== false &&
+        (item: any) =>
 
-              variant?.device_model_name &&
+          item?.image_url &&
 
-              String(variant?.color_id ?? "") === String(color?.id ?? ""),
+          item?.is_lifestyle !== true &&
 
-          )
+          item?.image_type !== "video" &&
 
-          .map((variant: any) =>
+          !/\.(mp4|webm)(?:$|[?#])/i.test(item.image_url),
 
-            String(variant.device_model_name).trim(),
+      )
 
-          )
 
-          .filter(Boolean),
 
-      ),
+      .sort((a: any, b: any) => {
 
-    );
 
-    setSelectedModel((current) =>
 
-      current && modelsForColor.includes(current)
+        const sortDiff =
 
-        ? current
 
-        : modelsForColor[0] ?? "",
 
-    );
+          Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
 
-    // Prefer a product image assigned to the selected color.
-    // Lifestyle images are intentionally excluded from the product gallery.
 
-    const colorImages = productImages.filter(
 
-      (image: any) =>
+        if (sortDiff !== 0) return sortDiff;
 
-        String(image?.color_id ?? "") === String(color?.id ?? ""),
 
-    );
 
-    const colorImage = colorImages[0];
+        return Number(Boolean(a.is_lifestyle)) - Number(Boolean(b.is_lifestyle));
 
-    if (colorImage?.image_url) {
 
-      setSelectedImage(colorImage.image_url);
 
-      return;
+      });
 
-    }
 
-    // If the selected color has no linked image, keep the current gallery image.
 
-  }
+    if (images.length > 0) return images;
 
-  const activeImage =
-    selectedImage ||
-    product.image_url ||
-    productImages[0]?.image_url ||
-    "";
 
-  const activeMedia = productImages.find(
-    (item: any) => item?.image_url === activeImage,
-  );
 
-  const isActiveVideo =
-    activeMedia?.image_type === "video" ||
-    /\.(mp4|webm)(?:$|[?#])/i.test(activeImage);
+    if (product.image_url) {
+
+
+
+      return [
+
+
+
+        {
+
+
+
+          id: "main",
+
+
+
+          image_url: product.image_url,
+
+
+
+          color_id: null,
+
+
+
+          is_lifestyle: false,
+
+
+
+        },
+
+
+
+      ];
+
+
+
+    }
+
+
+
+    return [];
+
+
+
+  }, [product]);
+
+
+
+  const lifestyleImages = useMemo(
+
+
+
+    () =>
+
+
+
+      (product.product_images ?? [])
+
+
+
+        .filter(
+
+
+
+          (item: any) =>
+
+
+
+            item?.image_url &&
+
+
+
+            item?.is_lifestyle === true,
+
+
+
+        )
+
+
+
+        .sort(
+
+
+
+          (a: any, b: any) =>
+
+
+
+            Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
+
+
+
+        ),
+
+
+
+    [product],
+
+
+
+  );
+
+
+
+  // Product videos are displayed in their own horizontal carousel below Lifestyle.
+
+  const productVideos = useMemo(
+
+    () =>
+
+      (product.product_images ?? [])
+
+        .filter(
+
+          (item: any) =>
+
+            item?.image_url &&
+
+            (
+
+              item?.image_type === "video" ||
+
+              /\.(mp4|webm)(?:$|[?#])/i.test(item.image_url)
+
+            ),
+
+        )
+
+        .sort(
+
+          (a: any, b: any) =>
+
+            Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
+
+        ),
+
+    [product],
+
+  );
+
+
+
+  useEffect(() => {
+
+
+
+    const firstColor = product.product_colors?.[0] ?? null;
+
+
+
+    const firstColorImages = firstColor
+
+
+
+      ? productImages.filter(
+
+
+
+          (image: any) =>
+
+
+
+            String(image?.color_id ?? "") === String(firstColor.id),
+
+
+
+        )
+
+
+
+      : [];
+
+
+
+    const colorImage =
+
+
+
+      firstColorImages[0] ??
+
+
+
+      productImages[0];
+
+
+
+    setSelectedColor(firstColor);
+
+
+
+    setSelectedImage(
+
+
+
+      colorImage?.image_url ||
+
+
+
+        product.image_url ||
+
+
+
+        productImages[0]?.image_url ||
+
+
+
+        "",
+
+
+
+    );
+
+
+
+    setQuantity(1);
+
+
+
+  }, [product.id]);
+
+
+
+  function handleColorChange(color: any) {
+
+
+
+    setSelectedColor(color);
+
+
+
+    // Keep the selected model valid for the newly selected color.
+
+
+
+    const modelsForColor = Array.from(
+
+
+
+      new Set(
+
+
+
+        (product.product_variants ?? [])
+
+
+
+          .filter(
+
+
+
+            (variant: any) =>
+
+
+
+              variant?.is_active !== false &&
+
+
+
+              variant?.device_model_name &&
+
+
+
+              String(variant?.color_id ?? "") === String(color?.id ?? ""),
+
+
+
+          )
+
+
+
+          .map((variant: any) =>
+
+
+
+            String(variant.device_model_name).trim(),
+
+
+
+          )
+
+
+
+          .filter(Boolean),
+
+
+
+      ),
+
+
+
+    );
+
+
+
+    setSelectedModel((current) =>
+
+
+
+      current && modelsForColor.includes(current)
+
+
+
+        ? current
+
+
+
+        : modelsForColor[0] ?? "",
+
+
+
+    );
+
+
+
+    // Prefer a product image assigned to the selected color.
+
+    // Lifestyle images are intentionally excluded from the product gallery.
+
+
+
+    const colorImages = productImages.filter(
+
+
+
+      (image: any) =>
+
+
+
+        String(image?.color_id ?? "") === String(color?.id ?? ""),
+
+
+
+    );
+
+
+
+    const colorImage = colorImages[0];
+
+
+
+    if (colorImage?.image_url) {
+
+
+
+      setSelectedImage(colorImage.image_url);
+
+
+
+      return;
+
+
+
+    }
+
+
+
+    // If the selected color has no linked image, keep the current gallery image.
+
+
+
+  }
+
+
+
+  const activeImage =
+
+    selectedImage ||
+
+    product.image_url ||
+
+    productImages[0]?.image_url ||
+
+    "";
+
+
+
+  const activeMedia = productImages.find(
+
+    (item: any) => item?.image_url === activeImage,
+
+  );
+
+
+
+  const isActiveVideo =
+
+    activeMedia?.image_type === "video" ||
+
+    /\.(mp4|webm)(?:$|[?#])/i.test(activeImage);
+
 const price = Number(product.price) || 0;
 
-  const comparePrice = Number(product.compare_at_price) || 0;
 
-  // TEMP DEBUG: confirms this page is receiving the Supabase USD price.
 
-  console.log("INFIBETTER PRICE CHECK:", {
+  const comparePrice = Number(product.compare_at_price) || 0;
 
-    slug: product.slug,
 
-    name: product.name,
 
-    price: product.price,
+  // TEMP DEBUG: confirms this page is receiving the Supabase USD price.
 
-    compare_at_price: product.compare_at_price,
 
-    parsedPrice: price,
 
-    parsedComparePrice: comparePrice,
+  console.log("INFIBETTER PRICE CHECK:", {
 
-    currency: safeCurrency,
 
-    formattedPrice: formatProductPrice(price, safeCurrency),
 
-    formattedComparePrice: formatProductPrice(comparePrice, safeCurrency),
+    slug: product.slug,
 
-  });
 
-  const hasDiscount = comparePrice > price;
 
-  const discountPercent = hasDiscount
+    name: product.name,
 
-    ? Math.round(((comparePrice - price) / comparePrice) * 100)
 
-    : 0;
 
-  const inStock = Number(product.stock ?? 0) > 0;
+    price: product.price,
 
-  const compatibleModels = Array.from(
 
-    new Set(
 
-      (product.product_variants ?? [])
+    compare_at_price: product.compare_at_price,
 
-        .filter(
 
-          (variant: any) =>
 
-            variant?.is_active !== false &&
+    parsedPrice: price,
 
-            variant?.device_model_name &&
 
-            (!selectedColor?.id ||
 
-              String(variant?.color_id ?? "") === String(selectedColor.id)),
+    parsedComparePrice: comparePrice,
 
-        )
 
-        .map((variant: any) =>
 
-          String(variant.device_model_name).trim(),
+    currency: safeCurrency,
 
-        )
 
-        .filter(Boolean),
 
-    ),
+    formattedPrice: formatProductPrice(price, safeCurrency),
 
-  );
 
-  useEffect(() => {
 
-    if (!isModelSelectOpen) return;
+    formattedComparePrice: formatProductPrice(comparePrice, safeCurrency),
 
-    function handlePointerDown(event: PointerEvent) {
 
-      const target = event.target as Node;
 
-      if (!modelSelectRef.current?.contains(target)) {
+  });
 
-        setIsModelSelectOpen(false);
 
-      }
 
-    }
+  const hasDiscount = comparePrice > price;
 
-    function handleKeyDown(event: KeyboardEvent) {
 
-      if (event.key === "Escape") {
 
-        setIsModelSelectOpen(false);
+  const discountPercent = hasDiscount
 
-      }
 
-    }
 
-    document.addEventListener("pointerdown", handlePointerDown);
+    ? Math.round(((comparePrice - price) / comparePrice) * 100)
 
-    document.addEventListener("keydown", handleKeyDown);
 
-    return () => {
 
-      document.removeEventListener("pointerdown", handlePointerDown);
+    : 0;
 
-      document.removeEventListener("keydown", handleKeyDown);
 
-    };
 
-  }, [isModelSelectOpen]);
+  const inStock = Number(product.stock ?? 0) > 0;
 
-  const selectedModelIndex = Math.max(
 
-    0,
 
-    compatibleModels.findIndex((model) => model === selectedModel),
+  const compatibleModels = Array.from(
 
-  );
 
-  const openModelSelect = () => {
 
-    const nextIndex = selectedModelIndex >= 0 ? selectedModelIndex : 0;
+    new Set(
 
-    setActiveModelIndex(nextIndex);
 
-    setIsModelSelectOpen(true);
 
-  };
+      (product.product_variants ?? [])
 
-  const closeModelSelect = () => {
 
-    setIsModelSelectOpen(false);
 
-  };
+        .filter(
 
-  const handleModelSelect = (model: string) => {
 
-    setSelectedModel(model);
 
-    closeModelSelect();
+          (variant: any) =>
 
-  };
 
-  const handleModelKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
 
-    if (!compatibleModels.length) return;
+            variant?.is_active !== false &&
 
-    if (event.key === "Enter" || event.key === " ") {
 
-      event.preventDefault();
 
-      if (!isModelSelectOpen) {
+            variant?.device_model_name &&
 
-        openModelSelect();
 
-        return;
 
-      }
+            (!selectedColor?.id ||
 
-      handleModelSelect(compatibleModels[activeModelIndex] ?? compatibleModels[0]);
 
-      return;
 
-    }
+              String(variant?.color_id ?? "") === String(selectedColor.id)),
 
-    if (event.key === "ArrowDown") {
 
-      event.preventDefault();
 
-      if (!isModelSelectOpen) {
+        )
 
-        openModelSelect();
 
-        return;
 
-      }
+        .map((variant: any) =>
 
-      setActiveModelIndex((index) =>
 
-        Math.min(index + 1, compatibleModels.length - 1),
 
-      );
+          String(variant.device_model_name).trim(),
 
-      return;
 
-    }
 
-    if (event.key === "ArrowUp") {
+        )
 
-      event.preventDefault();
 
-      if (!isModelSelectOpen) {
 
-        openModelSelect();
+        .filter(Boolean),
 
-        return;
 
-      }
 
-      setActiveModelIndex((index) => Math.max(index - 1, 0));
+    ),
 
-      return;
 
-    }
 
-    if (event.key === "Home") {
+  );
 
-      event.preventDefault();
 
-      setActiveModelIndex(0);
 
-      return;
+  useEffect(() => {
 
-    }
 
-    if (event.key === "End") {
 
-      event.preventDefault();
+    if (!isModelSelectOpen) return;
 
-      setActiveModelIndex(compatibleModels.length - 1);
 
-    }
 
-  };
+    function handlePointerDown(event: PointerEvent) {
 
-  const specs = (product.product_specifications ?? [])
 
-    .slice()
 
-    .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
+      const target = event.target as Node;
 
-  const usps = (product.product_usps ?? [])
 
-    .slice()
 
-    .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+      if (!modelSelectRef.current?.contains(target)) {
 
-    .slice(0, 4);
 
-  const faqItems = [
 
-    {
+        setIsModelSelectOpen(false);
 
-      question: "Tech specs",
 
-      type: "specs",
 
-    },
+      }
 
-    {
 
-      question: "FAQs",
 
-      type: "faq",
+    }
 
-    },
 
-    {
 
-      question: "How to use",
+    function handleKeyDown(event: KeyboardEvent) {
 
-      type: "howto",
 
-      answer:
 
-        "Follow the product-specific instructions provided with your item. Make sure the product is correctly fitted or connected before use.",
+      if (event.key === "Escape") {
 
-    },
 
-  ];
 
-  const productFaqs = (product.product_faqs ?? [])
+        setIsModelSelectOpen(false);
 
-    .filter((faq: any) => faq?.is_visible !== false)
 
-    .slice()
 
-    .sort(
+      }
 
-      (a: any, b: any) =>
 
-        Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
 
-    );
+    }
 
-  function addToCart() {
 
-    if (!inStock) {
 
-      toast.error("This product is currently out of stock");
+    document.addEventListener("pointerdown", handlePointerDown);
 
-      return;
 
-    }
 
-    const image =
+    document.addEventListener("keydown", handleKeyDown);
 
-      activeImage ||
 
-      product.image_url ||
 
-      productImages[0]?.image_url ||
+    return () => {
 
-      null;
 
-    cart.add(
 
-      {
+      document.removeEventListener("pointerdown", handlePointerDown);
 
-        id: product.id,
 
-        slug: product.slug,
 
-        name: product.name,
+      document.removeEventListener("keydown", handleKeyDown);
 
-        price,
 
-        image,
 
-        productColorId: selectedColor?.id,
+    };
 
-        colorName: selectedColor?.name,
 
-        colorHex: selectedColor?.hex,
 
-      },
+  }, [isModelSelectOpen]);
 
-      quantity,
 
-    );
 
-    toast.success("Added to cart");
+  const selectedModelIndex = Math.max(
 
-  }
 
-  function buyNow() {
 
-  if (!inStock) {
+    0,
 
-    toast.error("This product is currently out of stock");
 
-    return;
 
-  }
+    compatibleModels.findIndex((model) => model === selectedModel),
 
-  addToCart();
 
-  window.dispatchEvent(new Event("infibetter:open-cart"));
+
+  );
+
+
+
+  const openModelSelect = () => {
+
+
+
+    const nextIndex = selectedModelIndex >= 0 ? selectedModelIndex : 0;
+
+
+
+    setActiveModelIndex(nextIndex);
+
+
+
+    setIsModelSelectOpen(true);
+
+
+
+  };
+
+
+
+  const closeModelSelect = () => {
+
+
+
+    setIsModelSelectOpen(false);
+
+
+
+  };
+
+
+
+  const handleModelSelect = (model: string) => {
+
+
+
+    setSelectedModel(model);
+
+
+
+    closeModelSelect();
+
+
+
+  };
+
+
+
+  const handleModelKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+
+
+
+    if (!compatibleModels.length) return;
+
+
+
+    if (event.key === "Enter" || event.key === " ") {
+
+
+
+      event.preventDefault();
+
+
+
+      if (!isModelSelectOpen) {
+
+
+
+        openModelSelect();
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      handleModelSelect(compatibleModels[activeModelIndex] ?? compatibleModels[0]);
+
+
+
+      return;
+
+
+
+    }
+
+
+
+    if (event.key === "ArrowDown") {
+
+
+
+      event.preventDefault();
+
+
+
+      if (!isModelSelectOpen) {
+
+
+
+        openModelSelect();
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      setActiveModelIndex((index) =>
+
+
+
+        Math.min(index + 1, compatibleModels.length - 1),
+
+
+
+      );
+
+
+
+      return;
+
+
+
+    }
+
+
+
+    if (event.key === "ArrowUp") {
+
+
+
+      event.preventDefault();
+
+
+
+      if (!isModelSelectOpen) {
+
+
+
+        openModelSelect();
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      setActiveModelIndex((index) => Math.max(index - 1, 0));
+
+
+
+      return;
+
+
+
+    }
+
+
+
+    if (event.key === "Home") {
+
+
+
+      event.preventDefault();
+
+
+
+      setActiveModelIndex(0);
+
+
+
+      return;
+
+
+
+    }
+
+
+
+    if (event.key === "End") {
+
+
+
+      event.preventDefault();
+
+
+
+      setActiveModelIndex(compatibleModels.length - 1);
+
+
+
+    }
+
+
+
+  };
+
+
+
+  const specs = (product.product_specifications ?? [])
+
+
+
+    .slice()
+
+
+
+    .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
+
+
+
+  const usps = (product.product_usps ?? [])
+
+
+
+    .slice()
+
+
+
+    .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+
+
+
+    .slice(0, 4);
+
+
+
+  const faqItems = [
+
+
+
+    {
+
+
+
+      question: "Tech specs",
+
+
+
+      type: "specs",
+
+
+
+    },
+
+
+
+    {
+
+
+
+      question: "FAQs",
+
+
+
+      type: "faq",
+
+
+
+    },
+
+
+
+    {
+
+
+
+      question: "How to use",
+
+
+
+      type: "howto",
+
+
+
+      answer:
+
+
+
+        "Please follow the instructions included with the product. If instructions are not provided, contact our support team before use.",
+
+
+
+    },
+
+
+
+  ];
+
+
+
+  const productFaqs = (product.product_faqs ?? [])
+
+
+
+    .filter((faq: any) => faq?.is_visible !== false)
+
+
+
+    .slice()
+
+
+
+    .sort(
+
+
+
+      (a: any, b: any) =>
+
+
+
+        Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
+
+
+
+    );
+
+
+
+  function addToCart() {
+
+
+
+    if (!inStock) {
+
+
+
+      toast.error("This product is currently out of stock");
+
+
+
+      return;
+
+
+
+    }
+
+
+
+    const image =
+
+
+
+      activeImage ||
+
+
+
+      product.image_url ||
+
+
+
+      productImages[0]?.image_url ||
+
+
+
+      null;
+
+
+
+    cart.add(
+
+
+
+      {
+
+
+
+        id: product.id,
+
+
+
+        slug: product.slug,
+
+
+
+        name: product.name,
+
+
+
+        price,
+
+
+
+        image,
+
+
+
+        productColorId: selectedColor?.id,
+
+
+
+        colorName: selectedColor?.name,
+
+
+
+        colorHex: selectedColor?.hex,
+
+
+
+      },
+
+
+
+      quantity,
+
+
+
+    );
+
+
+
+    toast.success("Added to cart");
+
+
+
+  }
+
+
+
+  function buyNow() {
+
+
+
+  if (!inStock) {
+
+
+
+    toast.error("This product is currently out of stock");
+
+
+
+    return;
+
+
+
+  }
+
+
+
+  addToCart();
+
+
+
+  window.dispatchEvent(new Event("infibetter:open-cart"));
+
+
 
 }
 
-  function changeImage(direction: "next" | "prev") {
 
-    if (productImages.length < 2) return;
 
-    const currentIndex = Math.max(
+  function changeImage(direction: "next" | "prev") {
 
-      0,
 
-      productImages.findIndex((item: any) => item.image_url === activeImage),
 
-    );
+    if (productImages.length < 2) return;
 
-    const nextIndex =
 
-      direction === "next"
 
-        ? (currentIndex + 1) % productImages.length
+    const currentIndex = Math.max(
 
-        : (currentIndex - 1 + productImages.length) % productImages.length;
 
-    setSelectedImage(productImages[nextIndex].image_url);
 
-  }
+      0,
 
-  return (
 
-    <main className="min-h-screen bg-white text-[#1D1D1F]">
 
-      {/* Breadcrumb */}
+      productImages.findIndex((item: any) => item.image_url === activeImage),
 
-      <div className="mx-auto max-w-[1240px] px-5 pb-4 pt-5 md:px-8 lg:pt-7">
 
-        <nav className="flex items-center gap-2 overflow-hidden text-[12px] text-[#6E6E73]">
 
-          <Link to="/" className="shrink-0 hover:text-[#1D1D1F]">
+    );
 
-            Home
 
-          </Link>
 
-          <span>/</span>
+    const nextIndex =
 
-          <Link to="/shop" className="shrink-0 hover:text-[#1D1D1F]">
 
-            Shop
 
-          </Link>
+      direction === "next"
 
-          <span>/</span>
 
-          <span className="truncate text-[#1D1D1F]">{product.name}</span>
 
-        </nav>
+        ? (currentIndex + 1) % productImages.length
 
-      </div>
 
-      {/* Product hero */}
 
-      <section className="mx-auto max-w-[1240px] px-5 pb-12 md:px-8 lg:pb-16">
+        : (currentIndex - 1 + productImages.length) % productImages.length;
 
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)] lg:gap-12 xl:gap-16">
 
-          {/* Gallery */}
 
-          <div className="min-w-0">
+    setSelectedImage(productImages[nextIndex].image_url);
 
-            <div className="relative w-full overflow-hidden rounded-[26px] bg-white">
 
-              <div className="aspect-square w-full">
 
-                {activeImage ? (
-                  isActiveVideo ? (
-                    <video
-                      key={activeImage}
-                      src={activeImage}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      aria-label={`${product.name} video`}
-                      className="h-full w-full bg-white object-contain"
-                    />
-                  ) : (
-                    <img
-                      src={getImageUrl(activeImage, "large") || activeImage}
-                      alt={product.name}
-                      className="h-full w-full object-contain scale-[0.78] p-0"
-                    />
-                  )
-                ) : (
+  }
 
-                  <div className="flex h-full items-center justify-center text-sm text-[#86868B]">
 
-                    No image available
 
-                  </div>
+  return (
 
-                )}
 
-              </div>
 
-              {productImages.length > 1 && (
+    <main className="min-h-screen bg-white text-[#1D1D1F]">
 
-                <>
 
-                  <button
 
-                    type="button"
+      {/* Breadcrumb */}
 
-                    onClick={() => changeImage("prev")}
 
-                    aria-label="Previous image"
 
-                    className="absolute left-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1D1D1F] shadow-sm backdrop-blur transition hover:bg-white"
+      <div className="mx-auto max-w-[1240px] px-5 pb-4 pt-5 md:px-8 lg:pt-7">
 
-                  >
 
-                    <ChevronLeft size={17} />
 
-                  </button>
+        <nav className="flex items-center gap-2 overflow-hidden text-[12px] text-[#6E6E73]">
 
-                  <button
 
-                    type="button"
 
-                    onClick={() => changeImage("next")}
+          <Link to="/" className="shrink-0 hover:text-[#1D1D1F]">
 
-                    aria-label="Next image"
 
-                    className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1D1D1F] shadow-sm backdrop-blur transition hover:bg-white"
 
-                  >
+            Home
 
-                    <ChevronRight size={17} />
 
-                  </button>
 
-                </>
+          </Link>
 
-              )}
 
-            </div>
 
-            {productImages.length > 1 && (
+          <span>/</span>
 
-              <div className="mt-3 flex flex-wrap items-end gap-2 pb-1">
 
-                {productImages.map((image: any, index: number) => {
 
-                  const isActive = activeImage === image.image_url;
+          <Link to="/shop" className="shrink-0 hover:text-[#1D1D1F]">
 
-                  return (
 
-                    <button
 
-                      key={`${image.id ?? index}-${image.image_url}`}
+            Shop
 
-                      type="button"
 
-                      onClick={() => setSelectedImage(image.image_url)}
 
-                      aria-label={`View image ${index + 1}`}
+          </Link>
 
-                      aria-current={isActive ? "true" : undefined}
 
-                      className={`group relative h-[56px] w-[56px] shrink-0 overflow-visible bg-transparent p-0 transition-all duration-200 ease-out focus-visible:outline-none ${
 
-                        isActive
+          <span>/</span>
 
-                          ? "scale-[1.06] opacity-100"
 
-                          : "opacity-65 hover:scale-[1.05] hover:opacity-100"
 
-                      }`}
+          <span className="truncate text-[#1D1D1F]">{product.name}</span>
 
-                    >
 
-                      {image?.image_type === "video" ||
-                      /\.(mp4|webm)(?:$|[?#])/i.test(image.image_url) ? (
-                        <span className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[#F5F5F7]">
-                          <video
-                            src={image.image_url}
-                            preload="metadata"
-                            muted
-                            playsInline
-                            aria-hidden="true"
-                            className="h-full w-full object-contain"
-                          />
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/[0.08]">
-                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[#1D1D1F] shadow-sm">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            </span>
-                          </span>
-                        </span>
-                      ) : (
-                        <img
-                          src={getImageUrl(image.image_url, "thumb") || image.image_url}
-                          alt={`${product.name} ${index + 1}`}
-                          className="h-full w-full object-contain bg-transparent p-0 transition-transform duration-200 ease-out group-hover:scale-[1.03]"
-                        />
-                      )}
 
-                      {isActive && (
+        </nav>
 
-                        <span
 
-                          aria-hidden="true"
 
-                          className="absolute -bottom-[5px] left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-[#0071E3]"
+      </div>
 
-                        />
 
-                      )}
 
-                    </button>
+      {/* Product hero */}
 
-                  );
 
-                })}
 
-              </div>
+      <section className="mx-auto max-w-[1240px] px-5 pb-12 md:px-8 lg:pb-16">
 
-            )}
 
-          </div>
 
-          {/* Product information */}
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)] lg:gap-12 xl:gap-16">
 
-          <aside className="min-w-0 lg:sticky lg:top-24">
 
-            <div className="max-w-[520px]">
 
-              <div className="mb-4 flex items-center gap-2 text-[11px] text-[#6E6E73]">
+          {/* Gallery */}
 
-                <span
 
-                  className={`h-1.5 w-1.5 rounded-full ${
 
-                    inStock ? "bg-[#34C759]" : "bg-[#FF3B30]"
+          <div className="min-w-0">
 
-                  }`}
 
-                />
 
-                {inStock ? "In stock" : "Out of stock"}
+            <div className="relative w-full overflow-hidden rounded-[26px] bg-white">
 
-              </div>
 
-              <h1 className="text-[32px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[36px] lg:text-[38px]">
 
-                {product.name}
+              <div className="aspect-square w-full">
 
-              </h1>
 
-              {product.short_description && (
 
-                <p className="mt-4 max-w-[480px] text-[15px] leading-6 text-[#6E6E73]">
+                {activeImage ? (
 
-                  {product.short_description}
+                  isActiveVideo ? (
 
-                </p>
+                    <video
 
-              )}
+                      key={activeImage}
 
-              <div className="mt-6">
+                      src={activeImage}
 
-                <div className="flex flex-wrap items-baseline gap-3">
+                      controls
 
-                  <span className="text-[28px] font-semibold tracking-[-0.025em]">
+                      playsInline
 
-                    {formatProductPrice(price, safeCurrency)}
+                      preload="metadata"
 
-                  </span>
+                      aria-label={`${product.name} video`}
 
-                  {hasDiscount && (
+                      className="h-full w-full bg-white object-contain"
 
-                    <>
+                    />
 
-                      <span className="text-[14px] text-[#86868B] line-through">
+                  ) : (
 
-                        {formatProductPrice(comparePrice, safeCurrency)}
+                    <img
 
-                      </span>
+                      src={getImageUrl(activeImage, "large") || activeImage}
 
-                      <span className="text-[12px] font-medium text-[#6E6E73]">
+                      alt={product.name}
 
-                        -{discountPercent}%
+                      className="h-full w-full object-contain scale-[0.78] p-0"
 
-                      </span>
+                    />
 
-                    </>
+                  )
 
-                  )}
+                ) : (
 
-                </div>
 
-                <p className="mt-1 text-[12px] text-[#86868B]">
 
-                  Price includes VAT where applicable.
+                  <div className="flex h-full items-center justify-center text-sm text-[#86868B]">
 
-                </p>
 
-              </div>
 
-              {/* Color */}
+                    No image available
 
-              {product.product_colors?.length > 0 && (
 
-                <div className="mt-8 pt-1">
 
-                  <div className="flex items-center justify-between">
+                  </div>
 
-                    <span className="text-[13px] font-semibold">
 
-                      Color
 
-                    </span>
+                )}
 
-                    <span className="text-[12px] text-[#6E6E73]">
 
-                      {selectedColor?.name || "Select color"}
 
-                    </span>
+              </div>
 
-                  </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2.5">
 
-                    {product.product_colors.map((color: any) => (
+              {productImages.length > 1 && (
 
-                      <button
 
-                        key={color.id}
 
-                        type="button"
+                <>
 
-                        title={color.name}
 
-                        onClick={() => handleColorChange(color)}
 
-                        className={`h-9 w-9 rounded-full border-2 p-[2px] transition ${
+                  <button
 
-                          selectedColor?.id === color.id
 
-                            ? "border-[#1D1D1F]"
 
-                            : "border-transparent"
+                    type="button"
 
-                        }`}
 
-                      >
 
-                        <span
+                    onClick={() => changeImage("prev")}
 
-                          className="block h-full w-full rounded-full border border-black/10"
 
-                          style={{ backgroundColor: color.hex || "#D2D2D7" }}
 
-                        />
+                    aria-label="Previous image"
 
-                      </button>
 
-                    ))}
 
-                  </div>
+                    className="absolute left-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1D1D1F] shadow-sm backdrop-blur transition hover:bg-white"
 
-                </div>
 
-              )}
 
-              {/* Compatible device models */}
+                  >
 
-              {compatibleModels.length > 0 && (
 
-                <div className="mt-6 pt-0">
 
-                  <label
+                    <ChevronLeft size={17} />
 
-                    htmlFor="compatible-model-select"
 
-                    className="mb-2 block text-[14px] font-semibold leading-5 text-[#222222]"
 
-                  >
+                  </button>
 
-                    Compatible model
 
-                  </label>
 
-                  <div
+                  <button
 
-                    ref={modelSelectRef}
 
-                    className="relative w-full"
 
-                  >
+                    type="button"
 
-                    <button
 
-                      id="compatible-model-select"
 
-                      type="button"
+                    onClick={() => changeImage("next")}
 
-                      aria-haspopup="listbox"
 
-                      aria-expanded={isModelSelectOpen}
 
-                      aria-controls="compatible-model-options"
+                    aria-label="Next image"
 
-                      onClick={() => {
 
-                        if (isModelSelectOpen) {
 
-                          closeModelSelect();
+                    className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1D1D1F] shadow-sm backdrop-blur transition hover:bg-white"
 
-                        } else {
 
-                          openModelSelect();
 
-                        }
+                  >
 
-                      }}
 
-                      onKeyDown={handleModelKeyDown}
 
-                      className={`flex h-12 w-full items-center justify-between gap-3 rounded-[10px] border bg-white px-3.5 text-left text-[13px] font-medium text-[#222222] outline-none transition-colors duration-150 touch-manipulation sm:h-[46px] sm:px-3.5 ${
+                    <ChevronRight size={17} />
 
-                        isModelSelectOpen
 
-                          ? "border-[#B8B8B8] ring-2 ring-[#111111]/[0.05]"
 
-                          : "border-[#E2E2E2] hover:border-[#B8B8B8]"
+                  </button>
 
-                      } focus-visible:border-[#111111] focus-visible:ring-2 focus-visible:ring-[#111111]/10`}
 
-                    >
 
-                      <span className="min-w-0 flex-1 truncate">
+                </>
 
-                        {selectedModel || "Select model"}
 
-                      </span>
 
-                      <ChevronDown
+              )}
 
-                        size={16}
 
-                        strokeWidth={1.9}
 
-                        className={`shrink-0 text-[#666666] transition-transform duration-150 ${
+            </div>
 
-                          isModelSelectOpen ? "rotate-180" : ""
 
-                        }`}
 
-                        aria-hidden="true"
+            {productImages.length > 1 && (
 
-                      />
 
-                    </button>
 
-                    {isModelSelectOpen && (
+              <div className="mt-3 flex flex-wrap items-end gap-2 pb-1">
 
-                      <div
 
-                        id="compatible-model-options"
 
-                        role="listbox"
+                {productImages.map((image: any, index: number) => {
 
-                        aria-label="Compatible models"
 
-                        className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[280px] overflow-y-auto overscroll-contain rounded-[10px] border border-[#E2E2E2] bg-white p-1.5 shadow-[0_6px_18px_rgba(0,0,0,0.07)]"
 
-                      >
+                  const isActive = activeImage === image.image_url;
 
-                        {compatibleModels.map((model, index) => {
 
-                          const isSelected = selectedModel === model;
 
-                          const isActive = activeModelIndex === index;
+                  return (
 
-                          return (
 
-                            <button
 
-                              key={model}
+                    <button
 
-                              type="button"
 
-                              role="option"
 
-                              aria-selected={isSelected}
+                      key={`${image.id ?? index}-${image.image_url}`}
 
-                              onMouseEnter={() => setActiveModelIndex(index)}
 
-                              onClick={() => handleModelSelect(model)}
 
-                              className={`flex min-h-[44px] w-full items-center justify-between gap-3 rounded-[7px] px-3 py-2 text-left text-[13px] leading-5 transition-colors duration-100 touch-manipulation sm:min-h-[42px] sm:text-[14px] ${
+                      type="button"
 
-                                isSelected
 
-                                  ? "bg-[#F7F7F7] font-semibold text-[#222222]"
 
-                                  : isActive
+                      onClick={() => setSelectedImage(image.image_url)}
 
-                                    ? "bg-[#F7F7F7] text-[#222222]"
 
-                                    : "text-[#222222] hover:bg-[#F7F7F7]"
 
-                              }`}
+                      aria-label={`View image ${index + 1}`}
 
-                            >
 
-                              <span className="min-w-0 flex-1 truncate">
 
-                                {model}
+                      aria-current={isActive ? "true" : undefined}
 
-                              </span>
 
-                              {isSelected && (
 
-                                <Check
+                      className={`group relative h-[56px] w-[56px] shrink-0 overflow-visible bg-transparent p-0 transition-all duration-200 ease-out focus-visible:outline-none ${
 
-                                  size={15}
 
-                                  strokeWidth={2}
 
-                                  className="shrink-0 text-[#111111]"
+                        isActive
 
-                                  aria-hidden="true"
 
-                                />
 
-                              )}
+                          ? "scale-[1.06] opacity-100"
 
-                            </button>
 
-                          );
 
-                        })}
+                          : "opacity-65 hover:scale-[1.05] hover:opacity-100"
 
-                      </div>
 
-                    )}
 
-                  </div>
+                      }`}
 
-                </div>
 
-              )}
 
-              {/* Quantity + CTA */}
+                    >
 
-              <div className="mt-8 pt-1">
 
-                <div className="flex items-center justify-between">
 
-                  <span className="text-[13px] font-semibold">Quantity</span>
+                      {image?.image_type === "video" ||
 
-                  <div className="flex h-10 items-center rounded-[12px] border border-[#D2D2D7] bg-white">
+                      /\.(mp4|webm)(?:$|[?#])/i.test(image.image_url) ? (
 
-                    <button
+                        <span className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[#F5F5F7]">
 
-                      type="button"
+                          <video
 
-                      onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+                            src={image.image_url}
 
-                      className="flex h-10 w-10 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
+                            preload="metadata"
 
-                    >
+                            muted
 
-                      <Minus size={14} />
+                            playsInline
 
-                    </button>
+                            aria-hidden="true"
 
-                    <span className="w-8 text-center text-[13px] font-medium">
+                            className="h-full w-full object-contain"
 
-                      {quantity}
+                          />
 
-                    </span>
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/[0.08]">
 
-                    <button
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[#1D1D1F] shadow-sm">
 
-                      type="button"
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 
-                      onClick={() =>
+                                <path d="M8 5v14l11-7z" />
 
-                        setQuantity((value) =>
+                              </svg>
 
-                          Math.min(Math.max(1, Number(product.stock ?? 1)), value + 1),
+                            </span>
 
-                        )
+                          </span>
 
-                      }
+                        </span>
 
-                      className="flex h-10 w-10 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
+                      ) : (
 
-                    >
+                        <img
 
-                      <Plus size={14} />
+                          src={getImageUrl(image.image_url, "thumb") || image.image_url}
 
-                    </button>
+                          alt={`${product.name} ${index + 1}`}
 
-                  </div>
+                          className="h-full w-full object-contain bg-transparent p-0 transition-transform duration-200 ease-out group-hover:scale-[1.03]"
 
-                </div>
+                        />
 
-                <button
+                      )}
 
-                  type="button"
 
-                  onClick={addToCart}
 
-                  disabled={!inStock}
+                      {isActive && (
 
-                  className="mt-4 flex h-[50px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#0071E3] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0077ED] disabled:cursor-not-allowed disabled:bg-[#D2D2D7]"
 
-                >
 
-                  <ShoppingBag size={16} />
+                        <span
 
-                  Add to cart
 
-                </button>
 
-                <button
+                          aria-hidden="true"
 
-                  type="button"
 
-                  onClick={buyNow}
 
-                  disabled={!inStock}
+                          className="absolute -bottom-[5px] left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-[#0071E3]"
 
-                  className="mt-2 flex h-[46px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#FFC439] px-6 text-[14px] font-semibold text-[#003087] transition hover:bg-[#F7B928] disabled:cursor-not-allowed disabled:opacity-50"
 
-                  aria-label="Pay with PayPal"
 
-                >
+                        />
 
-                  <span className="font-bold tracking-[-0.04em]">PayPal</span>
 
-                </button>
 
-              </div>
+                      )}
 
-              {/* Extra-compact Trust Features */}
-              <div className="mx-auto mt-2 w-full max-w-[680px] overflow-hidden rounded-xl border border-[#E8E8EA] bg-white shadow-[0_5px_16px_rgba(15,23,42,0.09)]">
-                <div className="grid grid-cols-2 divide-x divide-y divide-[#E9EAEC] md:grid-cols-4 md:divide-y-0">
-                  {[
-                    {
-                      icon: ShieldCheck,
-                      title: "Secure checkout",
-                      description: "Protected payments",
-                    },
-                    {
-                      icon: Truck,
-                      title: "Tracked shipping",
-                      description: "Track every order",
-                    },
-                    {
-                      icon: RotateCcw,
-                      title: "Easy returns",
-                      description: "Hassle-free returns",
-                    },
-                    {
-                      icon: Check,
-                      title: "Built for everyday",
-                      description: "Made for your setup",
-                    },
-                  ].map(({ icon: Icon, title, description }) => (
-                    <div
-                      key={title}
-                      className="flex min-w-0 flex-col items-center justify-center px-1.5 py-2 text-center sm:px-2 sm:py-2.5"
-                    >
-                      <span className="mb-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#F4F5F6] text-[#5B6068] sm:h-6 sm:w-6">
-                        <Icon size={11} strokeWidth={1.7} />
-                      </span>
-                      <span className="text-[9px] font-semibold leading-3 text-[#30343B] sm:text-[10px] sm:leading-[13px]">
-                        {title}
-                      </span>
-                      <span className="mt-0.5 max-w-[120px] text-[8px] leading-[11px] text-[#858A93] sm:text-[9px] sm:leading-3">
-                        {description}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Description */}
 
-              {product.description && (
+                    </button>
 
-                <div className="mt-7 border-b border-[#D2D2D7] pb-5">
 
-                  <button
 
-                    type="button"
+                  );
 
-                    onClick={() => setOpenSpecs((value) => !value)}
 
-                    className="flex w-full items-center justify-between text-left"
 
-                  >
+                })}
 
-                    <span className="text-[14px] font-semibold">
 
-                      Product description
 
-                    </span>
+              </div>
 
-                    <ChevronDown
 
-                      size={17}
 
-                      className={`transition-transform ${
+            )}
 
-                        openSpecs ? "rotate-180" : ""
 
-                      }`}
 
-                    />
+          </div>
 
-                  </button>
 
-                  {openSpecs && (
 
-                    <div
+          {/* Product information */}
 
-                      className="prose prose-sm mt-4 max-w-none text-[13px] leading-6 text-[#6E6E73]"
 
-                      dangerouslySetInnerHTML={{ __html: product.description }}
 
-                    />
+          <aside className="min-w-0 lg:sticky lg:top-24">
 
-                  )}
 
-                </div>
 
-              )}
+            <div className="max-w-[520px]">
 
-            </div>
 
-          </aside>
 
-        </div>
+              <div className="mb-4 flex items-center gap-2 text-[11px] text-[#6E6E73]">
 
-      </section>
 
-      {/* Product USPs */}
 
-      {usps.length > 0 && (
+                <span
 
-        <section className="border-y border-[#D2D2D7] bg-[#F5F5F7]">
 
-          <div className="mx-auto grid max-w-[1240px] grid-cols-2 px-5 md:grid-cols-4 md:px-8">
 
-            {usps.map((item: any) => (
+                  className={`h-1.5 w-1.5 rounded-full ${
 
-              <div
 
-                key={item.id}
 
-                className="border-b border-[#D2D2D7] px-4 py-6 text-center md:border-b-0 md:border-r md:last:border-r-0"
+                    inStock ? "bg-[#34C759]" : "bg-[#FF3B30]"
 
-              >
 
-                <p className="text-[13px] font-semibold text-[#1D1D1F]">
 
-                  {item.title}
+                  }`}
 
-                </p>
 
-              </div>
 
-            ))}
+                />
 
-          </div>
 
-        </section>
 
-      )}
+                {inStock ? "In stock" : "Out of stock"}
 
-            {/* Product video carousel — displayed above Lifestyle */}
-      {productVideos.length > 0 && (
-        <section className="bg-white">
-          <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
-            <div className="mb-6 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
-                  WATCH
-                </p>
-                <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[#1D1D1F] sm:text-[28px]">
-                  Product videos
-                </h2>
-                <p className="mt-2 text-[13px] text-[#6E6E73]">
-                  See the details in motion.
-                </p>
-              </div>
-              {productVideos.length > 1 && (
-                <div className="hidden shrink-0 gap-2 sm:flex">
-                  <button type="button" onClick={() => videoCarouselRef.current?.scrollBy({ left: -360, behavior: "smooth" })} aria-label="Scroll videos left" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D2D2D7] bg-white text-[#1D1D1F] transition hover:bg-[#F5F5F7]">
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button type="button" onClick={() => videoCarouselRef.current?.scrollBy({ left: 360, behavior: "smooth" })} aria-label="Scroll videos right" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D2D2D7] bg-white text-[#1D1D1F] transition hover:bg-[#F5F5F7]">
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
-              )}
-            </div>
-            <div ref={videoCarouselRef} className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Product videos">
-              {productVideos.map((video: any, index: number) => (
-                <article key={`${video.id ?? index}-${video.image_url}`} className="w-[78vw] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[16px] bg-[#F5F5F7] ring-1 ring-black/[0.06] sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]">
-                  <div className="relative aspect-[4/5] overflow-hidden bg-[#E8E8EA]">
-                    <video
-                      src={video.image_url}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      preload="auto"
-                      aria-label={`${product.name} product video ${index + 1}`}
-                      className="h-full w-full object-cover"
+
+
+              </div>
+
+
+
+              <h1 className="text-[32px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[36px] lg:text-[38px]">
+
+
+
+                {product.name}
+
+
+
+              </h1>
+
+
+
+              {product.short_description && (
+
+
+
+                <p className="mt-4 max-w-[480px] text-[15px] leading-6 text-[#6E6E73]">
+
+
+
+                  {product.short_description}
+
+
+
+                </p>
+
+
+
+              )}
+
+
+
+              <div className="mt-6">
+
+
+
+                <div className="flex flex-wrap items-baseline gap-3">
+
+
+
+                  <span className="text-[28px] font-semibold tracking-[-0.025em]">
+
+
+
+                    {formatProductPrice(price, safeCurrency)}
+
+
+
+                  </span>
+
+
+
+                  {hasDiscount && (
+
+
+
+                    <>
+
+
+
+                      <span className="text-[14px] text-[#86868B] line-through">
+
+
+
+                        {formatProductPrice(comparePrice, safeCurrency)}
+
+
+
+                      </span>
+
+
+
+                      <span className="text-[12px] font-medium text-[#6E6E73]">
+
+
+
+                        -{discountPercent}%
+
+
+
+                      </span>
+
+
+
+                    </>
+
+
+
+                  )}
+
+
+
+                </div>
+
+
+
+                <p className="mt-1 text-[12px] text-[#86868B]">
+
+
+
+                  Price includes VAT where applicable.
+
+
+
+                </p>
+
+
+
+              </div>
+
+
+
+              {/* Color */}
+
+
+
+              {product.product_colors?.length > 0 && (
+
+
+
+                <div className="mt-8 pt-1">
+
+
+
+                  <div className="flex items-center justify-between">
+
+
+
+                    <span className="text-[13px] font-semibold">
+
+
+
+                      Color
+
+
+
+                    </span>
+
+
+
+                    <span className="text-[12px] text-[#6E6E73]">
+
+
+
+                      {selectedColor?.name || "Select color"}
+
+
+
+                    </span>
+
+
+
+                  </div>
+
+
+
+                  <div className="mt-3 flex flex-wrap gap-2.5">
+
+
+
+                    {product.product_colors.map((color: any) => (
+
+
+
+                      <button
+
+
+
+                        key={color.id}
+
+
+
+                        type="button"
+
+
+
+                        title={color.name}
+
+
+
+                        onClick={() => handleColorChange(color)}
+
+
+
+                        className={`h-9 w-9 rounded-full border-2 p-[2px] transition ${
+
+
+
+                          selectedColor?.id === color.id
+
+
+
+                            ? "border-[#1D1D1F]"
+
+
+
+                            : "border-transparent"
+
+
+
+                        }`}
+
+
+
+                      >
+
+
+
+                        <span
+
+
+
+                          className="block h-full w-full rounded-full border border-black/10"
+
+
+
+                          style={{ backgroundColor: color.hex || "#D2D2D7" }}
+
+
+
+                        />
+
+
+
+                      </button>
+
+
+
+                    ))}
+
+
+
+                  </div>
+
+
+
+                </div>
+
+
+
+              )}
+
+
+
+              {/* Compatible device models */}
+
+
+
+              {compatibleModels.length > 0 && (
+
+
+
+                <div className="mt-6 pt-0">
+
+
+
+                  <label
+
+
+
+                    htmlFor="compatible-model-select"
+
+
+
+                    className="mb-2 block text-[14px] font-semibold leading-5 text-[#222222]"
+
+
+
+                  >
+
+
+
+                    Compatible model
+
+
+
+                  </label>
+
+
+
+                  <div
+
+
+
+                    ref={modelSelectRef}
+
+
+
+                    className="relative w-full"
+
+
+
+                  >
+
+
+
+                    <button
+
+
+
+                      id="compatible-model-select"
+
+
+
+                      type="button"
+
+
+
+                      aria-haspopup="listbox"
+
+
+
+                      aria-expanded={isModelSelectOpen}
+
+
+
+                      aria-controls="compatible-model-options"
+
+
+
+                      onClick={() => {
+
+
+
+                        if (isModelSelectOpen) {
+
+
+
+                          closeModelSelect();
+
+
+
+                        } else {
+
+
+
+                          openModelSelect();
+
+
+
+                        }
+
+
+
+                      }}
+
+
+
+                      onKeyDown={handleModelKeyDown}
+
+
+
+                      className={`flex h-12 w-full items-center justify-between gap-3 rounded-[10px] border bg-white px-3.5 text-left text-[13px] font-medium text-[#222222] outline-none transition-colors duration-150 touch-manipulation sm:h-[46px] sm:px-3.5 ${
+
+
+
+                        isModelSelectOpen
+
+
+
+                          ? "border-[#B8B8B8] ring-2 ring-[#111111]/[0.05]"
+
+
+
+                          : "border-[#E2E2E2] hover:border-[#B8B8B8]"
+
+
+
+                      } focus-visible:border-[#111111] focus-visible:ring-2 focus-visible:ring-[#111111]/10`}
+
+
+
+                    >
+
+
+
+                      <span className="min-w-0 flex-1 truncate">
+
+
+
+                        {selectedModel || "Select model"}
+
+
+
+                      </span>
+
+
+
+                      <ChevronDown
+
+
+
+                        size={16}
+
+
+
+                        strokeWidth={1.9}
+
+
+
+                        className={`shrink-0 text-[#666666] transition-transform duration-150 ${
+
+
+
+                          isModelSelectOpen ? "rotate-180" : ""
+
+
+
+                        }`}
+
+
+
+                        aria-hidden="true"
+
+
+
+                      />
+
+
+
+                    </button>
+
+
+
+                    {isModelSelectOpen && (
+
+
+
+                      <div
+
+
+
+                        id="compatible-model-options"
+
+
+
+                        role="listbox"
+
+
+
+                        aria-label="Compatible models"
+
+
+
+                        className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[280px] overflow-y-auto overscroll-contain rounded-[10px] border border-[#E2E2E2] bg-white p-1.5 shadow-[0_6px_18px_rgba(0,0,0,0.07)]"
+
+
+
+                      >
+
+
+
+                        {compatibleModels.map((model, index) => {
+
+
+
+                          const isSelected = selectedModel === model;
+
+
+
+                          const isActive = activeModelIndex === index;
+
+
+
+                          return (
+
+
+
+                            <button
+
+
+
+                              key={model}
+
+
+
+                              type="button"
+
+
+
+                              role="option"
+
+
+
+                              aria-selected={isSelected}
+
+
+
+                              onMouseEnter={() => setActiveModelIndex(index)}
+
+
+
+                              onClick={() => handleModelSelect(model)}
+
+
+
+                              className={`flex min-h-[44px] w-full items-center justify-between gap-3 rounded-[7px] px-3 py-2 text-left text-[13px] leading-5 transition-colors duration-100 touch-manipulation sm:min-h-[42px] sm:text-[14px] ${
+
+
+
+                                isSelected
+
+
+
+                                  ? "bg-[#F7F7F7] font-semibold text-[#222222]"
+
+
+
+                                  : isActive
+
+
+
+                                    ? "bg-[#F7F7F7] text-[#222222]"
+
+
+
+                                    : "text-[#222222] hover:bg-[#F7F7F7]"
+
+
+
+                              }`}
+
+
+
+                            >
+
+
+
+                              <span className="min-w-0 flex-1 truncate">
+
+
+
+                                {model}
+
+
+
+                              </span>
+
+
+
+                              {isSelected && (
+
+
+
+                                <Check
+
+
+
+                                  size={15}
+
+
+
+                                  strokeWidth={2}
+
+
+
+                                  className="shrink-0 text-[#111111]"
+
+
+
+                                  aria-hidden="true"
+
+
+
+                                />
+
+
+
+                              )}
+
+
+
+                            </button>
+
+
+
+                          );
+
+
+
+                        })}
+
+
+
+                      </div>
+
+
+
+                    )}
+
+
+
+                  </div>
+
+
+
+                </div>
+
+
+
+              )}
+
+
+
+              {/* Quantity + CTA */}
+
+
+
+              <div className="mt-8 pt-1">
+
+
+
+                <div className="flex items-center justify-between">
+
+
+
+                  <span className="text-[13px] font-semibold">Quantity</span>
+
+
+
+                  <div className="flex h-10 items-center rounded-[12px] border border-[#D2D2D7] bg-white">
+
+
+
+                    <button
+
+
+
+                      type="button"
+
+
+
+                      onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+
+
+
+                      className="flex h-10 w-10 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
+
+
+
+                    >
+
+
+
+                      <Minus size={14} />
+
+
+
+                    </button>
+
+
+
+                    <span className="w-8 text-center text-[13px] font-medium">
+
+
+
+                      {quantity}
+
+
+
+                    </span>
+
+
+
+                    <button
+
+
+
+                      type="button"
+
+
+
+                      onClick={() =>
+
+
+
+                        setQuantity((value) =>
+
+
+
+                          Math.min(Math.max(1, Number(product.stock ?? 1)), value + 1),
+
+
+
+                        )
+
+
+
+                      }
+
+
+
+                      className="flex h-10 w-10 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
+
+
+
+                    >
+
+
+
+                      <Plus size={14} />
+
+
+
+                    </button>
+
+
+
+                  </div>
+
+
+
+                </div>
+
+
+
+                <button
+
+
+
+                  type="button"
+
+
+
+                  onClick={addToCart}
+
+
+
+                  disabled={!inStock}
+
+
+
+                  className="mt-4 flex h-[50px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#0071E3] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0077ED] disabled:cursor-not-allowed disabled:bg-[#D2D2D7]"
+
+
+
+                >
+
+
+
+                  <ShoppingBag size={16} />
+
+
+
+                  Add to cart
+
+
+
+                </button>
+
+
+
+                <button
+
+
+
+                  type="button"
+
+
+
+                  onClick={buyNow}
+
+
+
+                  disabled={!inStock}
+
+
+
+                  className="mt-2 flex h-[46px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#FFC439] px-6 text-[14px] font-semibold text-[#003087] transition hover:bg-[#F7B928] disabled:cursor-not-allowed disabled:opacity-50"
+
+
+
+                  aria-label="Pay with PayPal"
+
+
+
+                >
+
+
+
+                  <span className="font-bold tracking-[-0.04em]">PayPal</span>
+
+
+
+                </button>
+
+
+
+              </div>
+
+
+
+              {/* Benefits / Trust Features */}
+
+
+
+<div
+
+
+
+  className="
+
+
+
+    mt-6
+
+
+
+    w-full
+
+
+
+    min-w-0
+
+
+
+    box-border
+
+
+
+    overflow-hidden
+
+
+
+    rounded-[12px]
+
+
+
+    border
+
+
+
+    border-[#E8E8EA]
+
+
+
+    bg-[#FBFBFC]
+
+
+
+    px-4
+
+
+
+    py-3.5
+
+
+
+    shadow-[0_2px_10px_rgba(0,0,0,0.035)]
+
+
+
+    sm:px-5
+
+
+
+    sm:py-4
+
+
+
+  "
+
+
+
+>
+
+
+
+  <div className="grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-3 sm:gap-x-6 sm:gap-y-3.5">
+
+
+
+    {[
+
+
+
+      { icon: Truck, text: "Tracked shipping" },
+
+
+
+      { icon: RotateCcw, text: "30-day returns" },
+
+
+
+      { icon: ShieldCheck, text: "Secure payments" },
+
+
+
+      { icon: Check, text: "Product support" },
+
+
+
+    ].map(({ icon: Icon, text }) => (
+
+
+
+      <div
+
+
+
+        key={text}
+
+
+
+        className="flex min-w-0 items-center gap-2.5"
+
+
+
+      >
+
+
+
+        <Icon
+
+
+
+          size={16}
+
+
+
+          strokeWidth={1.6}
+
+
+
+          className="shrink-0 text-[#55585D]"
+
+
+
+        />
+
+
+
+        <span className="min-w-0 truncate text-[12px] font-normal leading-4 text-[#55585D] sm:text-[12px]">
+
+
+
+          {text}
+
+
+
+        </span>
+
+
+
+      </div>
+
+
+
+    ))}
+
+
+
+  </div>
+
+
+
+</div>
+
+
+
+              {/* Description */}
+
+
+
+              {product.description && (
+
+
+
+                <div className="mt-7 border-b border-[#D2D2D7] pb-5">
+
+
+
+                  <button
+
+
+
+                    type="button"
+
+
+
+                    onClick={() => setOpenSpecs((value) => !value)}
+
+
+
+                    className="flex w-full items-center justify-between text-left"
+
+
+
+                  >
+
+
+
+                    <span className="text-[14px] font-semibold">
+
+
+
+                      Product description
+
+
+
+                    </span>
+
+
+
+                    <ChevronDown
+
+
+
+                      size={17}
+
+
+
+                      className={`transition-transform ${
+
+
+
+                        openSpecs ? "rotate-180" : ""
+
+
+
+                      }`}
+
+
+
+                    />
+
+
+
+                  </button>
+
+
+
+                  {openSpecs && (
+
+
+
+                    <div
+
+
+
+                      className="prose prose-sm mt-4 max-w-none text-[13px] leading-6 text-[#6E6E73]"
+
+
+
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+
+
+
+                    />
+
+
+
+                  )}
+
+
+
+                </div>
+
+
+
+              )}
+
+
+
+            </div>
+
+
+
+          </aside>
+
+
+
+        </div>
+
+
+
+      </section>
+
+
+
+      {/* Product USPs */}
+
+
+
+      {usps.length > 0 && (
+
+
+
+        <section className="border-y border-[#D2D2D7] bg-[#F5F5F7]">
+
+
+
+          <div className="mx-auto grid max-w-[1240px] grid-cols-2 px-5 md:grid-cols-4 md:px-8">
+
+
+
+            {usps.map((item: any) => (
+
+
+
+              <div
+
+
+
+                key={item.id}
+
+
+
+                className="border-b border-[#D2D2D7] px-4 py-6 text-center md:border-b-0 md:border-r md:last:border-r-0"
+
+
+
+              >
+
+
+
+                <p className="text-[13px] font-semibold text-[#1D1D1F]">
+
+
+
+                  {item.title}
+
+
+
+                </p>
+
+
+
+              </div>
+
+
+
+            ))}
+
+
+
+          </div>
+
+
+
+        </section>
+
+
+
+      )}
+
+
+
+            {/* Product video carousel — displayed above Lifestyle */}
+
+      {productVideos.length > 0 && (
+
+        <section className="bg-white">
+
+          <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
+
+            <div className="mb-6 flex items-end justify-between gap-4">
+
+              <div>
+
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
+
+                  WATCH
+
+                </p>
+
+                <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[#1D1D1F] sm:text-[28px]">
+
+                  Product videos
+
+                </h2>
+
+                <p className="mt-2 text-[13px] text-[#6E6E73]">
+
+                  See the details in motion.
+
+                </p>
+
+              </div>
+
+              {productVideos.length > 1 && (
+
+                <div className="hidden shrink-0 gap-2 sm:flex">
+
+                  <button type="button" onClick={() => videoCarouselRef.current?.scrollBy({ left: -360, behavior: "smooth" })} aria-label="Scroll videos left" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D2D2D7] bg-white text-[#1D1D1F] transition hover:bg-[#F5F5F7]">
+
+                    <ChevronLeft size={18} />
+
+                  </button>
+
+                  <button type="button" onClick={() => videoCarouselRef.current?.scrollBy({ left: 360, behavior: "smooth" })} aria-label="Scroll videos right" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D2D2D7] bg-white text-[#1D1D1F] transition hover:bg-[#F5F5F7]">
+
+                    <ChevronRight size={18} />
+
+                  </button>
+
+                </div>
+
+              )}
+
+            </div>
+
+            <div ref={videoCarouselRef} className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Product videos">
+
+              {productVideos.map((video: any, index: number) => (
+
+                <article key={`${video.id ?? index}-${video.image_url}`} className="w-[78vw] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[16px] bg-[#F5F5F7] ring-1 ring-black/[0.06] sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]">
+
+                  <div className="relative aspect-[4/5] overflow-hidden bg-[#E8E8EA]">
+
+                    <video
+
+                      src={video.image_url}
+
+                      autoPlay
+
+                      muted
+
+                      loop
+
+                      playsInline
+
+                      preload="auto"
+
+                      aria-label={`${product.name} product video ${index + 1}`}
+
+                      className="h-full w-full object-cover"
+
 />
-                    <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white">Video {index + 1}</span>
-                  </div>
-                  <div className="p-4 sm:p-5">
-                    <h3 className="text-[14px] font-semibold leading-5 text-[#1D1D1F]">{video.title || `${product.name} — Video ${index + 1}`}</h3>
-                    <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">Discover the product from every angle.</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos →</p>}
-          </div>
-        </section>
-      )}
+
+                    <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white">Video {index + 1}</span>
+
+                  </div>
+
+                  <div className="p-4 sm:p-5">
+
+                    <h3 className="text-[14px] font-semibold leading-5 text-[#1D1D1F]">{video.title || `${product.name} — Video ${index + 1}`}</h3>
+
+                    <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">Discover the product from every angle.</p>
+
+                  </div>
+
+                </article>
+
+              ))}
+
+            </div>
+
+            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos →</p>}
+
+          </div>
+
+        </section>
+
+      )}
+
+
 
 {/* Lifestyle gallery — only Lifestyle images */}
 
-      {lifestyleImages.length > 0 && (
 
-        <section className="bg-white">
 
-          <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
+      {lifestyleImages.length > 0 && (
 
-            <div className="mx-auto max-w-[920px]">
 
-              <div className="mb-6 text-center">
 
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
+        <section className="bg-white">
 
-                  LIFESTYLE
 
-                </p>
 
-                <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[#1D1D1F] sm:text-[28px]">
+          <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
 
-                  See it in real life
 
-                </h2>
 
-              </div>
+            <div className="mx-auto max-w-[920px]">
 
-              <div
 
-                className={
 
-                  lifestyleImages.length === 1
+              <div className="mb-6 text-center">
 
-                    ? "mx-auto max-w-[760px]"
 
-                    : "grid grid-cols-1 gap-5 md:grid-cols-2"
 
-                }
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
 
-              >
 
-                {lifestyleImages.map((image: any, index: number) => (
 
-                  <div
+                  LIFESTYLE
 
-                    key={`${image.id ?? index}-${image.image_url}`}
 
-                    className="mx-auto w-full max-w-[760px] overflow-hidden rounded-[16px] bg-white shadow-[0_14px_34px_rgba(0,0,0,0.18)] ring-1 ring-black/[0.06]"
 
-                  >
+                </p>
 
-                    <img
 
-                      src={
 
-                        getImageUrl(image.image_url, "large") ||
+                <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[#1D1D1F] sm:text-[28px]">
 
-                        image.image_url
 
-                      }
 
-                      alt={`${product.name} lifestyle ${index + 1}`}
+                  See it in real life
 
-                      className="block max-h-[520px] w-full object-contain object-center"
 
-                      loading="lazy"
 
-                    />
+                </h2>
 
-                  </div>
 
-                ))}
 
-              </div>
+              </div>
 
-            </div>
 
-          </div>
 
-        </section>
+              <div
 
-      )}
+
+
+                className={
+
+
+
+                  lifestyleImages.length === 1
+
+
+
+                    ? "mx-auto max-w-[760px]"
+
+
+
+                    : "grid grid-cols-1 gap-5 md:grid-cols-2"
+
+
+
+                }
+
+
+
+              >
+
+
+
+                {lifestyleImages.map((image: any, index: number) => (
+
+
+
+                  <div
+
+
+
+                    key={`${image.id ?? index}-${image.image_url}`}
+
+
+
+                    className="relative aspect-[4/5] w-full min-w-0 overflow-hidden rounded-[12px] bg-[#F5F5F7] shadow-[0_8px_24px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.05] sm:rounded-[16px]"
+
+
+
+                  >
+
+
+
+                    <img
+
+
+
+                      src={
+
+
+
+                        getImageUrl(image.image_url, "large") ||
+
+
+
+                        image.image_url
+
+
+
+                      }
+
+
+
+                      alt={`${product.name} lifestyle ${index + 1}`}
+
+
+
+                      className="absolute inset-0 block h-full w-full object-cover object-center"
+
+
+
+                      loading="lazy"
+
+
+
+                    />
+
+
+
+                  </div>
+
+
+
+                ))}
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </section>
+
+
+
+      )}
+
+
 
 {/* FAQ / Product information */}
 
-      <section className="bg-[#F8F8F9]">
 
-        <div className="mx-auto max-w-[1240px] px-5 py-16 md:px-8 md:py-20 lg:py-24">
 
-          <div className="mx-auto max-w-[860px]">
+      <section className="bg-[#F8F8F9]">
 
-            <div className="text-center">
 
-              <h2 className="text-[28px] font-semibold tracking-[-0.035em] text-[#1D1D1F] sm:text-[32px]">
 
-                Need to know more?
+        <div className="mx-auto max-w-[1240px] px-5 py-16 md:px-8 md:py-20 lg:py-24">
 
-              </h2>
 
-              <p className="mt-2 text-[14px] leading-6 text-[#6E6E73]">
 
-                Everything you need to know about this product.
+          <div className="mx-auto max-w-[860px]">
 
-              </p>
 
-            </div>
 
-            <div className="mt-8 overflow-hidden rounded-[14px] border border-[#E5E5EA] bg-white">
+            <div className="text-center">
 
-              {faqItems.map((faq, index) => (
 
-                <div
 
-                  key={faq.question}
+              <h2 className="text-[28px] font-semibold tracking-[-0.035em] text-[#1D1D1F] sm:text-[32px]">
 
-                  className={index < faqItems.length - 1 ? "border-b border-[#E5E5EA]" : ""}
 
-                >
 
-                  <button
+                Need to know more?
 
-                    type="button"
 
-                    onClick={() =>
 
-                      setOpenFaq((value) => (value === index ? null : index))
+              </h2>
 
-                    }
 
-                    className="group flex min-h-[64px] w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA] sm:px-6"
 
-                  >
+              <p className="mt-2 text-[14px] leading-6 text-[#6E6E73]">
 
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#6E6E73]">
 
-                      {index === 0 && (
 
-                        <SlidersHorizontal size={19} strokeWidth={1.5} />
+                Everything you need to know about this product.
 
-                      )}
 
-                      {index === 1 && (
 
-                        <Smartphone size={19} strokeWidth={1.5} />
+              </p>
 
-                      )}
 
-                      {index === 2 && (
 
-                        <CircleHelp size={19} strokeWidth={1.5} />
+            </div>
 
-                      )}
 
-                      {index === 3 && (
 
-                        <BookOpen size={19} strokeWidth={1.5} />
+            <div className="mt-8 overflow-hidden rounded-[14px] border border-[#E5E5EA] bg-white">
 
-                      )}
 
-                    </span>
 
-                    <span className="flex-1 text-[14px] font-medium text-[#1D1D1F]">
+              {faqItems.map((faq, index) => (
 
-                      {faq.question}
 
-                    </span>
 
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#6E6E73]">
+                <div
 
-                      <Plus
 
-                        size={18}
 
-                        strokeWidth={1.6}
+                  key={faq.question}
 
-                        className={`transition-transform duration-200 ${
 
-                          openFaq === index ? "rotate-45" : ""
 
-                        }`}
+                  className={index < faqItems.length - 1 ? "border-b border-[#E5E5EA]" : ""}
 
-                      />
 
-                    </span>
 
-                  </button>
+                >
 
-                  {openFaq === index && (
 
-                    <div
 
-                      className={`px-5 pb-6 pt-1 sm:px-6 ${
+                  <button
 
-                        faq.type === "specs" || faq.type === "faq"
 
-                          ? ""
 
-                          : "pl-[68px] sm:pl-[76px]"
+                    type="button"
 
-                      }`}
 
-                    >
 
-                      {faq.type === "specs" ? (
+                    onClick={() =>
 
-                        specs.length > 0 ||
 
-                        product.material ||
 
-                        product.dimensions ||
+                      setOpenFaq((value) => (value === index ? null : index))
 
-                        product.color ||
 
-                        product.light_source ||
 
-                        product.power_source ||
+                    }
 
-                        product.warranty ? (
 
-                          <div className="overflow-hidden rounded-[10px] border border-[#ECECF0]">
 
-                            {[
+                    className="group flex min-h-[64px] w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA] sm:px-6"
 
-                              ...specs.map((spec: any) => ({
 
-                                id: spec.id,
 
-                                label: spec.label,
+                  >
 
-                                value: spec.value,
 
-                              })),
 
-                              ...(product.material
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#6E6E73]">
 
-                                ? [{ id: "material", label: "Material", value: product.material }]
 
-                                : []),
 
-                              ...(product.dimensions
+                      {index === 0 && (
 
-                                ? [{ id: "dimensions", label: "Dimensions", value: product.dimensions }]
 
-                                : []),
 
-                              ...(product.color
+                        <SlidersHorizontal size={19} strokeWidth={1.5} />
 
-                                ? [{ id: "color", label: "Color", value: product.color }]
 
-                                : []),
 
-                              ...(product.light_source
+                      )}
 
-                                ? [{ id: "light_source", label: "Light source", value: product.light_source }]
 
-                                : []),
 
-                              ...(product.power_source
+                      {index === 1 && (
 
-                                ? [{ id: "power_source", label: "Power source", value: product.power_source }]
 
-                                : []),
 
-                              ...(product.warranty
+                        <Smartphone size={19} strokeWidth={1.5} />
 
-                                ? [{ id: "warranty", label: "Warranty", value: product.warranty }]
 
-                                : []),
 
-                            ].map((item: any, index: number, items: any[]) => (
+                      )}
 
-                              <div
 
-                                key={item.id}
 
-                                className={`grid grid-cols-[43%_57%] items-start text-[13px] sm:grid-cols-[38%_62%] ${
+                      {index === 2 && (
 
-                                  index < items.length - 1
 
-                                    ? "border-b border-[#ECECF0]"
 
-                                    : ""
+                        <CircleHelp size={19} strokeWidth={1.5} />
 
-                                } ${index % 2 === 0 ? "bg-white" : "bg-[#FAFAFB]"}`}
 
-                              >
 
-                                <span className="min-w-0 px-3 py-3.5 text-[#77777C] sm:px-4">
+                      )}
 
-                                  {item.label}
 
-                                </span>
 
-                                <span className="min-w-0 border-l border-[#F0F0F2] px-3 py-3.5 text-left font-medium leading-5 text-[#1D1D1F] sm:px-4">
+                      {index === 3 && (
 
-                                  {item.value}
 
-                                </span>
 
-                              </div>
+                        <BookOpen size={19} strokeWidth={1.5} />
 
-                            ))}
 
-                          </div>
 
-                        ) : (
+                      )}
 
-                          <p className="text-[13px] leading-6 text-[#6E6E73]">
 
-                            Technical specifications for this product will be updated here.
 
-                          </p>
+                    </span>
 
-                        )
 
-                      ) : faq.type === "faq" ? (
 
-                        productFaqs.length > 0 ? (
+                    <span className="flex-1 text-[14px] font-medium text-[#1D1D1F]">
 
-                          <div className="overflow-hidden rounded-[10px] border border-[#ECECF0]">
 
-                            {productFaqs.map((item: any, faqIndex: number) => {
 
-                              const itemOpen = openProductFaq === item.id;
+                      {faq.question}
 
-                              return (
 
-                                <div
 
-                                  key={item.id}
+                    </span>
 
-                                  className={
 
-                                    faqIndex < productFaqs.length - 1
 
-                                      ? "border-b border-[#ECECF0]"
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#6E6E73]">
 
-                                      : ""
 
-                                  }
 
-                                >
+                      <Plus
 
-                                  <button
 
-                                    type="button"
 
-                                    onClick={() =>
+                        size={18}
 
-                                      setOpenProductFaq((value) =>
 
-                                        value === item.id ? null : item.id,
 
-                                      )
+                        strokeWidth={1.6}
 
-                                    }
 
-                                    className="flex min-h-[56px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FAFAFA]"
 
-                                  >
+                        className={`transition-transform duration-200 ${
 
-                                    <span className="flex-1 text-[13px] font-medium text-[#1D1D1F]">
 
-                                      {item.question}
 
-                                    </span>
+                          openFaq === index ? "rotate-45" : ""
 
-                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#6E6E73]">
 
-                                      <Plus
 
-                                        size={16}
+                        }`}
 
-                                        strokeWidth={1.6}
 
-                                        className={`transition-transform duration-200 ${
 
-                                          itemOpen ? "rotate-45" : ""
+                      />
 
-                                        }`}
 
-                                      />
 
-                                    </span>
+                    </span>
 
-                                  </button>
 
-                                  {itemOpen && (
 
-                                    <div className="px-4 pb-5 pr-10">
+                  </button>
 
-                                      <p className="whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
 
-                                        {item.answer}
 
-                                      </p>
+                  {openFaq === index && (
 
-                                    </div>
 
-                                  )}
 
-                                </div>
+                    <div
 
-                              );
 
-                            })}
 
-                          </div>
+                      className={`px-5 pb-6 pt-1 sm:px-6 ${
 
-                        ) : (
 
-                          <p className="text-[13px] leading-6 text-[#6E6E73]">
 
-                            Product FAQs will be updated here.
+                        faq.type === "specs" || faq.type === "faq"
 
-                          </p>
 
-                        )
 
-                      ) : (
+                          ? ""
 
-                        <p className="max-w-[760px] whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
 
-                          {faq.answer}
 
-                        </p>
+                          : "pl-[68px] sm:pl-[76px]"
 
-                      )}
 
-                    </div>
 
-                  )}
+                      }`}
 
-                </div>
 
-              ))}
 
-            </div>
+                    >
 
-          </div>
 
-        </div>
 
-      </section>
+                      {faq.type === "specs" ? (
 
-      {/* Product Reviews */}
 
-      <ProductReviews productId={product.id} />
 
-      {/* Related */}
+                        specs.length > 0 ||
 
-      {related.length > 0 && (
 
-        <section className="border-t border-[#D2D2D7] bg-white">
 
-          <div className="mx-auto max-w-[1240px] px-5 py-14 md:px-8 lg:py-16">
+                        product.material ||
 
-            <div className="flex items-end justify-between gap-6">
 
-              <div>
 
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6E6E73]">
+                        product.dimensions ||
 
-                  You may also like
 
-                </p>
 
-                <h2 className="mt-2 text-[28px] font-semibold tracking-[-0.03em]">
+                        product.color ||
 
-                  Complete your setup.
 
-                </h2>
 
-              </div>
+                        product.light_source ||
 
-              <Link
 
-                to="/shop"
 
-                className="hidden text-[13px] font-medium text-[#0071E3] sm:block"
+                        product.power_source ||
 
-              >
 
-                View all →
 
-              </Link>
+                        product.warranty ? (
 
-            </div>
 
-            <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
 
-              {related.map((item: any) => {
+                          <div className="overflow-hidden rounded-[10px] border border-[#ECECF0]">
 
-                const relatedPrice = Number(item.price) || 0;
 
-                return (
 
-                  <Link
+                            {[
 
-                    key={item.id}
 
-                    to="/products/$slug"
 
-                    params={{ slug: item.slug }}
+                              ...specs.map((spec: any) => ({
 
-                    className="group min-w-0"
 
-                  >
 
-                    <div className="aspect-square w-full overflow-hidden rounded-[18px] bg-[#F5F5F7]">
+                                id: spec.id,
 
-                      {item.image_url ? (
 
-                        <img
 
-                          src={getImageUrl(item.image_url, "card") || item.image_url}
+                                label: spec.label,
 
-                          alt={item.name}
 
-                          className="h-full w-full object-contain p-0 transition-transform duration-500 group-hover:scale-[1.03]"
 
-                        />
+                                value: spec.value,
 
-                      ) : (
 
-                        <div className="flex h-full items-center justify-center text-xs text-[#86868B]">
 
-                          No image
+                              })),
 
-                        </div>
 
-                      )}
 
-                    </div>
+                              ...(product.material
 
-                    <h3 className="mt-3 line-clamp-2 text-[13px] font-semibold leading-5">
 
-                      {item.name}
 
-                    </h3>
+                                ? [{ id: "material", label: "Material", value: product.material }]
 
-                    <p className="mt-1 text-[13px] text-[#424245]">
 
-                      {formatProductPrice(relatedPrice, safeCurrency)}
 
-                    </p>
+                                : []),
 
-                  </Link>
 
-                );
 
-              })}
+                              ...(product.dimensions
 
-            </div>
 
-          </div>
 
-        </section>
+                                ? [{ id: "dimensions", label: "Dimensions", value: product.dimensions }]
 
-      )}
 
-    </main>
 
-  );
+                                : []),
+
+
+
+                              ...(product.color
+
+
+
+                                ? [{ id: "color", label: "Color", value: product.color }]
+
+
+
+                                : []),
+
+
+
+                              ...(product.light_source
+
+
+
+                                ? [{ id: "light_source", label: "Light source", value: product.light_source }]
+
+
+
+                                : []),
+
+
+
+                              ...(product.power_source
+
+
+
+                                ? [{ id: "power_source", label: "Power source", value: product.power_source }]
+
+
+
+                                : []),
+
+
+
+                              ...(product.warranty
+
+
+
+                                ? [{ id: "warranty", label: "Warranty", value: product.warranty }]
+
+
+
+                                : []),
+
+
+
+                            ].map((item: any, index: number, items: any[]) => (
+
+
+
+                              <div
+
+
+
+                                key={item.id}
+
+
+
+                                className={`grid grid-cols-[43%_57%] items-start text-[13px] sm:grid-cols-[38%_62%] ${
+
+
+
+                                  index < items.length - 1
+
+
+
+                                    ? "border-b border-[#ECECF0]"
+
+
+
+                                    : ""
+
+
+
+                                } ${index % 2 === 0 ? "bg-white" : "bg-[#FAFAFB]"}`}
+
+
+
+                              >
+
+
+
+                                <span className="min-w-0 px-3 py-3.5 text-[#77777C] sm:px-4">
+
+
+
+                                  {item.label}
+
+
+
+                                </span>
+
+
+
+                                <span className="min-w-0 border-l border-[#F0F0F2] px-3 py-3.5 text-left font-medium leading-5 text-[#1D1D1F] sm:px-4">
+
+
+
+                                  {item.value}
+
+
+
+                                </span>
+
+
+
+                              </div>
+
+
+
+                            ))}
+
+
+
+                          </div>
+
+
+
+                        ) : (
+
+
+
+                          <p className="text-[13px] leading-6 text-[#6E6E73]">
+
+
+
+                            No technical specifications have been added for this product yet.
+
+
+
+                          </p>
+
+
+
+                        )
+
+
+
+                      ) : faq.type === "faq" ? (
+
+
+
+                        productFaqs.length > 0 ? (
+
+
+
+                          <div className="overflow-hidden rounded-[10px] border border-[#ECECF0]">
+
+
+
+                            {productFaqs.map((item: any, faqIndex: number) => {
+
+
+
+                              const itemOpen = openProductFaq === item.id;
+
+
+
+                              return (
+
+
+
+                                <div
+
+
+
+                                  key={item.id}
+
+
+
+                                  className={
+
+
+
+                                    faqIndex < productFaqs.length - 1
+
+
+
+                                      ? "border-b border-[#ECECF0]"
+
+
+
+                                      : ""
+
+
+
+                                  }
+
+
+
+                                >
+
+
+
+                                  <button
+
+
+
+                                    type="button"
+
+
+
+                                    onClick={() =>
+
+
+
+                                      setOpenProductFaq((value) =>
+
+
+
+                                        value === item.id ? null : item.id,
+
+
+
+                                      )
+
+
+
+                                    }
+
+
+
+                                    className="flex min-h-[56px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FAFAFA]"
+
+
+
+                                  >
+
+
+
+                                    <span className="flex-1 text-[13px] font-medium text-[#1D1D1F]">
+
+
+
+                                      {item.question}
+
+
+
+                                    </span>
+
+
+
+                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#6E6E73]">
+
+
+
+                                      <Plus
+
+
+
+                                        size={16}
+
+
+
+                                        strokeWidth={1.6}
+
+
+
+                                        className={`transition-transform duration-200 ${
+
+
+
+                                          itemOpen ? "rotate-45" : ""
+
+
+
+                                        }`}
+
+
+
+                                      />
+
+
+
+                                    </span>
+
+
+
+                                  </button>
+
+
+
+                                  {itemOpen && (
+
+
+
+                                    <div className="px-4 pb-5 pr-10">
+
+
+
+                                      <p className="whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
+
+
+
+                                        {item.answer}
+
+
+
+                                      </p>
+
+
+
+                                    </div>
+
+
+
+                                  )}
+
+
+
+                                </div>
+
+
+
+                              );
+
+
+
+                            })}
+
+
+
+                          </div>
+
+
+
+                        ) : (
+
+
+
+                          <p className="text-[13px] leading-6 text-[#6E6E73]">
+
+
+
+                            No FAQs have been added for this product yet.
+
+
+
+                          </p>
+
+
+
+                        )
+
+
+
+                      ) : (
+
+
+
+                        <p className="max-w-[760px] whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
+
+
+
+                          {faq.answer}
+
+
+
+                        </p>
+
+
+
+                      )}
+
+
+
+                    </div>
+
+
+
+                  )}
+
+
+
+                </div>
+
+
+
+              ))}
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+      </section>
+
+
+
+      {/* Product Reviews */}
+
+
+
+      <ProductReviews productId={product.id} />
+
+
+
+      {/* Related */}
+
+
+
+      {related.length > 0 && (
+
+
+
+        <section className="border-t border-[#D2D2D7] bg-white">
+
+
+
+          <div className="mx-auto max-w-[1240px] px-5 py-14 md:px-8 lg:py-16">
+
+
+
+            <div className="flex items-end justify-between gap-6">
+
+
+
+              <div>
+
+
+
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6E6E73]">
+
+
+
+                  You may also like
+
+
+
+                </p>
+
+
+
+                <h2 className="mt-2 text-[28px] font-semibold tracking-[-0.03em]">
+
+
+
+                  Complete your setup.
+
+
+
+                </h2>
+
+
+
+              </div>
+
+
+
+              <Link
+
+
+
+                to="/shop"
+
+
+
+                className="hidden text-[13px] font-medium text-[#0071E3] sm:block"
+
+
+
+              >
+
+
+
+                View all →
+
+
+
+              </Link>
+
+
+
+            </div>
+
+
+
+            <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
+
+
+
+              {related.map((item: any) => {
+
+
+
+                const relatedPrice = Number(item.price) || 0;
+
+
+
+                return (
+
+
+
+                  <Link
+
+
+
+                    key={item.id}
+
+
+
+                    to="/products/$slug"
+
+
+
+                    params={{ slug: item.slug }}
+
+
+
+                    className="group min-w-0"
+
+
+
+                  >
+
+
+
+                    <div className="aspect-square w-full overflow-hidden rounded-[18px] bg-[#F5F5F7]">
+
+
+
+                      {item.image_url ? (
+
+
+
+                        <img
+
+
+
+                          src={getImageUrl(item.image_url, "card") || item.image_url}
+
+
+
+                          alt={item.name}
+
+
+
+                          className="h-full w-full object-contain p-0 transition-transform duration-500 group-hover:scale-[1.03]"
+
+
+
+                        />
+
+
+
+                      ) : (
+
+
+
+                        <div className="flex h-full items-center justify-center text-xs text-[#86868B]">
+
+
+
+                          No image
+
+
+
+                        </div>
+
+
+
+                      )}
+
+
+
+                    </div>
+
+
+
+                    <h3 className="mt-3 line-clamp-2 text-[13px] font-semibold leading-5">
+
+
+
+                      {item.name}
+
+
+
+                    </h3>
+
+
+
+                    <p className="mt-1 text-[13px] text-[#424245]">
+
+
+
+                      {formatProductPrice(relatedPrice, safeCurrency)}
+
+
+
+                    </p>
+
+
+
+                  </Link>
+
+
+
+                );
+
+
+
+              })}
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </section>
+
+
+
+      )}
+
+
+
+    </main>
+
+
+
+  );
+
+
 
 }

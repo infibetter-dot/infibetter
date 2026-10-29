@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronUp, Eye, Save } from "lucide-react";
+import { ChevronUp, Eye, ExternalLink, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ProductEditorRichText from "./ProductEditorRichText";
@@ -475,36 +475,43 @@ if (error) throw error;
   
   return (
     <div className="space-y-5">
-      {/* HEADER — gọn, giữ nguyên Xem sản phẩm / Thu gọn / Lưu */}
-      <div className="sticky top-3 z-20 flex flex-col gap-3 rounded-2xl border border-[#DDD6CE] bg-white/95 px-4 py-3 shadow-sm backdrop-blur md:flex-row md:items-center md:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <img
-            src={imageUrl || "/placeholder.svg"}
-            className="h-12 w-12 shrink-0 rounded-xl border border-stone-200 object-cover"
-            alt={name || "Sản phẩm"}
-          />
+      {/* PRODUCT EDITOR — compact premium sticky toolbar */}
+      <div className="sticky top-3 z-20 flex flex-col gap-4 rounded-2xl border border-slate-200/90 bg-white px-4 py-4 shadow-[0_8px_28px_rgba(15,23,42,0.06)] sm:px-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <img
+              src={imageUrl || "/placeholder.svg"}
+              className="h-full w-full rounded-lg object-cover"
+              alt={name || "Sản phẩm"}
+            />
+          </div>
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-tight text-[#262626]">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+              INFIBETTER / PRODUCT
+            </p>
+            <h1 className="truncate text-base font-bold tracking-tight text-slate-900 sm:text-lg">
               {name || "Sản phẩm mới"}
             </h1>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-neutral-500">
-              <span>{formatUSD(price)}</span>
-              <span>•</span>
-              <span>Tồn: {stock}</span>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span className="font-medium text-slate-700">{formatUSD(price)}</span>
+              <span aria-hidden="true" className="text-slate-300">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Tồn kho: {stock}
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-full items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 p-1.5 md:w-auto md:shrink-0">
           <button
             type="button"
             onClick={previewProduct}
-            className="h-9 rounded-lg border border-[#D7D3CB] bg-white px-3 text-sm font-medium transition hover:bg-[#F7F4EF]"
+            title="Xem sản phẩm"
+            aria-label="Xem sản phẩm"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-0 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
           >
-            <span className="inline-flex items-center gap-1.5">
-              <Eye size={14} strokeWidth={1.8} />
-              Xem
-            </span>
+            <ExternalLink size={16} strokeWidth={1.8} />
           </button>
 
           <button
@@ -514,24 +521,22 @@ if (error) throw error;
               e.stopPropagation();
               collapse?.();
             }}
-            className="h-9 rounded-lg border border-[#D7D3CB] bg-white px-3 text-sm font-medium transition hover:bg-[#F7F4EF]"
+            title="Thu gọn"
+            aria-label="Thu gọn"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-0 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
           >
-            <span className="inline-flex items-center gap-1.5">
-              <ChevronUp size={14} strokeWidth={1.8} />
-              Thu gọn
-            </span>
+            <ChevronUp size={16} strokeWidth={1.8} />
           </button>
 
           <button
             type="button"
             onClick={save}
             disabled={loading}
-            className="h-9 rounded-lg bg-[#2D6A4F] px-4 text-sm font-semibold text-white transition hover:bg-[#245640] disabled:opacity-50"
+            title={loading ? "Đang lưu..." : "Lưu thay đổi"}
+            aria-label={loading ? "Đang lưu..." : "Lưu thay đổi"}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-800 p-0 text-white shadow-sm transition hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <span className="inline-flex items-center gap-1.5">
-              <Save size={14} strokeWidth={1.8} />
-              {loading ? "Đang lưu..." : "Lưu"}
-            </span>
+            <Save size={16} strokeWidth={1.9} />
           </button>
         </div>
       </div>
@@ -1240,14 +1245,16 @@ if (error) throw error;
         </div>
       )}
 
-      {/* ACTIONS — giữ đầy đủ */}
-      <div className="flex flex-col-reverse gap-2 border-t border-[#E8E4DE] pt-4 sm:flex-row sm:items-center sm:justify-end">
+      {/* ACTIONS — đồng bộ với toolbar phía trên, chỉ dùng icon */}
+      <div className="flex items-center justify-end gap-2 border-t border-slate-200 pt-4">
         <button
           type="button"
           onClick={previewProduct}
-          className="h-10 rounded-xl border border-[#D7D3CB] bg-white px-5 text-sm font-semibold transition hover:bg-[#F7F4EF]"
+          title="Xem sản phẩm"
+          aria-label="Xem sản phẩm"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-0 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
         >
-          <span className="inline-flex items-center gap-1.5"><Eye size={14} strokeWidth={1.8} />Xem</span> sản phẩm
+          <ExternalLink size={16} strokeWidth={1.8} />
         </button>
 
         <button
@@ -1257,18 +1264,22 @@ if (error) throw error;
             e.stopPropagation();
             collapse?.();
           }}
-          className="h-10 rounded-xl border border-[#D7D3CB] bg-white px-5 text-sm font-semibold transition hover:bg-[#F7F4EF]"
+          title="Thu gọn"
+          aria-label="Thu gọn"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-0 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
         >
-          <span className="inline-flex items-center gap-1.5"><ChevronUp size={14} strokeWidth={1.8} />Thu gọn</span>
+          <ChevronUp size={16} strokeWidth={1.8} />
         </button>
 
         <button
           type="button"
           onClick={save}
           disabled={loading}
-          className="h-10 rounded-xl bg-[#2D6A4F] px-6 text-sm font-semibold text-white transition hover:bg-[#245640] disabled:opacity-50"
+          title={loading ? "Đang lưu..." : "Lưu sản phẩm"}
+          aria-label={loading ? "Đang lưu..." : "Lưu sản phẩm"}
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-800 p-0 text-white shadow-sm transition hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Đang lưu..." : " Lưu sản phẩm"}
+          <Save size={16} strokeWidth={1.9} />
         </button>
       </div>
     </div>

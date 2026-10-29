@@ -66,7 +66,7 @@ export default function Hero() {
           - No desktop overlay on mobile
       ====================================================== */}
       <div className="block lg:hidden">
-        <div className="relative w-full overflow-hidden rounded-[12px] bg-[#F3F5F7] aspect-[880/400]">
+        <div className="relative grid w-full overflow-hidden rounded-[12px] bg-[#F3F5F7]">
           {slides.map((slide, index) => (
             <img
               key={`mobile-${slide}`}
@@ -74,8 +74,8 @@ export default function Hero() {
               alt=""
               draggable={false}
               className={`
-                absolute inset-0
-                h-full w-full
+                col-start-1 row-start-1
+                block h-auto w-full
                 object-contain object-center
                 transition-opacity duration-700
                 ${index === current ? "opacity-100" : "opacity-0"}
@@ -115,15 +115,18 @@ export default function Hero() {
           <Link
             to="/shop"
             className="
-              group mt-3 flex h-11 w-full
-              items-center justify-center
-              gap-2
-              rounded-[10px]
-              bg-[#0877E8]
-              px-4
-              text-[11px] font-semibold text-white
-              shadow-[0_7px_18px_rgba(8,119,232,0.20)]
+              group relative isolate mt-3 flex h-11 w-full
+              items-center justify-center gap-2 overflow-hidden
+              rounded-[10px] border border-white/90
+              bg-gradient-to-b from-white via-[#F7F9FC] to-[#E8EDF3]
+              px-4 text-[11px] font-semibold text-[#171717]
+              shadow-[0_7px_18px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(148,163,184,0.16)]
               transition-all duration-300
+              before:pointer-events-none before:absolute before:inset-y-0 before:left-[-55%]
+              before:w-[45%] before:skew-x-[-20deg]
+              before:bg-gradient-to-r before:from-transparent before:via-white/95 before:to-transparent
+              before:transition-transform before:duration-700
+              hover:before:translate-x-[360%]
               active:scale-[0.99]
             "
           >
@@ -212,11 +215,16 @@ export default function Hero() {
               <Link
                 to="/shop"
                 className="
-                  group flex h-10 items-center gap-4 rounded-full
-                  bg-[#111827] px-5 text-[11px] font-semibold text-white
-                  shadow-[0_8px_24px_rgba(17,24,39,0.16)]
-                  transition-all duration-300
-                  hover:-translate-y-0.5 hover:bg-[#007AFF]
+                  group relative isolate flex h-10 items-center gap-4 overflow-hidden rounded-full
+                  border border-white/90 bg-gradient-to-b from-white via-[#F7F9FC] to-[#E8EDF3]
+                  px-5 text-[11px] font-semibold text-[#171717]
+                  shadow-[0_8px_24px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(148,163,184,0.16)]
+                  transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(15,23,42,0.14)]
+                  before:pointer-events-none before:absolute before:inset-y-0 before:left-[-55%]
+                  before:w-[45%] before:skew-x-[-20deg]
+                  before:bg-gradient-to-r before:from-transparent before:via-white/95 before:to-transparent
+                  before:transition-transform before:duration-700
+                  hover:before:translate-x-[360%]
                 "
               >
                 Shop accessories

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { ProductCard } from "@/components/product-card";
-import banner02 from "@/assets/hero/banner02.png";
+import banner02 from "@/assets/hero/banner in 01.png";
 
 import {
   ArrowRight,
@@ -903,7 +903,7 @@ function ShopPage() {
             <img
               src={banner02}
               alt={`${currentCategoryTitle} banner`}
-              className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
+              className="absolute inset-0 -z-20 h-full w-full object-cover object-center md:object-contain lg:object-contain"
             />
             <div
               aria-hidden="true"

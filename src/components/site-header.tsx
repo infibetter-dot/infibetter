@@ -2198,7 +2198,7 @@ export function SiteHeader() {
 
                                       return (
 
-                                        <Link key={item.id} to="/shop" search={{ category: itemSlug } as never} onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="rounded-[6px] bg-[#F5F7FA] px-2 py-1.5 text-[9px] font-medium text-[#667085] hover:bg-[#EEF2F6] hover:text-[#111827]">
+                                        <Link key={item.id} to="/shop" search={{ category: itemSlug } as never} onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="rounded-[8px] border border-white/70 bg-white/55 px-2 py-1.5 text-[9px] font-medium text-[#475467] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_3px_rgba(15,23,42,0.04)] backdrop-blur-xl hover:bg-white/75 hover:text-[#111827]">
 
                                           {itemLabel}
 
@@ -2232,7 +2232,7 @@ export function SiteHeader() {
 
 
 
-              <Link to="/account" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="mt-1 flex items-center justify-between border-t border-[#E5E7EB] px-3 py-3 text-[11px] text-[#64748B]">
+              <Link to="/account" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="mt-1 flex items-center justify-between px-3 py-3 text-[11px] text-[#64748B]">
 
                 <span>Account</span><User size={14} strokeWidth={1.7} />
 
