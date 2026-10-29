@@ -1,3 +1,4 @@
+
 import {
   QueryClient,
   QueryClientProvider,
@@ -7,12 +8,14 @@ import {
   Outlet,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 
 import {
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -34,6 +37,11 @@ import FloatingContact from "@/components/FloatingContact";
 import FloatingShipping from "@/components/FloatingShipping";
 import SetagoVoucherPopup from "@/components/SetagoVoucherPopup";
 
+/* =========================================================
+   INFIBETTER — META PIXEL CONFIGURATION
+========================================================= */
+
+const META_PIXEL_ID = "3789534267871189";
 
 /* =========================================================
    404
@@ -43,13 +51,12 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4">
       <div className="text-center">
-
         <p className="font-display text-7xl">
           404
         </p>
 
         <p className="mt-3 text-sm text-muted-foreground">
-          Trang bạn tìm không tồn tại.
+          Page not found.
         </p>
 
         <a
@@ -66,14 +73,12 @@ function NotFoundComponent() {
             hover:opacity-90
           "
         >
-          Về trang chủ
+          Back to Home
         </a>
-
       </div>
     </div>
   );
 }
-
 
 /* =========================================================
    ERROR
@@ -106,13 +111,12 @@ function ErrorComponent({
       "
     >
       <div>
-
         <p className="font-display text-3xl">
-          Có lỗi xảy ra
+          Something went wrong
         </p>
 
         <p className="mt-2 text-sm text-muted-foreground">
-          Vui lòng thử lại.
+          Please try again.
         </p>
 
         <button
@@ -131,14 +135,12 @@ function ErrorComponent({
             text-primary-foreground
           "
         >
-          Thử lại
+          Try Again
         </button>
-
       </div>
     </div>
   );
 }
-
 
 /* =========================================================
    ROOT ROUTE
@@ -148,85 +150,69 @@ export const Route =
   createRootRouteWithContext<{
     queryClient: QueryClient;
   }>()({
-
     head: () => ({
       meta: [
-
         {
           charSet: "utf-8",
         },
-
         {
           name: "viewport",
-          content:
-            "width=device-width, initial-scale=1",
+          content: "width=device-width, initial-scale=1",
         },
-
         {
-          title:
-            "OLIVE — Đèn decor tối giản",
+          title: "INFIBETTER | Smart Tech Essentials",
         },
-
         {
           name: "description",
           content:
-            "Nội thất tối giản, vật liệu bền vững. Sofa, bàn, ghế, giường, tủ kệ. Giao hàng toàn quốc.",
+            "Discover smart tech essentials and everyday accessories designed for convenience, simplicity, and modern living.",
         },
-
         {
           property: "og:title",
-          content:
-            "OLIVE — Đèn decor tối giản",
+          content: "INFIBETTER | Smart Tech Essentials",
         },
-
         {
           property: "og:description",
           content:
-            "Nội thất tối giản, vật liệu bền vững.",
+            "Smart technology and everyday accessories designed for modern living.",
         },
-
         {
           property: "og:type",
           content: "website",
         },
-
+        {
+          property: "og:url",
+          content: "https://infibetter.com/",
+        },
+        {
+          property: "og:site_name",
+          content: "INFIBETTER",
+        },
         {
           name: "twitter:card",
-          content:
-            "summary_large_image",
+          content: "summary_large_image",
         },
       ],
 
       links: [
-
-        /* =================================================
-           WEBSITE FAVICON
-        ================================================== */
+        /* INFIBETTER FAVICON */
 
         {
           rel: "icon",
           type: "image/png",
           href: "/favicon.png",
         },
-
         {
           rel: "shortcut icon",
           type: "image/png",
           href: "/favicon.png",
         },
-
-        /* =================================================
-           MOBILE / APPLE ICON
-        ================================================== */
-
         {
           rel: "apple-touch-icon",
           href: "/favicon.png",
         },
 
-        /* =================================================
-           MAIN CSS
-        ================================================== */
+        /* MAIN CSS */
 
         {
           rel: "stylesheet",
@@ -239,13 +225,10 @@ export const Route =
 
     component: RootComponent,
 
-    notFoundComponent:
-      NotFoundComponent,
+    notFoundComponent: NotFoundComponent,
 
-    errorComponent:
-      ErrorComponent,
+    errorComponent: ErrorComponent,
   });
-
 
 /* =========================================================
    ROOT SHELL
@@ -257,71 +240,114 @@ function RootShell({
   children: ReactNode;
 }) {
   return (
-    <html lang="vi">
-
+    <html lang="en">
       <head>
-
         <HeadContent />
 
-        {/* =================================================
-            OLIVE LIVING — ORGANIZATION SCHEMA
-        ================================================== */}
+        {/* INFIBETTER ORGANIZATION SCHEMA */}
 
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
-              "@context":
-                "https://schema.org",
-
-              "@type":
-                "Organization",
-
-              name:
-                "OLIVE LIVING",
-
-              url:
-                "https://olivelivingvn.com",
-
-              logo:
-                "https://olivelivingvn.com/favicon.png",
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "INFIBETTER",
+              url: "https://infibetter.com/",
+              logo: "https://infibetter.com/favicon.png",
             }),
           }}
         />
-
       </head>
 
-
       <body>
-
-        {/* =================================================
-            META PIXEL + GOOGLE TAG MANAGER NOSCRIPT
-        ================================================== */}
+        {/* META PIXEL NOSCRIPT FALLBACK */}
 
         <noscript>
-
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src={`https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`}
+            alt=""
+          />
         </noscript>
-
-        {/* End Google Tag Manager (noscript) */}
-
 
         {children}
 
         <Scripts />
-
       </body>
-
     </html>
   );
 }
 
+/* =========================================================
+   INFIBETTER — META PIXEL TRACKER
+   Initializes once and tracks SPA page navigation.
+========================================================= */
+
+function MetaPixelTracker() {
+  const location = useLocation();
+  const lastTrackedUrl = useRef<string | null>(null);
+
+  const pathname = location.pathname;
+  const searchStr = location.searchStr;
+  const currentUrl = pathname + searchStr;
+
+  useEffect(() => {
+    // Prevent duplicate PageView for the same URL.
+    if (lastTrackedUrl.current === currentUrl) {
+      return;
+    }
+
+    lastTrackedUrl.current = currentUrl;
+
+    const win = window as Window & {
+      fbq?: (...args: any[]) => void;
+      _fbq?: (...args: any[]) => void;
+    };
+
+    // Initialize the standard Meta Pixel queue once.
+    if (!win.fbq) {
+      const fbq: any = function (...args: any[]) {
+        if (fbq.callMethod) {
+          fbq.callMethod.apply(fbq, args);
+        } else {
+          fbq.queue.push(args);
+        }
+      };
+
+      fbq.push = fbq;
+      fbq.loaded = true;
+      fbq.version = "2.0";
+      fbq.queue = [];
+
+      win.fbq = fbq;
+      win._fbq = fbq;
+
+      const script = document.createElement("script");
+
+      script.async = true;
+      script.src =
+        "https://connect.facebook.net/en_US/fbevents.js";
+
+      document.head.appendChild(script);
+
+      fbq("init", META_PIXEL_ID);
+    }
+
+    // Track the initial page and subsequent route changes.
+    win.fbq("track", "PageView");
+  }, [currentUrl]);
+
+  return null;
+}
 
 /* =========================================================
    ROOT COMPONENT
 ========================================================= */
 
 function RootComponent() {
-
   const {
     queryClient,
   } = Route.useRouteContext();
@@ -333,73 +359,56 @@ function RootComponent() {
     setHideFloating,
   ] = useState(false);
 
-
   /* =================================================
      AUTH STATE
   ================================================== */
 
   useEffect(() => {
-
     const {
       data: sub,
-    } =
-      supabase.auth.onAuthStateChange(
-        (event) => {
+    } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (
+          event !== "SIGNED_IN" &&
+          event !== "SIGNED_OUT" &&
+          event !== "USER_UPDATED"
+        ) {
+          return;
+        }
 
-          if (
-            event !== "SIGNED_IN" &&
-            event !== "SIGNED_OUT" &&
-            event !== "USER_UPDATED"
-          ) {
-            return;
-          }
+        router.invalidate();
 
-          router.invalidate();
-
-          if (
-            event !== "SIGNED_OUT"
-          ) {
-            queryClient.invalidateQueries();
-          }
-
-        },
-      );
+        if (event !== "SIGNED_OUT") {
+          queryClient.invalidateQueries();
+        }
+      },
+    );
 
     return () =>
       sub.subscription.unsubscribe();
-
   }, [
     router,
     queryClient,
   ]);
-
 
   /* =================================================
      RENDER
   ================================================== */
 
   return (
-
-    <QueryClientProvider
-      client={queryClient}
-    >
-
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
-
         <CartProvider>
-
           <>
+            {/* META PIXEL */}
+
+            <MetaPixelTracker />
+
+            {/* VOUCHER POPUP — kept disabled as before */}
 
             {/* <SetagoVoucherPopup /> */}
 
-            <div
-              className="
-                flex
-                min-h-screen
-                flex-col
-              "
-            >
-
+            <div className="flex min-h-screen flex-col">
               <SiteHeader />
 
               <main className="flex-1">
@@ -407,19 +416,13 @@ function RootComponent() {
               </main>
 
               <SiteFooter />
-
             </div>
-
           </>
 
-
-          {/* =================================================
-              FLOATING CONTACT
-          ================================================== */}
+          {/* FLOATING CONTACT */}
 
           {!hideFloating && (
             <>
-
               <FloatingContact
                 onClose={() =>
                   setHideFloating(true)
@@ -427,20 +430,12 @@ function RootComponent() {
               />
 
               {/* <FloatingShipping /> */}
-
             </>
           )}
 
-
-          <Toaster
-            position="top-center"
-          />
-
+          <Toaster position="top-center" />
         </CartProvider>
-
       </AuthProvider>
-
     </QueryClientProvider>
-
   );
 }
