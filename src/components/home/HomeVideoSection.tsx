@@ -35,7 +35,7 @@ const videos: VideoItem[] = [
     label: "LIFESTYLE",
     title: "Stay connected.",
     description: "Made to fit your everyday routine.",
-    video: "/videos/infibetter-video-4.mp4",
+    video: "/videos/video4.mp4",
     href: "/products/armor-magsafe-case",
   },
 ];

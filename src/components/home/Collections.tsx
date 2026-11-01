@@ -29,11 +29,19 @@ interface CollectionProduct {
   compare_at_price?: number | string | null;
   image_url?: string | null;
   stock?: number | null;
+  best_choice?: boolean | null;
+  everyday_plus?: boolean | null;
+  is_active?: boolean | null;
+  category_slug?: string | null;
+  category_name?: string | null;
+  category?: string | { slug?: string | null; name?: string | null } | null;
 }
 
 interface CollectionsProps {
   products?: CollectionProduct[];
   newArrivals?: CollectionProduct[];
+  bestChoiceProducts?: CollectionProduct[];
+  everydayPlusProducts?: CollectionProduct[];
 }
 
 const categoryImages = [
@@ -74,10 +82,12 @@ function ProductMiniCard({
   product,
   fallbackImage,
   floatDelay = 0,
+  badgeLabel = "New Arrival",
 }: {
   product: CollectionProduct;
   fallbackImage: string;
   floatDelay?: number;
+  badgeLabel?: string;
 }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
     getCurrency(),
@@ -254,7 +264,7 @@ function ProductMiniCard({
           "
         />
 
-        {/* BEST SELLER BADGE */}
+        {/* PRODUCT BADGE */}
         <div className="absolute left-2.5 top-2.5 z-10">
           <span
             className="
@@ -267,7 +277,7 @@ function ProductMiniCard({
               sm:text-[8px]
             "
           >
-            Best Seller
+            {badgeLabel}
           </span>
         </div>
 
@@ -357,8 +367,9 @@ function ProductMiniCard({
 export default function Collections({
   products = [],
   newArrivals = [],
+  bestChoiceProducts: selectedBestChoiceProducts,
+  everydayPlusProducts: selectedEverydayPlusProducts,
 }: CollectionsProps) {
-  const [activeTab, setActiveTab] = useState<"best" | "new">("best");
   const [mobileIndex, setMobileIndex] = useState(0);
   const [desktopStartIndex, setDesktopStartIndex] = useState(0);
 
@@ -372,8 +383,51 @@ export default function Collections({
   });
   const travelPowerImage = travelPowerProduct?.image_url || banner02;
 
-  const activeProducts =
-    activeTab === "best" ? products : newArrivals;
+  // New Arrivals remains its own section.
+  const activeProducts = newArrivals;
+
+  // Keep a de-duplicated source for sections that still use the general
+  // product list. Admin-selected sections use the exact arrays from the
+  // homepage loader whenever those props are supplied.
+  const uniqueProducts = [...products, ...newArrivals].filter(
+    (product, index, all) => all.findIndex((item) => item.id === product.id) === index,
+  );
+
+  // BEST CHOICE: only products explicitly selected by Admin.
+  const bestChoiceSource =
+    selectedBestChoiceProducts ??
+    uniqueProducts.filter((product) => product.best_choice === true);
+
+  const bestChoiceProducts = bestChoiceSource
+    .filter((product) => product.is_active !== false)
+    .filter((product) => product.best_choice === true)
+    .slice(0, 4);
+
+  const bestChoiceIds = new Set(bestChoiceProducts.map((product) => product.id));
+
+  // EVERYDAY PLUS: only products explicitly ticked by Admin.
+  // Never infer membership from category or from being a non-case product.
+  const everydayPlusSource =
+    selectedEverydayPlusProducts ??
+    uniqueProducts.filter((product) => product.everyday_plus === true);
+
+  const everydayPlusProducts = everydayPlusSource
+    .filter((product) => product.is_active !== false)
+    .filter((product) => product.everyday_plus === true)
+    .filter((product) => !bestChoiceIds.has(product.id))
+    .filter((product) => {
+      const categoryValue =
+        typeof product.category === "string"
+          ? product.category
+          : `${product.category?.slug ?? ""} ${product.category?.name ?? ""}`;
+      const categoryText = [
+        categoryValue,
+        product.category_slug ?? "",
+        product.category_name ?? "",
+      ].join(" ").toLowerCase();
+      return !/iphone[-_ ]?cases?|phone[-_ ]?cases?|mobile[-_ ]?cases?/.test(categoryText);
+    })
+    .slice(0, 4);
 
   // Mobile: current product + a small peek of the next product.
   const mobileProducts = activeProducts.slice(
@@ -416,12 +470,6 @@ export default function Collections({
     if (canGoDesktopPrev) {
       setDesktopStartIndex((prev) => Math.max(0, prev - 1));
     }
-  };
-
-  const changeTab = (tab: "best" | "new") => {
-    setActiveTab(tab);
-    setMobileIndex(0);
-    setDesktopStartIndex(0);
   };
 
   return (
@@ -662,70 +710,24 @@ export default function Collections({
 
         </div>
 
-       {/* TABS — no surrounding white panel; keep only one View all link in the header */}
+       {/* NEW ARRIVALS TAB + VIEW ALL */}
+        <div className="mt-3 flex h-9 w-fit items-center gap-1 bg-transparent p-0">
+          <button
+            type="button"
+            aria-current="true"
+            className="flex h-8 flex-none items-center justify-center rounded-[7px] bg-white px-5 text-[9px] font-semibold tracking-[-0.01em] text-[#171717] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED]"
+          >
+            New Arrivals
+          </button>
 
-<div
-  className="
-    mt-3
-    flex
-    h-9
-    w-fit
-    items-center
-    gap-1
-    bg-transparent
-    p-0
-  "
->
-  {/* BEST SELLERS */}
-  <button
-    type="button"
-    onClick={() => changeTab("best")}
-    className={`
-      flex h-8 flex-none items-center justify-center rounded-[7px] px-5
-      text-[9px] font-semibold tracking-[-0.01em] transition-all duration-200
-      ${
-        activeTab === "best"
-          ? `bg-white text-[#171717] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED]`
-          : `bg-transparent text-[#8A93A0] hover:text-[#4B5563]`
-      }
-    `}
-  >
-    Best Sellers
-  </button>
-
-  {/* NEW ARRIVALS */}
-  <button
-    type="button"
-    onClick={() => changeTab("new")}
-    className={`
-      flex h-8 flex-none items-center justify-center rounded-[7px] px-5
-      text-[9px] font-semibold tracking-[-0.01em] transition-all duration-200
-      ${
-        activeTab === "new"
-          ? `bg-white text-[#171717] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED]`
-          : `bg-transparent text-[#8A93A0] hover:text-[#4B5563]`
-      }
-    `}
-  >
-    New Arrivals
-  </button>
-
-  {/* VIEW ALL — aligned with the mirror-style tabs */}
-  <Link
-    to="/shop"
-    className="
-      group flex h-8 flex-none items-center justify-center gap-1.5
-      rounded-[8px] border border-white/90 bg-white/65 px-3.5
-      text-[9px] font-semibold text-[#0066E6]
-      shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.95)]
-      backdrop-blur-xl transition-all duration-200
-      hover:bg-white/90 hover:shadow-[0_4px_12px_rgba(15,23,42,0.12)]
-    "
-  >
-    View all
-    <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
-  </Link>
-</div>
+          <Link
+            to="/shop"
+            className="group flex h-8 flex-none items-center justify-center gap-1.5 rounded-[8px] border border-white/90 bg-white/65 px-3.5 text-[9px] font-semibold text-[#0066E6] shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl transition-all duration-200 hover:bg-white/90 hover:shadow-[0_4px_12px_rgba(15,23,42,0.12)]"
+          >
+            View all
+            <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
 
         {/* PRODUCTS */}
 
@@ -854,6 +856,97 @@ export default function Collections({
             </div>
           )}
         </div>
+      </div>
+
+      {/* =====================================================
+          BEST CHOICE — PHONE CASES ONLY
+      ====================================================== */}
+      <div className="mt-9 border-t border-[#ECECEC] pt-7 sm:mt-11 sm:pt-9">
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#0066E6] sm:text-[10px]">
+              INFIBETTER SELECTION
+            </p>
+            <h2 className="font-sans text-[27px] font-bold leading-[1.08] tracking-[-0.035em] text-[#171717] sm:text-[31px] lg:text-[34px]">
+              Best Choice for Your iPhone
+            </h2>
+            <p className="mt-2 text-[10px] leading-relaxed text-neutral-500 sm:text-[11px]">
+              MagSafe Compatible · Built-in Ring Stand
+            </p>
+          </div>
+
+          <Link
+            to="/shop"
+            search={{ category: "iphone-cases" } as never}
+            className="group mb-0.5 flex h-8 flex-none items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 text-[9px] font-semibold text-[#0066E6] shadow-[0_2px_8px_rgba(15,23,42,0.045)] transition-all hover:border-[#0066E6]/30 hover:bg-[#F8FBFF]"
+          >
+            View all
+            <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+
+        {bestChoiceProducts.length > 0 ? (
+          <div className="mt-4 grid w-full grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            {bestChoiceProducts.map((product, index) => (
+              <ProductMiniCard
+                key={`best-choice-${product.id}`}
+                product={product}
+                floatDelay={(index % 4) * 0.35}
+                fallbackImage={banner01}
+                badgeLabel="Best Choice"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 flex min-h-[88px] items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-white px-4 text-center text-[11px] text-neutral-400">
+            No Best Choice products selected yet.
+          </div>
+        )}
+      </div>
+
+      {/* =====================================================
+          EVERYDAY PLUS — EVERYDAY ACCESSORIES
+      ====================================================== */}
+      <div className="mt-9 border-t border-[#ECECEC] pt-7 sm:mt-11 sm:pt-9">
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#0066E6] sm:text-[10px]">
+              INFIBETTER EVERYDAY EDIT
+            </p>
+            <h2 className="font-sans text-[27px] font-bold leading-[1.08] tracking-[-0.035em] text-[#171717] sm:text-[31px] lg:text-[34px]">
+              Everyday Plus
+            </h2>
+            <p className="mt-2 text-[10px] leading-relaxed text-neutral-500 sm:text-[11px]">
+              Smart essentials that make every day easier.
+            </p>
+          </div>
+
+          <Link
+            to="/shop"
+            className="group mb-0.5 flex h-8 flex-none items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 text-[9px] font-semibold text-[#0066E6] shadow-[0_2px_8px_rgba(15,23,42,0.045)] transition-all hover:border-[#0066E6]/30 hover:bg-[#F8FBFF]"
+          >
+            View all
+            <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+
+        {everydayPlusProducts.length > 0 ? (
+          <div className="mt-4 grid w-full grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            {everydayPlusProducts.map((product, index) => (
+              <ProductMiniCard
+                key={`everyday-plus-${product.id}`}
+                product={product}
+                floatDelay={(index % 4) * 0.35}
+                fallbackImage={banner02}
+                badgeLabel="Everyday Plus"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 flex min-h-[88px] items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-white px-4 text-center text-[11px] text-neutral-400">
+            No everyday products available yet.
+          </div>
+        )}
       </div>
     </section>
   );

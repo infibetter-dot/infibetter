@@ -1,4 +1,5 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+﻿
+import { createFileRoute } from "@tanstack/react-router";
 import {
   useSuspenseQuery,
   queryOptions,
@@ -30,12 +31,19 @@ const homeData = queryOptions({
         color_preview,
         featured,
         best_seller,
+        best_choice,
+        everyday_plus,
         top_seller,
-        is_active
+        is_active,
+        category_id,
+        category:categories (
+          slug,
+          name
+        )
       `)
       .eq("is_active", true)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(100);
 
     if (error) {
       console.error("INFIBETTER HOME PRODUCTS ERROR:", error);
@@ -48,47 +56,82 @@ const homeData = queryOptions({
 
       return {
         ...product,
+
         price: Number.isFinite(price) ? price : 0,
+
         compare_at_price: Number.isFinite(compareAtPrice)
           ? compareAtPrice
           : 0,
+
         priceOld: Number.isFinite(compareAtPrice)
           ? compareAtPrice
           : 0,
+
         old_price: Number.isFinite(compareAtPrice)
           ? compareAtPrice
           : 0,
-        featured: Boolean(product.featured),
-        best_seller: Boolean(product.best_seller),
-        top_seller: Boolean(product.top_seller),
+
+        featured: product.featured === true,
+        best_seller: product.best_seller === true,
+        best_choice: product.best_choice === true,
+        everyday_plus: product.everyday_plus === true,
+        top_seller: product.top_seller === true,
         is_active: product.is_active === true,
+
+        category_slug: product.category?.slug ?? null,
+        category_name: product.category?.name ?? null,
       };
     });
 
+    // NEW ARRIVALS
     const newArrivals = allProducts
       .filter((product) => product.featured)
       .slice(0, 12);
 
+    // BEST SELLERS
     const bestSellers = allProducts
       .filter((product) => product.best_seller)
       .slice(0, 12);
 
+    // BEST CHOICE: Admin-selected products only.
+    const bestChoiceProducts = allProducts
+      .filter((product) => product.best_choice)
+      .slice(0, 4);
+
+    // EVERYDAY PLUS: Admin-selected products only.
+    // Exclude Best Choice products to prevent duplication.
+    const bestChoiceIds = new Set(
+      bestChoiceProducts.map((product) => product.id)
+    );
+
+    const everydayPlusProducts = allProducts
+      .filter((product) => product.everyday_plus)
+      .filter((product) => !bestChoiceIds.has(product.id))
+      .slice(0, 4);
+
+    // TOP SELLERS
     const topSellers = allProducts
       .filter((product) => product.top_seller)
       .slice(0, 12);
 
     console.log("INFIBETTER HOME PRODUCTS:", {
       total: allProducts.length,
-      newArrivals,
-      bestSellers,
-      topSellers,
+      newArrivals: newArrivals.length,
+      bestSellers: bestSellers.length,
+      bestChoiceProducts: bestChoiceProducts.map((product) => product.name),
+      everydayPlusProducts: everydayPlusProducts.map(
+        (product) => product.name
+      ),
+      topSellers: topSellers.length,
     });
 
     return {
-      products: bestSellers,
+      products: allProducts,
       newArrivals,
       featured: newArrivals,
       bestSellers,
+      bestChoiceProducts,
+      everydayPlusProducts,
       topSellers,
     };
   },
@@ -126,6 +169,8 @@ function HomePage() {
           <Collections
             products={data.products}
             newArrivals={data.newArrivals}
+            bestChoiceProducts={data.bestChoiceProducts}
+            everydayPlusProducts={data.everydayPlusProducts}
           />
         </div>
 
