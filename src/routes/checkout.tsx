@@ -521,7 +521,6 @@ function CheckoutPage() {
               value: Number(totalUsd.toFixed(2)),
               currency: "USD",
             },
-            String(data.dbOrderId),
           );
           localStorage.setItem(purchaseEventKey, "1");
         }

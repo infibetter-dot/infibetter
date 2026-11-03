@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { trackMetaEvent } from "@/lib/meta-pixel";
+import { trackAddToCart } from "@/lib/meta-pixel";
 
 export interface CartItem {
   id: string;
@@ -82,14 +82,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return [...previous, { ...item, quantity }];
       });
 
-      // Track only after a valid add action is invoked.
-      trackMetaEvent("AddToCart", {
-        content_type: "product",
-        content_ids: [String(item.id)],
-        content_name: item.name,
-        value: Number(item.price) * quantity,
+      trackAddToCart({
+        id: String(item.id),
+        name: item.name,
+        price: Number(item.price),
+        quantity,
         currency: "USD",
-        num_items: quantity,
       });
     },
     remove: (id) =>

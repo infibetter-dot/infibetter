@@ -1,4 +1,4 @@
-﻿const META_PIXEL_ID = "3789534267871189";
+﻿const META_PIXEL_ID = "1848792186365356";
 
 declare global {
   interface Window {

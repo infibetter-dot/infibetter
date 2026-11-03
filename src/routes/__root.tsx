@@ -32,13 +32,13 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { supabase } from "@/integrations/supabase/client";
 
-import SetagoVoucherPopup from "@/components/SetagoVoucherPopup";
+
 
 /* =========================================================
    INFIBETTER — META PIXEL CONFIGURATION
 ========================================================= */
 
-const META_PIXEL_ID = "3789534267871189";
+const META_PIXEL_ID = "1848792186365356";
 
 /* =========================================================
    404
