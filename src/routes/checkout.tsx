@@ -15,6 +15,7 @@ import {
   Search,
   ShieldCheck,
   ShoppingBag,
+  Trash2,
   Truck,
   X,
 } from "lucide-react";
@@ -233,7 +234,7 @@ function PaymentMethodIcons() {
 }
 
 function CheckoutPage() {
-  const { items, clear, count, add } = useCart();
+  const { items, clear, count, add, remove } = useCart();
   const navigate = useNavigate();
 
   const [countryCode, setCountryCode] = useState("US");
@@ -592,9 +593,9 @@ function CheckoutPage() {
         <PayPalScriptProvider options={PAYPAL_OPTIONS}>
           <form
             onSubmit={handleSubmit}
-            className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_390px] xl:gap-10"
+            className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-8 xl:gap-10"
           >
-          <div className="space-y-6">
+          <div className="contents lg:block lg:space-y-6">
             <section className="rounded-2xl border border-[#e2e2e2] p-5 sm:p-6">
               <SectionTitle
                 eyebrow="1"
@@ -763,7 +764,7 @@ function CheckoutPage() {
             )}
 
             {/* PAYMENT */}
-            <section className="box-border w-full min-w-0 overflow-hidden rounded-[10px] border border-[#e5e7eb] bg-white sm:rounded-[12px]">
+            <section className="order-20 box-border w-full min-w-0 overflow-hidden rounded-[10px] border border-[#e5e7eb] bg-white sm:rounded-[12px] lg:order-none">
               <div className="border-b border-[#e5e7eb] px-3 py-3 sm:px-5 sm:py-4">
                 <h2 className="text-[16px] font-semibold leading-5 tracking-[-0.02em] sm:text-[18px] sm:leading-6">
                   Payment
@@ -896,8 +897,8 @@ function CheckoutPage() {
 
           </div>
 
-          <aside className="min-w-0 lg:sticky lg:top-6">
-            <div className="rounded-2xl border border-[#e2e2e2] bg-white p-5 sm:p-6">
+          <aside className="contents lg:sticky lg:top-6 lg:block">
+            <div className="order-10 rounded-2xl border border-[#e2e2e2] bg-white p-5 sm:p-6 lg:order-none">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold tracking-[-0.02em]">
                   Order summary
@@ -911,9 +912,9 @@ function CheckoutPage() {
                 {items.map((item) => (
                   <div
                     key={`${item.id}-${item.productColorId ?? "default"}`}
-                    className="flex gap-3"
+                    className="flex min-w-0 gap-3"
                   >
-                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#f5f5f5]">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#f5f5f5] sm:h-[72px] sm:w-[72px]">
                       {item.image ? (
                         <img
                           src={item.image}
@@ -922,17 +923,49 @@ function CheckoutPage() {
                         />
                       ) : null}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 text-sm font-medium">
-                        {item.name}
-                      </p>
-                      <p className="mt-1 text-xs text-neutral-500">
-                        Qty {item.quantity}
-                        {item.colorName ? ` · ${item.colorName}` : ""}
-                      </p>
-                      <p className="mt-1 text-sm font-semibold">
-                        {usd(Number(item.price) * Number(item.quantity))}
-                      </p>
+
+                    <div className="flex min-w-0 flex-1 items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-[13px] font-medium leading-5 text-[#171717] sm:text-sm">
+                          {item.name}
+                        </p>
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-4 text-neutral-500">
+                          <span>Qty {item.quantity}</span>
+                          {item.colorName ? (
+                            <span className="inline-flex min-w-0 items-center gap-1.5">
+                              {item.colorHex ? (
+                                <span
+                                  aria-hidden="true"
+                                  className="h-3 w-3 shrink-0 rounded-full border border-black/10"
+                                  style={{ backgroundColor: item.colorHex }}
+                                />
+                              ) : null}
+                              <span className="truncate">{item.colorName}</span>
+                            </span>
+                          ) : null}
+                        </div>
+                        {item.deviceModelName ? (
+                          <p className="mt-1 text-xs leading-4 text-neutral-500">
+                            <span className="font-medium text-neutral-700">{item.deviceModelName}</span>
+                          </p>
+                        ) : null}
+                        <p className="mt-1.5 text-sm font-semibold tabular-nums text-[#171717]">
+                          {usd(Number(item.price) * Number(item.quantity))}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          remove(item.id);
+                          toast.success(`${item.name} removed from your order.`);
+                        }}
+                        aria-label={`Remove ${item.name} from order`}
+                        title="Remove item"
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 sm:h-9 sm:w-9"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1003,25 +1036,27 @@ function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-3 divide-x divide-[#dcdcdc] rounded-xl border border-[#dedede] bg-[#fafafa] py-4">
-                <TrustStat
-                  icon={<Truck className="h-5 w-5" />}
-                  title="Tracked"
-                  text="Delivery updates"
-                />
-                <TrustStat
-                  icon={<RotateCcw className="h-5 w-5" />}
-                  title="30 days"
-                  text="Return window"
-                />
-                <TrustStat
-                  icon={<ShieldCheck className="h-5 w-5" />}
-                  title="1-year"
-                  text="Defect warranty"
-                />
-              </div>
+            </div>
 
-              <div className="mt-5 rounded-xl bg-[#f7f7f7] p-4 text-xs leading-5 text-neutral-600">
+            <div className="order-30 mt-0 grid grid-cols-3 divide-x divide-[#dcdcdc] rounded-xl border border-[#dedede] bg-[#fafafa] py-4 lg:order-none lg:mt-5">
+              <TrustStat
+                icon={<Truck className="h-5 w-5" />}
+                title="Tracked"
+                text="Delivery updates"
+              />
+              <TrustStat
+                icon={<RotateCcw className="h-5 w-5" />}
+                title="30 days"
+                text="Return window"
+              />
+              <TrustStat
+                icon={<ShieldCheck className="h-5 w-5" />}
+                title="1-year"
+                text="Defect warranty"
+              />
+            </div>
+
+            <div className="order-40 mt-0 rounded-xl bg-[#f7f7f7] p-4 text-xs leading-5 text-neutral-600 lg:order-none lg:mt-5">
                 <div className="flex items-center gap-2 font-semibold text-[#111]">
                   <ShieldCheck className="h-4 w-4 text-[#0066e6]" />
                   Secure checkout
@@ -1029,10 +1064,9 @@ function CheckoutPage() {
                 <p className="mt-1">
                   Your payment is processed securely by PayPal. Debit and credit card payments are handled by PayPal.
                 </p>
-              </div>
             </div>
 
-            <div className="mt-4 overflow-hidden rounded-2xl border border-[#e2e2e2] bg-white">
+            <div className="order-50 mt-0 overflow-hidden rounded-2xl border border-[#e2e2e2] bg-white lg:order-none lg:mt-4">
               <div className="border-b border-[#e8e8e8] px-5 py-4">
                 <h3 className="text-sm font-semibold">
                   Help & delivery information
@@ -1143,7 +1177,7 @@ function CheckoutPage() {
               </Faq>
             </div>
 
-            <div className="mt-5 border-t border-[#e8e8e8] pt-4 pb-1">
+            <div className="order-60 mt-0 border-t border-[#e8e8e8] pt-4 pb-1 lg:order-none lg:mt-5">
               <nav
                 aria-label="Checkout legal information"
                 className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[11px] leading-5 sm:gap-x-4 sm:text-xs"

@@ -11,6 +11,9 @@ export interface CartItem {
   productColorId?: string;
   colorName?: string;
   colorHex?: string;
+  variantId?: string;
+  deviceModelId?: string;
+  deviceModelName?: string;
 }
 
 interface CartContextValue {
@@ -82,6 +85,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return [...previous, { ...item, quantity }];
       });
 
+      // Centralized AddToCart tracking for all cart entry points.
       trackAddToCart({
         id: String(item.id),
         name: item.name,
