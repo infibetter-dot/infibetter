@@ -353,11 +353,15 @@ className="rounded-xl p-2 transition hover:bg-neutral-100"
 
 <section className="rounded-3xl border border-neutral-200 p-6">
 
-<h3 className="mb-6 text-lg font-bold">
+<h3 className="mb-2 text-lg font-bold">
 
 Giá trị Voucher
 
 </h3>
+
+<p className="mb-6 text-sm text-neutral-500">
+Đơn tối thiểu và mức giảm tối đa được tính bằng USD. Voucher giảm theo phần trăm (%) không phụ thuộc đơn vị tiền tệ.
+</p>
 
 <div className="grid gap-5 md:grid-cols-2">
 
@@ -418,13 +422,16 @@ Mua X tặng Y
 
 <label className="mb-2 block text-sm font-medium">
 
-Giá trị
+Giá trị {voucher.type === "percent" ? "(%)" : voucher.type === "fixed" ? "(USD)" : ""}
 
 </label>
 
 <input
 type="number"
+min={0}
+step={voucher.type === "percent" ? "1" : "0.01"}
 className="w-full rounded-xl border p-3"
+placeholder={voucher.type === "percent" ? "Ví dụ: 5" : "Ví dụ: 10.00"}
 value={voucher.value}
 onChange={(e)=>
 update(
@@ -440,13 +447,16 @@ Number(e.target.value)
 
 <label className="mb-2 block text-sm font-medium">
 
-Đơn tối thiểu
+Đơn tối thiểu (USD)
 
 </label>
 
 <input
 type="number"
+min={0}
+step="0.01"
 className="w-full rounded-xl border p-3"
+placeholder="Ví dụ: 50.00"
 value={voucher.min_order}
 onChange={(e)=>
 update(
@@ -462,13 +472,16 @@ Number(e.target.value)
 
 <label className="mb-2 block text-sm font-medium">
 
-Giảm tối đa
+Giảm tối đa (USD)
 
 </label>
 
 <input
 type="number"
+min={0}
+step="0.01"
 className="w-full rounded-xl border p-3"
+placeholder="Ví dụ: 15.00"
 disabled={
 voucher.type !== "percent"
 }

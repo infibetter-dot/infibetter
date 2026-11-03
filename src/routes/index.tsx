@@ -1,5 +1,5 @@
-﻿
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
+import FeaturedProductSection from "@/components/home/FeaturedProductSection";
 import {
   useSuspenseQuery,
   queryOptions,
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Hero from "@/components/home/Hero";
 import Collections from "@/components/home/Collections";
 import HomeVideoSection from "@/components/home/HomeVideoSection";
+import VoucherSlider from "@/components/home/VoucherSlider";
 
 const homeData = queryOptions({
   queryKey: ["infibetter-home-data"],
@@ -164,6 +165,9 @@ function HomePage() {
     <main className="min-h-screen w-full bg-[#F7F8FA]">
       <div className="mx-auto w-full max-w-[1440px]">
         <Hero />
+
+        {/* Homepage vouchers */}
+        
 
         <div className="px-4 sm:px-6 lg:px-8">
           <Collections

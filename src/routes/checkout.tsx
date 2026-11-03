@@ -32,6 +32,8 @@ import { toast } from "sonner";
 import { useCart } from "@/lib/cart";
 import { trackMetaEvent } from "@/lib/meta-pixel";
 import { supabase } from "@/integrations/supabase/client";
+import CheckoutVoucher from "@/components/checkout/CheckoutVoucher";
+import type { VoucherSummary } from "@/components/checkout/voucher.types";
 
 // Keep PayPal SDK configuration stable for the entire checkout page lifetime.
 const PAYPAL_OPTIONS = {
@@ -84,6 +86,8 @@ type CheckoutOfferProduct = {
   compare_at_price: number | null;
   image_url: string | null;
   stock: number | null;
+  is_active: boolean | null;
+  status: string | null;
 };
 
 const COUNTRIES: CountryOption[] = [
@@ -237,6 +241,18 @@ function CheckoutPage() {
     useState<ShippingMethod>("standard");
   const [submitting, setSubmitting] = useState(false);
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [voucherSummary, setVoucherSummary] = useState<VoucherSummary>({
+    discountVoucher: null,
+    shippingVoucher: null,
+    discountAmount: 0,
+    shippingDiscount: 0,
+    shipping: 0,
+    totalDiscount: 0,
+    customerVoucher: null,
+    customerDiscount: 0,
+  });
   const [arrivalOpen, setArrivalOpen] = useState(true);
   const [faqOpen, setFaqOpen] = useState<string | null>(null);
   const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
@@ -256,7 +272,13 @@ function CheckoutPage() {
     (sum, item) => sum + Number(item.price) * Number(item.quantity),
     0,
   );
-  const totalUsd = subtotalUsd + shippingFeeUsd;
+  const discountAmountUsd = Number(voucherSummary.discountAmount || 0);
+  const shippingDiscountUsd = Number(voucherSummary.shippingDiscount || 0);
+  const customerDiscountUsd = Number(voucherSummary.customerDiscount || 0);
+  const totalUsd = Math.max(
+    0,
+    subtotalUsd + shippingFeeUsd - discountAmountUsd - shippingDiscountUsd - customerDiscountUsd,
+  );
 
   // Meta Pixel: fire InitiateCheckout once per checkout-page visit.
   useEffect(() => {
@@ -286,7 +308,7 @@ function CheckoutPage() {
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id,slug,name,price,compare_at_price,image_url,stock",
+          "id,slug,name,price,compare_at_price,image_url,stock,is_active,status",
         )
         .gt("stock", 0)
         .order("top_seller", { ascending: false, nullsFirst: false })
@@ -305,6 +327,12 @@ function CheckoutPage() {
       const cartIds = new Set(items.map((item) => item.id));
 
       const candidates = ((data ?? []) as CheckoutOfferProduct[])
+        // Match the Admin Products visibility rule:
+        // a product is visible only when is_active is true and status is not "hidden".
+        .filter(
+          (product) =>
+            product.is_active === true && product.status !== "hidden",
+        )
         .filter((product) => !cartIds.has(product.id))
         .filter((product) => Number(product.stock ?? 0) > 0)
         .slice(0, 8);
@@ -352,6 +380,78 @@ function CheckoutPage() {
     );
   }
 
+  function buildPaypalCheckoutPayload() {
+    const form = document.querySelector("form");
+    if (!form) throw new Error("Checkout form not found.");
+
+    const formData = new FormData(form);
+    const getValue = (name: string) =>
+      String(formData.get(name) ?? "").trim();
+
+    const checkout = {
+      full_name: getValue("full_name"),
+      email: getValue("email") || email.trim(),
+      phone: getValue("phone"),
+      address: getValue("address"),
+      city: getValue("city"),
+      district: getValue("state"),
+      ward: getValue("postal_code"),
+      postal_code: getValue("postal_code"),
+      notes: [
+        `Country: ${country.name}`,
+        `Zone: ${country.zone}`,
+        `Shipping: ${shippingMethod}`,
+        `Estimated delivery: ${deliveryRange}`,
+      ].join(" | "),
+      subtotal: Number(subtotalUsd.toFixed(2)),
+      shipping_fee: Number(shippingFeeUsd.toFixed(2)),
+      discount_amount: Number(discountAmountUsd.toFixed(2)),
+      shipping_discount: Number(shippingDiscountUsd.toFixed(2)),
+      customer_discount: Number(customerDiscountUsd.toFixed(2)),
+      total: Number(totalUsd.toFixed(2)),
+      items: items.map((item) => ({
+        product_id: String(item.id),
+        quantity: Number(item.quantity),
+        unit_price: Number(Number(item.price).toFixed(2)),
+        product_image: item.image || null,
+      })),
+    };
+
+    if (!checkout.full_name || !checkout.email || !checkout.phone ||
+        !checkout.address || !checkout.city) {
+      throw new Error(
+        "Please complete your name, email, phone and delivery address before paying.",
+      );
+    }
+
+    if (!checkout.items.length || checkout.items.some(
+      (item) => !item.product_id || !Number.isInteger(item.quantity) || item.quantity < 1
+    )) {
+      throw new Error("Your cart contains an invalid item.");
+    }
+
+    // The server recalculates prices and total from the database.
+    // Do not send client-calculated amounts as payment authority.
+    return checkout;
+  }
+
+  async function createPayPalOrder() {
+    const checkout = buildPaypalCheckoutPayload();
+    const { data, error } = await supabase.functions.invoke(
+      "paypal-create-order",
+      { body: { checkout, currency: "USD" } },
+    );
+
+    if (error || !data?.success || !data?.orderId) {
+      console.error("PAYPAL CREATE ORDER ERROR", { error, data });
+      throw new Error(
+        data?.error ?? "Unable to create the PayPal order.",
+      );
+    }
+
+    return data.orderId as string;
+  }
+
   async function handlePaypalApprove(orderID: string) {
     if (submitting) return;
     setSubmitting(true);
@@ -361,7 +461,7 @@ function CheckoutPage() {
       const formData = new FormData(form);
       const getValue = (name: string) => String(formData.get(name) ?? "").trim();
       const checkout = {
-        full_name: getValue("full_name") || "PayPal Customer",
+        full_name: getValue("full_name"),
         email: getValue("email"),
         phone: getValue("phone"),
         address: getValue("address"),
@@ -383,9 +483,14 @@ function CheckoutPage() {
           quantity: Number(item.quantity),
         })),
       };
+
+      if (!checkout.full_name) {
+        throw new Error("Please enter your full name before paying.");
+      }
+
       const { data, error } = await supabase.functions.invoke(
         "paypal-capture-order",
-        { body: { orderId: orderID, checkout } },
+        { body: { orderId: orderID } },
       );
       if (error || !data?.success || !data?.dbOrderId) {
         console.error("PAYPAL CHECKOUT FAILED", { error, data });
@@ -492,138 +597,6 @@ function CheckoutPage() {
           >
           <div className="space-y-6">
             <section className="rounded-2xl border border-[#e2e2e2] p-5 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0066e6]">
-                    Express checkout
-                  </p>
-                  <h1 className="mt-1 text-xl font-semibold tracking-[-0.03em]">
-                    Pay with PayPal or card
-                  </h1>
-                </div>
-                <CreditCard className="h-5 w-5 text-neutral-400" />
-              </div>
-
-              <div className="mt-5">
-                
-                  <div className="space-y-3">
-                    {/* PayPal wallet */}
-                    <PayPalButtons
-                      fundingSource={FUNDING.PAYPAL}
-                      disabled={submitting}
-                      style={{
-                        layout: "vertical",
-                        shape: "rect",
-                        label: "paypal",
-                        height: 48,
-                      }}
-                      createOrder={async () => {
-                        const { data, error } =
-                          await supabase.functions.invoke(
-                            "paypal-create-order",
-                            {
-                              body: {
-                                amount: totalUsd.toFixed(2),
-                                currency: "USD",
-                              },
-                            },
-                          );
-
-                        if (
-                          error ||
-                          !data?.success ||
-                          !data?.orderId
-                        ) {
-                          console.error(
-                            "PAYPAL CREATE ORDER ERROR",
-                            error,
-                            data,
-                          );
-                          throw new Error(
-                            "Unable to create the PayPal order.",
-                          );
-                        }
-
-                        return data.orderId;
-                      }}
-                      onApprove={async (data) => {
-                        await handlePaypalApprove(data.orderID);
-                      }}
-                      onCancel={() => {
-                        toast.info("PayPal checkout was cancelled.");
-                      }}
-                      onError={(error) => {
-                        console.error("PAYPAL BUTTON ERROR", error);
-                        toast.error(
-                          "PayPal could not complete the payment.",
-                        );
-                      }}
-                    />
-
-                    {/* Debit / Credit Card through PayPal */}
-                    <PayPalButtons
-                      fundingSource={FUNDING.CARD}
-                      disabled={submitting}
-                      style={{
-                        layout: "vertical",
-                        shape: "rect",
-                        label: "pay",
-                        height: 48,
-                      }}
-                      createOrder={async () => {
-                        const { data, error } =
-                          await supabase.functions.invoke(
-                            "paypal-create-order",
-                            {
-                              body: {
-                                amount: totalUsd.toFixed(2),
-                                currency: "USD",
-                              },
-                            },
-                          );
-
-                        if (
-                          error ||
-                          !data?.success ||
-                          !data?.orderId
-                        ) {
-                          console.error(
-                            "PAYPAL CARD CREATE ORDER ERROR",
-                            error,
-                            data,
-                          );
-                          throw new Error(
-                            "Unable to create the PayPal order.",
-                          );
-                        }
-
-                        return data.orderId;
-                      }}
-                      onApprove={async (data) => {
-                        await handlePaypalApprove(data.orderID);
-                      }}
-                      onCancel={() => {
-                        toast.info("Card payment was cancelled.");
-                      }}
-                      onError={(error) => {
-                        console.error(
-                          "PAYPAL CARD BUTTON ERROR",
-                          error,
-                        );
-                        toast.error(
-                          "Card payment could not be completed.",
-                        );
-                      }}
-                    />
-                  </div>
-              </div>
-
-              <p className="mt-3 text-center text-[11px] leading-5 text-neutral-500">
-                Pay with PayPal or with a debit / credit card securely through PayPal.
-              </p>
-            </section>
-
-            <section className="rounded-2xl border border-[#e2e2e2] p-5 sm:p-6">
               <SectionTitle
                 eyebrow="1"
                 title="Contact"
@@ -632,6 +605,22 @@ function CheckoutPage() {
               <div className="mt-5 space-y-4">
                 
           
+
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-neutral-600">
+                    Full name
+                  </span>
+                  <input
+                    name="full_name"
+                    type="text"
+                    autoComplete="name"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Your full name"
+                    className="h-11 w-full rounded-xl border border-[#dcdcdc] bg-white px-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-[#0066e6] focus:ring-4 focus:ring-[#0066e6]/10"
+                  />
+                </label>
 
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-neutral-600">
@@ -691,7 +680,10 @@ function CheckoutPage() {
 
                 <PhoneField
                   country={country}
+                  value={phone}
+                  onChange={setPhone}
                 />
+
               </div>
             </section>
 
@@ -713,15 +705,6 @@ function CheckoutPage() {
                   icon={<Truck className="h-5 w-5" />}
                 />
 
-                <ShippingOption
-                  selected={shippingMethod === "express"}
-                  onClick={() => setShippingMethod("express")}
-                  title="Express Shipping"
-                  subtitle={`Tracked · ${getDeliveryRange(country, "express")}`}
-                  detail={`${country.expressTransit[0]}–${country.expressTransit[1]} business days after dispatch`}
-                  price={usd(country.express)}
-                  icon={<PackageCheck className="h-5 w-5" />}
-                />
               </div>
             </section>
 
@@ -803,35 +786,7 @@ function CheckoutPage() {
                         label: "paypal",
                         height: 48,
                       }}
-                      createOrder={async () => {
-                        const { data, error } =
-                          await supabase.functions.invoke(
-                            "paypal-create-order",
-                            {
-                              body: {
-                                amount: totalUsd.toFixed(2),
-                                currency: "USD",
-                              },
-                            },
-                          );
-
-                        if (
-                          error ||
-                          !data?.success ||
-                          !data?.orderId
-                        ) {
-                          console.error(
-                            "PAYPAL CREATE ORDER ERROR",
-                            error,
-                            data,
-                          );
-                          throw new Error(
-                            "Unable to create the PayPal order.",
-                          );
-                        }
-
-                        return data.orderId;
-                      }}
+                      createOrder={async () => createPayPalOrder()}
                       onApprove={async (data) => {
                         await handlePaypalApprove(data.orderID);
                       }}
@@ -858,35 +813,7 @@ function CheckoutPage() {
                         label: "pay",
                         height: 48,
                       }}
-                      createOrder={async () => {
-                        const { data, error } =
-                          await supabase.functions.invoke(
-                            "paypal-create-order",
-                            {
-                              body: {
-                                amount: totalUsd.toFixed(2),
-                                currency: "USD",
-                              },
-                            },
-                          );
-
-                        if (
-                          error ||
-                          !data?.success ||
-                          !data?.orderId
-                        ) {
-                          console.error(
-                            "PAYPAL CARD CREATE ORDER ERROR",
-                            error,
-                            data,
-                          );
-                          throw new Error(
-                            "Unable to create the PayPal order.",
-                          );
-                        }
-
-                        return data.orderId;
-                      }}
+                      createOrder={async () => createPayPalOrder()}
                       onApprove={async (data) => {
                         await handlePaypalApprove(data.orderID);
                       }}
@@ -1012,11 +939,42 @@ function CheckoutPage() {
                 ))}
               </div>
 
+              <div className="mt-5">
+                <CheckoutVoucher
+                  subtotal={subtotalUsd}
+                  shippingFee={shippingFeeUsd}
+                  phone={phone}
+                  cartItems={items}
+                  onChange={setVoucherSummary}
+                />
+              </div>
+
               <div className="mt-5 space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-neutral-500">Subtotal</span>
                   <span>{usd(subtotalUsd)}</span>
                 </div>
+
+                {discountAmountUsd > 0 && (
+                  <div className="flex justify-between text-emerald-700">
+                    <span>Order discount</span>
+                    <span>−{usd(discountAmountUsd)}</span>
+                  </div>
+                )}
+
+                {shippingDiscountUsd > 0 && (
+                  <div className="flex justify-between text-emerald-700">
+                    <span>Shipping discount</span>
+                    <span>−{usd(shippingDiscountUsd)}</span>
+                  </div>
+                )}
+
+                {customerDiscountUsd > 0 && (
+                  <div className="flex justify-between text-emerald-700">
+                    <span>Personal voucher</span>
+                    <span>−{usd(customerDiscountUsd)}</span>
+                  </div>
+                )}
 
                 <div className="flex justify-between">
                   <span className="text-neutral-500">Shipping</span>
@@ -2157,7 +2115,15 @@ function CountryDropdown({
   );
 }
 
-function PhoneField({ country }: { country: CountryOption }) {
+function PhoneField({
+  country,
+  value,
+  onChange,
+}: {
+  country: CountryOption;
+  value: string;
+  onChange: (value: string) => void;
+}) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium text-neutral-600">
@@ -2169,6 +2135,8 @@ function PhoneField({ country }: { country: CountryOption }) {
           name="phone"
           type="tel"
           inputMode="tel"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
           placeholder={`${country.dialCode} 555 000 0000`}
           className="min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-neutral-900 outline-none placeholder:text-neutral-400"
         />

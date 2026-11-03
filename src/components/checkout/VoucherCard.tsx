@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import {
   Check,
@@ -57,7 +58,7 @@ function getVoucherIcon(icon?: string) {
 }
 
 function formatPrice(value: number) {
-  return `${Math.round(value).toLocaleString("vi-VN")}đ`;
+  return `$${Number(value || 0).toFixed(2)}`;
 }
 
 export default function VoucherCard({
@@ -107,7 +108,6 @@ export default function VoucherCard({
       >
         <div className="p-3.5 sm:p-4">
           <div className="flex items-start gap-3">
-            {/* Lucide voucher icon */}
             <div
               className={cn(
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
@@ -120,7 +120,6 @@ export default function VoucherCard({
             </div>
 
             <div className="min-w-0 flex-1">
-              {/* Title + badges */}
               <div className="flex flex-wrap items-center gap-1.5">
                 <h3 className="min-w-0 text-[14px] font-semibold leading-5 text-[#202020]">
                   {voucher.title}
@@ -132,7 +131,7 @@ export default function VoucherCard({
                       className="mr-1 h-2.5 w-2.5"
                       strokeWidth={2}
                     />
-                    Tốt nhất
+                    Best Value
                   </Badge>
                 )}
 
@@ -142,7 +141,7 @@ export default function VoucherCard({
                       className="mr-1 h-2.5 w-2.5"
                       strokeWidth={2.2}
                     />
-                    Đang áp dụng
+                    Applied
                   </Badge>
                 )}
 
@@ -156,33 +155,29 @@ export default function VoucherCard({
                 )}
               </div>
 
-              {/* Code */}
               <p className="mt-1 font-mono text-[11px] font-medium tracking-[0.03em] text-[#555555]">
                 {voucher.code}
               </p>
 
-              {/* Description */}
               {!!voucher.description && (
                 <p className="mt-1 text-[11px] leading-[1.45] text-[#555555]">
                   {voucher.description}
                 </p>
               )}
 
-              {/* Minimum order */}
               <div className="mt-2 flex items-center gap-1.5 text-[10.5px] text-[#555555]">
                 <TicketPercent
                   className="h-3.5 w-3.5 shrink-0 text-[#6B6B6B]"
                   strokeWidth={1.7}
                 />
                 <span>
-                  Đơn từ{" "}
+                  Min. order{" "}
                   <strong className="font-semibold text-[#333333]">
                     {formatPrice(voucher.min_order)}
                   </strong>
                 </span>
               </div>
 
-              {/* Saving / remaining */}
               {disabled ? (
                 <div className="mt-2.5 flex items-center justify-between rounded-lg border border-[#E5E1D8] bg-[#FAF8F3] px-3 py-2.5">
                   <div className="flex items-center gap-1.5">
@@ -191,7 +186,7 @@ export default function VoucherCard({
                       strokeWidth={1.8}
                     />
                     <span className="text-[10.5px] font-medium text-[#555555]">
-                      Còn thiếu
+                      Spend more
                     </span>
                   </div>
 
@@ -207,7 +202,7 @@ export default function VoucherCard({
                       strokeWidth={1.8}
                     />
                     <span className="text-[10.5px] font-medium text-[#555555]">
-                      Ưu đãi
+                      Discount
                     </span>
                   </div>
 
@@ -217,7 +212,6 @@ export default function VoucherCard({
                 </div>
               )}
 
-              {/* Action */}
               <div className="mt-2.5">
                 {selected ? (
                   <div className="space-y-1.5">
@@ -230,7 +224,7 @@ export default function VoucherCard({
                         className="mr-1.5 h-3.5 w-3.5"
                         strokeWidth={2.2}
                       />
-                      Đang áp dụng
+                      Applied
                     </Button>
 
                     <button
@@ -241,7 +235,7 @@ export default function VoucherCard({
                       }}
                       className="flex h-7 w-full items-center justify-center rounded-md text-[10.5px] font-medium text-[#666666] transition-colors hover:bg-[#F5F5F3] hover:text-[#222222]"
                     >
-                      Hủy áp dụng
+                      Remove
                     </button>
                   </div>
                 ) : disabled ? (
@@ -254,18 +248,29 @@ export default function VoucherCard({
                       className="mr-1.5 h-3.5 w-3.5"
                       strokeWidth={1.8}
                     />
-                    Chưa đủ điều kiện
+                    Not eligible
                   </Button>
                 ) : (
                   <Button
                     type="button"
-                    className="!h-9 w-full rounded-lg !bg-[#111111] text-[11.5px] font-semibold !text-white shadow-none hover:!bg-[#222222]"
+                    className={cn(
+                      "relative isolate !h-9 w-full overflow-hidden rounded-lg",
+                      "border border-white/80",
+                      "bg-white/75 text-[11.5px] font-semibold text-[#303B2D]",
+                      "shadow-[0_2px_8px_rgba(50,60,45,0.10),inset_0_1px_0_rgba(255,255,255,0.95)]",
+                      "backdrop-blur-md",
+                      "transition-all duration-200",
+                      "hover:border-[#C8D2C3] hover:bg-[#F4F7F2]",
+                      "hover:shadow-[0_4px_12px_rgba(50,60,45,0.14)]",
+                      "active:scale-[0.98]",
+                    )}
                     onClick={(event) => {
                       event.stopPropagation();
                       handleClick();
                     }}
                   >
-                    Áp dụng
+                    <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-lg bg-gradient-to-b from-white/90 to-transparent" />
+                    <span className="relative z-10">Apply</span>
                   </Button>
                 )}
               </div>
@@ -278,7 +283,7 @@ export default function VoucherCard({
                 className="h-3.5 w-3.5 shrink-0"
                 strokeWidth={1.7}
               />
-              Miễn phí / hỗ trợ phí vận chuyển
+              Free shipping / Shipping discount
             </div>
           )}
         </div>

@@ -588,3 +588,10 @@ border-top:1px solid #E5E5E5;
     display: none !important;
   }
 }
+.product-banner-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+}

@@ -106,6 +106,10 @@ export interface VoucherDisplay {
 
   applyId?: string | null;
 
+  is_personal?: boolean;
+  isWelcome?: boolean;
+  customer_voucher_id?: string;
+  discount_type?: string;
 }
 
 export interface VoucherSummary {
@@ -121,6 +125,8 @@ export interface VoucherSummary {
   shipping: number;
 
   totalDiscount: number;
+  customerVoucher?: VoucherDisplay | null;
+  customerDiscount?: number;
 
 }
 

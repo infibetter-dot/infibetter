@@ -64,15 +64,15 @@ function BestSellerPage() {
       <header className="mb-12 text-center">
 
         <p className="text-sm font-medium uppercase tracking-[0.25em] text-primary">
-          Olive Living
+          Infi Better
         </p>
 
         <h1 className="mt-4 font-display text-4xl md:text-5xl">
-          Được yêu thích nhất
+          Bestseller
         </h1>
 
         <p className="mx-auto mt-5 max-w-2xl text-neutral-600">
-          Những sản phẩm được nhiều khách hàng lựa chọn và đánh giá cao.
+          Products that are frequently chosen and highly rated by customers.
         </p>
 
       </header>

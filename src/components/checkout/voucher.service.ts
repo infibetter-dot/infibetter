@@ -37,9 +37,6 @@ export async function getMarketingVouchers(): Promise<MarketingVoucher[]> {
     return [];
   }
 
-  console.log("MARKETING DATA", data);
-console.log("MARKETING ERROR", error);
-
   return (data ?? []) as MarketingVoucher[];
 }
 
@@ -101,10 +98,6 @@ export async function loadCheckoutVouchers(
     marketing,
     welcome
   );
-
-  console.log("Marketing", marketing);
-  console.log("Welcome", welcome);
-  console.log("Merged", merged);
 
   return merged;
 

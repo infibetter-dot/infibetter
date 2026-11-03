@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 import {
 
   createFileRoute,
@@ -32,7 +34,13 @@ import {
 
 } from "lucide-react";
 
-import { formatUSDFromVND } from "@/lib/format";
+const formatUSD = (amount: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(Number(amount)) ? Number(amount) : 0);
 
 export const Route = createFileRoute(
 
@@ -84,10 +92,6 @@ type OrderData = {
 
   address: string;
 
-ward: string;
-
-district: string;
-
 city: string;
 
   payment_method: string;
@@ -116,37 +120,135 @@ function OrderSuccessPage() {
 
     useState<OrderData | null>(null);
 
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => {
+    let cancelled = false;
 
-    const raw =
+    const loadOrder = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const orderId = params.get("id");
 
-      localStorage.getItem(
+      // Keep compatibility with the normal post-checkout flow.
+      if (!orderId) {
+        const raw = localStorage.getItem("infibetter_last_order");
+        if (raw) {
+          try {
+            if (!cancelled) setOrder(JSON.parse(raw));
+          } catch {
+            localStorage.removeItem("infibetter_last_order");
+            if (!cancelled) setLoadError("The saved order details are invalid.");
+          }
+        } else if (!cancelled) {
+          setLoadError("No order ID was provided.");
+        }
 
-        "infibetter_last_order"
+        if (!cancelled) setLoading(false);
+        return;
+      }
 
-      );
+      const { data, error } = await supabase
+        .from("orders")
+        .select(`
+          id,
+          created_at,
+          full_name,
+          phone,
+          email,
+          address,
+          city,
+          payment_method,
+          subtotal,
+          shipping_fee,
+          discount_amount,
+          shipping_discount,
+          total,
+          discount_voucher_code,
+          discount_voucher_name,
+          shipping_voucher_code,
+          shipping_voucher_name,
+          order_items (
+            id,
+            product_name,
+            product_image,
+            quantity,
+            unit_price,
+            color_name,
+            color_hex
+          )
+        `)
+        .eq("id", orderId)
+        .maybeSingle();
 
-    if (!raw) return;
+      if (cancelled) return;
 
-    try {
+      if (error) {
+        console.error("ORDER SUCCESS LOAD ERROR:", error);
+        setLoadError(error.message);
+        setLoading(false);
+        return;
+      }
 
-      setOrder(
+      if (!data) {
+        setLoadError("No order was found for this ID, or access is restricted by Supabase RLS.");
+        setLoading(false);
+        return;
+      }
 
-        JSON.parse(raw)
+      const row = data as any;
+      const numeric = (value: unknown) => {
+        const parsed = Number(value ?? 0);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
 
-      );
+      setOrder({
+        id: row.id,
+        created_at: row.created_at,
+        full_name: row.full_name ?? "",
+        phone: row.phone ?? "",
+        email: row.email ?? undefined,
+        address: row.address ?? "",
+        city: row.city ?? "",
+        payment_method: row.payment_method ?? "",
+        subtotal: numeric(row.subtotal),
+        shipping: numeric(row.shipping_fee),
+        discountAmount: numeric(row.discount_amount),
+        shippingDiscount: numeric(row.shipping_discount),
+        total: numeric(row.total),
+        discountVoucher: row.discount_voucher_code
+          ? { code: row.discount_voucher_code, title: row.discount_voucher_name ?? undefined }
+          : null,
+        shippingVoucher: row.shipping_voucher_code
+          ? { code: row.shipping_voucher_code, title: row.shipping_voucher_name ?? undefined }
+          : null,
+        items: (row.order_items ?? []).map((item: any) => ({
+          id: item.id,
+          product_name: item.product_name ?? "Product",
+          product_image: item.product_image ?? "",
+          quantity: numeric(item.quantity),
+          unit_price: numeric(item.unit_price),
+          color_name: item.color_name ?? undefined,
+          color_hex: item.color_hex ?? undefined,
+        })),
+      });
 
-    } catch {
+      setLoading(false);
+    };
 
-      localStorage.removeItem(
-
-        "infibetter_last_order"
-
-      );
-
-    }
-
+    void loadOrder();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F8F6F3] px-6">
+        <p className="text-sm text-neutral-500">Loading order details...</p>
+      </div>
+    );
+  }
 
   if (!order) {
 
@@ -172,9 +274,7 @@ function OrderSuccessPage() {
 
           <p className="mt-3 text-sm leading-6 text-neutral-500">
 
-            Your session may have expired
-
-            or you may have opened this page directly
+            {loadError ?? "The order details could not be loaded."}
 
           </p>
 
@@ -442,7 +542,7 @@ Replacement support for manufacturing defects.
 
         <span className="text-neutral-500">
 
-          Thanh toán
+          Payment
 
         </span>
 
@@ -451,10 +551,10 @@ Replacement support for manufacturing defects.
           <CreditCard size={18} />
 
           {order.payment_method === "cod"
-
             ? "Cash on Delivery"
-
-            : "Bank Transfer"}
+            : order.payment_method?.toLowerCase().includes("paypal")
+              ? "PayPal"
+              : order.payment_method || "Online Payment"}
 
         </span>
 
@@ -470,7 +570,7 @@ Replacement support for manufacturing defects.
 
         <span>
 
-          {formatUSDFromVND(order.subtotal)}
+          {formatUSD(order.subtotal)}
 
         </span>
 
@@ -486,7 +586,7 @@ Replacement support for manufacturing defects.
 
   <span>
 
-    {formatUSDFromVND(order.shipping)}
+    {formatUSD(order.shipping)}
 
   </span>
 
@@ -514,7 +614,7 @@ Replacement support for manufacturing defects.
 
         <span className="text-green-600">
 
-            -{formatUSDFromVND(order.discountAmount)}
+            -{formatUSD(order.discountAmount)}
 
         </span>
 
@@ -544,7 +644,7 @@ Replacement support for manufacturing defects.
 
         <span className="text-green-600">
 
-            -{formatUSDFromVND(order.shippingDiscount)}
+            -{formatUSD(order.shippingDiscount)}
 
         </span>
 
@@ -562,7 +662,7 @@ Replacement support for manufacturing defects.
 
         <span className="text-2xl font-bold">
 
-          {formatUSDFromVND(order.total)}
+          {formatUSD(order.total)}
 
         </span>
 
@@ -572,7 +672,7 @@ Replacement support for manufacturing defects.
 
   </div>
 
-  {/* Thông tin khách hàng */}
+  {/* Customer Information */}
 
   <div className="rounded-[28px] bg-white p-6 shadow-sm">
 
@@ -678,7 +778,7 @@ Replacement support for manufacturing defects.
 
 </div>
 
-{/* ================= DANH SÁCH SẢN PHẨM ================= */}
+{/* ================= ORDERED PRODUCTS ================= */}
 
 <div className="mt-8 rounded-[28px] bg-white p-6 shadow-sm">
 
@@ -702,7 +802,7 @@ Replacement support for manufacturing defects.
 
     <div className="flex gap-4">
 
-      {/* Ảnh */}
+      {/* Image */}
 
       <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
 
@@ -722,7 +822,7 @@ Replacement support for manufacturing defects.
 
       </div>
 
-      {/* Nội dung */}
+      {/* Details */}
 
       <div className="min-w-0 flex-1">
 
@@ -762,7 +862,7 @@ Replacement support for manufacturing defects.
 
         <p className="mt-3 text-lg font-semibold">
 
-          {formatUSDFromVND(item.unit_price * item.quantity)}
+          {formatUSD(item.unit_price * item.quantity)}
 
         </p>
 
@@ -904,7 +1004,7 @@ Thank you for shopping with INFIBETTER.
 
 </div>
 
-{/* ================= CAM KẾT ================= */}
+{/* ================= OUR PROMISE ================= */}
 
 <div className="mt-8 rounded-[28px] bg-white p-6 shadow-sm">
 
@@ -984,7 +1084,7 @@ Our INFIBETTER team is always ready to help.
 
 </div>
 
-{/* ================= CÓ THỂ BẠN SẼ THÍCH ================= */}
+{/* ================= YOU MAY ALSO LIKE ================= */}
 
 {/* ================= BUTTON ================= */}
 
@@ -1098,35 +1198,9 @@ Our INFIBETTER team is always ready to help.
 
     </p>
 
-    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-
-      <a
-
-        href="tel:0934643451"
-
-        className="rounded-full border px-6 py-3 transition hover:bg-neutral-100"
-
-      >
-
-        📞 0799379179
-
-      </a>
-
-      <a
-
-        href="https://zalo.me/"
-
-        target="_blank"
-
-        className="rounded-full bg-[#0068FF] px-6 py-3 text-white transition hover:opacity-90"
-
-      >
-
-        Chat on Zalo
-
-      </a>
-
-    </div>
+    <p className="mt-5 text-sm text-neutral-500">
+      Please use the contact details provided in your order confirmation email.
+    </p>
 
   </div>
 

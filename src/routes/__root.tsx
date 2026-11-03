@@ -16,7 +16,6 @@ import {
 import {
   useEffect,
   useRef,
-  useState,
   type ReactNode,
 } from "react";
 
@@ -33,8 +32,6 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { supabase } from "@/integrations/supabase/client";
 
-import FloatingContact from "@/components/FloatingContact";
-import FloatingShipping from "@/components/FloatingShipping";
 import SetagoVoucherPopup from "@/components/SetagoVoucherPopup";
 
 /* =========================================================
@@ -354,11 +351,6 @@ function RootComponent() {
 
   const router = useRouter();
 
-  const [
-    hideFloating,
-    setHideFloating,
-  ] = useState(false);
-
   /* =================================================
      AUTH STATE
   ================================================== */
@@ -418,20 +410,6 @@ function RootComponent() {
               <SiteFooter />
             </div>
           </>
-
-          {/* FLOATING CONTACT */}
-
-          {!hideFloating && (
-            <>
-              <FloatingContact
-                onClose={() =>
-                  setHideFloating(true)
-                }
-              />
-
-              {/* <FloatingShipping /> */}
-            </>
-          )}
 
           <Toaster position="top-center" />
         </CartProvider>

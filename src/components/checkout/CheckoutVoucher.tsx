@@ -113,54 +113,55 @@ export default function CheckoutVoucher({
   }, [summary, onChange]);
 
   const discountVouchers = vouchers.filter(
-    (v) => v.type !== "shipping",
+    (v) => v.type !== "shipping" && !v.isWelcome,
   );
 
   const shippingVouchers = vouchers.filter(
     (v) => v.type === "shipping",
   );
 
-  const customerVouchers = vouchers.filter((v: any) => {
-    return (
-      v.is_personal === true ||
-      v.personal === true ||
-      v.customer_voucher === true ||
-      v.voucher_group === "customer" ||
-      v.category === "customer"
-    );
-
-  useEffect(() => {
-    if (autoSelect && !selectedCustomerVoucher && customerVouchers.length > 0) {
-      const eligible = customerVouchers
-        .filter((voucher) => subtotal >= voucher.min_order)
-        .sort(
-          (a, b) =>
-            calculateVoucherDiscount(b, subtotal) -
-            calculateVoucherDiscount(a, subtotal),
-        );
-
-      if (eligible[0]) {
-        setSelectedCustomerVoucher(eligible[0]);
-      }
-    }
-  }, [autoSelect, customerVouchers, selectedCustomerVoucher, subtotal]);
-  });
-
-  const normalDiscountVouchers = discountVouchers.filter(
-    (v: any) => !customerVouchers.some((customer) => customer.id === v.id),
+  const customerVouchers = vouchers.filter(
+    (voucher) => voucher.isWelcome === true,
   );
 
-  const finalTotal =
+  useEffect(() => {
+    if (!autoSelect || selectedCustomerVoucher || customerVouchers.length === 0) {
+      return;
+    }
+
+    const eligible = customerVouchers
+      .filter((voucher) => subtotal >= voucher.min_order)
+      .sort(
+        (a, b) =>
+          calculateVoucherDiscount(b, subtotal) -
+          calculateVoucherDiscount(a, subtotal),
+      );
+
+    if (eligible[0]) setSelectedCustomerVoucher(eligible[0]);
+  }, [autoSelect, customerVouchers, selectedCustomerVoucher, subtotal]);
+
+  const finalTotal = Math.max(
+    0,
     subtotal +
-    shippingFee -
-    summary.discountAmount -
-    summary.shippingDiscount;
+      shippingFee -
+      summary.discountAmount -
+      summary.shippingDiscount -
+      customerDiscount,
+  );
+
+  const formatMoney = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(value || 0));
 
   const applyVoucherCode = async () => {
     const code = voucherCode.trim().toUpperCase();
 
     if (!code) {
-      toast.error("Vui lòng nhập mã giảm giá.");
+      toast.error("Please enter a voucher code.");
       return;
     }
 
@@ -169,39 +170,63 @@ export default function CheckoutVoucher({
     setCheckingCode(true);
 
     try {
-      console.log("APPLY VOUCHER CLICKED:", code);
+      
 
-      const { data, error } = await supabase
-        .from("vouchers")
+      const { data: customerData, error: customerError } = await supabase
+        .from("customer_vouchers")
         .select("*")
-        .eq("code", code)
+        .eq("voucher_code", code)
+        .eq("is_used", false)
         .maybeSingle();
 
-      if (error) {
-        console.error("CHECK VOUCHER ERROR:", error);
-        toast.error("Không thể kiểm tra mã giảm giá.");
-        return;
+      if (customerError) {
+        console.error("CHECK CUSTOMER VOUCHER ERROR:", customerError);
+      }
+
+      let data: any = customerData ?? null;
+      let isCustomerVoucher = Boolean(customerData);
+
+      if (!data) {
+        const { data: marketingData, error: marketingError } = await supabase
+          .from("vouchers")
+          .select("*")
+          .eq("code", code)
+          .maybeSingle();
+
+        if (marketingError) {
+          console.error("CHECK VOUCHER ERROR:", marketingError);
+          toast.error("Unable to check this voucher.");
+          return;
+        }
+
+        data = marketingData;
+        isCustomerVoucher = false;
       }
 
       if (!data) {
-        toast.error("Mã giảm giá không tồn tại.");
+        toast.error("Voucher code not found.");
         return;
       }
 
-      if (data.active !== true) {
-        toast.error("Mã giảm giá hiện không hoạt động.");
+      if (!isCustomerVoucher && data.active !== true) {
+        toast.error("This voucher is not active.");
+        return;
+      }
+
+      if (isCustomerVoucher && String(data.phone ?? "") !== phone.trim()) {
+        toast.error("This voucher does not belong to this phone number.");
         return;
       }
 
       const now = new Date();
 
       if (data.start_at && now < new Date(data.start_at)) {
-        toast.error("Mã giảm giá chưa bắt đầu.");
+        toast.error("This voucher is not active yet.");
         return;
       }
 
       if (data.end_at && now > new Date(data.end_at)) {
-        toast.error("Mã giảm giá đã hết hạn.");
+        toast.error("This voucher has expired.");
         return;
       }
 
@@ -209,12 +234,12 @@ export default function CheckoutVoucher({
         data.quantity !== null &&
         Number(data.used ?? 0) >= Number(data.quantity)
       ) {
-        toast.error("Mã giảm giá đã hết lượt sử dụng.");
+        toast.error("This voucher has reached its usage limit.");
         return;
       }
 
       if (data.manual_apply === false) {
-        toast.error("Mã này không thể nhập thủ công.");
+        toast.error("This voucher cannot be entered manually.");
         return;
       }
 
@@ -222,12 +247,12 @@ export default function CheckoutVoucher({
 
       if (subtotal < minOrder) {
         toast.error(
-          `Đơn hàng chưa đạt tối thiểu ${minOrder.toLocaleString("vi-VN")}đ để sử dụng mã này.`,
+          `Order subtotal must be at least ${formatMoney(minOrder)} to use this voucher.`, 
         );
         return;
       }
 
-      // Kiểm tra voucher theo sản phẩm nếu voucher có giới hạn sản phẩm.
+      // Ki?m tra voucher theo s?n ph?m n?u voucher c� gi?i h?n s?n ph?m.
       const applyType = String(
         data.apply_type ?? data.applyType ?? "all",
       ).toLowerCase();
@@ -240,15 +265,17 @@ export default function CheckoutVoucher({
         );
 
         if (!hasProduct) {
-          toast.error("Voucher này chỉ áp dụng cho đúng sản phẩm.");
+          toast.error("This voucher only applies to selected products.");
           return;
         }
       }
 
-      // Map type của DB về type mà voucher-engine hiện tại đang sử dụng.
-      // DB mới: discount_percent / discount_fixed / free_shipping
+      // Map type c?a DB v? type m� voucher-engine hi?n t?i dang s? d?ng.
+      // DB m?i: discount_percent / discount_fixed / free_shipping
       // Engine: percent / fixed / shipping
-      const dbType = String(data.type ?? "").toLowerCase();
+      const dbType = String(
+        isCustomerVoucher ? data.discount_type ?? "percent" : data.type ?? "",
+      ).toLowerCase();
 
       const engineType =
         dbType === "discount_percent" || dbType === "percent"
@@ -263,22 +290,27 @@ export default function CheckoutVoucher({
 
       if (!engineType) {
         console.error("UNSUPPORTED VOUCHER TYPE:", data.type);
-        toast.error("Loại voucher không được hỗ trợ.");
+        toast.error("This voucher type is not supported.");
         return;
       }
 
       const mappedVoucher: VoucherDisplay = {
         ...data,
         id: String(data.id),
-        code: String(data.code),
-        title: data.title ?? String(data.code),
+        code: String(isCustomerVoucher ? data.voucher_code : data.code),
+        title: data.title ?? data.full_name ?? String(code),
         type: engineType,
-        value: Number(data.value ?? 0),
+        value: Number(
+          isCustomerVoucher
+            ? data.discount ?? data.value ?? 0
+            : data.value ?? 0,
+        ),
         min_order: minOrder,
         max_discount:
           data.max_discount != null
             ? Number(data.max_discount)
-            : null,
+            : 0,
+        isWelcome: isCustomerVoucher,
         quantity:
           data.quantity != null ? Number(data.quantity) : null,
         used: Number(data.used ?? 0),
@@ -295,32 +327,32 @@ export default function CheckoutVoucher({
 
       // 3 voucher slots:
       // 1. Free Ship
-      // 2. Voucher giảm theo đơn
-      // 3. Voucher khách hàng cũ / cá nhân
+      // 2. Voucher gi?m theo don
+      // 3. Personal voucher cu / c� nh�n
       if (engineType === "shipping") {
         if (
           selectedShipping &&
           selectedShipping.code !== mappedVoucher.code
         ) {
-          toast.error("Chỉ được áp dụng 1 mã Freeship.");
+          toast.error("Only one shipping voucher can be applied.");
           return;
         }
 
         setSelectedShipping(mappedVoucher);
       } else {
-        const isCustomerVoucher =
+        const isPersonalVoucher = isCustomerVoucher ||
           data.is_personal === true ||
           data.personal === true ||
           data.customer_voucher === true ||
           data.voucher_group === "customer" ||
           data.category === "customer";
 
-        if (isCustomerVoucher) {
+        if (isPersonalVoucher) {
           if (
             selectedCustomerVoucher &&
             selectedCustomerVoucher.code !== mappedVoucher.code
           ) {
-            toast.error("Chỉ được áp dụng 1 voucher khách hàng.");
+            toast.error("Only one personal voucher can be applied.");
             return;
           }
 
@@ -330,7 +362,7 @@ export default function CheckoutVoucher({
             selectedDiscount &&
             selectedDiscount.code !== mappedVoucher.code
           ) {
-            toast.error("Chỉ được áp dụng 1 voucher giảm theo đơn.");
+            toast.error("Ch? du?c Apply 1 voucher gi?m theo don.");
             return;
           }
 
@@ -338,7 +370,7 @@ export default function CheckoutVoucher({
         }
       }
 
-      // Không để auto voucher ghi đè voucher vừa nhập.
+      // Kh�ng d? auto voucher ghi d� voucher v?a nh?p.
       setAutoSelect(false);
       setVoucherCode("");
 
@@ -349,12 +381,12 @@ export default function CheckoutVoucher({
 
       toast.success(
         engineType === "shipping"
-          ? `Áp dụng mã ${code} thành công! Miễn phí vận chuyển.`
-          : `Áp dụng mã ${code} thành công! Giảm ${appliedDiscount.toLocaleString("vi-VN")}đ.`,
+          ? `Voucher ${code} applied. Free shipping.`
+          : `Voucher ${code} applied. You save ${formatMoney(appliedDiscount)}.`,
       );
     } catch (error) {
       console.error("APPLY VOUCHER ERROR:", error);
-      toast.error("Có lỗi xảy ra khi áp dụng voucher.");
+      toast.error("Something went wrong while applying the voucher.");
     } finally {
       setCheckingCode(false);
     }
@@ -371,10 +403,10 @@ export default function CheckoutVoucher({
 
           <div className="min-w-0">
             <h3 className="text-[12px] font-semibold leading-4 text-[#222222]">
-              Voucher ưu đãi
+              Available offers
             </h3>
             <p className="mt-0.5 text-[9px] leading-3.5 text-[#666666]">
-              Có thể áp dụng tối đa 3 voucher khác nhóm
+              Apply up to 3 vouchers, one from each category
             </p>
           </div>
         </div>
@@ -386,7 +418,7 @@ export default function CheckoutVoucher({
           onClick={() => setOpen((value) => !value)}
           className="h-8 shrink-0 gap-1.5 rounded-lg border-[#DCDDD7] bg-white px-2.5 text-[10px] font-medium text-[#333333] shadow-none hover:bg-[#F5F5F3] hover:text-[#111111]"
         >
-          {open ? "Đóng" : "Chọn"}
+          {open ? "Close" : "Choose"}
           <ChevronDown
             className={`h-3.5 w-3.5 transition-transform ${
               open ? "rotate-180" : ""
@@ -401,7 +433,7 @@ export default function CheckoutVoucher({
         <div className="space-y-4">
           <section>
             <h4 className="mb-2 text-[11px] font-semibold text-[#333333]">
-              Voucher giảm giá
+              Order discount
             </h4>
 
             <div className="space-y-2.5">
@@ -438,7 +470,7 @@ export default function CheckoutVoucher({
 
           <section>
             <h4 className="mb-2 text-[11px] font-semibold text-[#333333]">
-              Voucher Freeship
+              Free shipping
             </h4>
 
             <div className="space-y-2.5">
@@ -473,7 +505,7 @@ export default function CheckoutVoucher({
 
           <section>
             <h4 className="mb-2 text-[11px] font-semibold text-[#333333]">
-              Voucher khách hàng
+              Personal voucher
             </h4>
 
             <div className="space-y-2.5">
@@ -509,14 +541,14 @@ export default function CheckoutVoucher({
 
           {loading && (
             <div className="rounded-xl border border-dashed border-[#DADAD6] px-4 py-4 text-center text-[10px] text-[#666666]">
-              Đang tải voucher...
+              Loading vouchers...
             </div>
           )}
 
           {!loading && vouchers.length === 0 && (
             <div className="rounded-xl border border-dashed border-[#DADAD6] px-4 py-4 text-center">
               <p className="text-[10px] text-[#666666]">
-                Bạn chưa có voucher khả dụng.
+                No available vouchers.
               </p>
             </div>
           )}
@@ -532,7 +564,7 @@ export default function CheckoutVoucher({
           />
 
           <p className="text-[10.5px] font-medium text-[#333333]">
-            Có mã giảm giá?
+            Have a promo code?
           </p>
         </div>
 
@@ -548,7 +580,7 @@ export default function CheckoutVoucher({
                 void applyVoucherCode();
               }
             }}
-            placeholder="Nhập mã giảm giá..."
+            placeholder="Enter voucher code"
             autoComplete="off"
             className="h-9 min-w-0 flex-1 rounded-lg border border-[#DCDDD7] bg-white px-3 text-[10px] text-[#222222] uppercase outline-none placeholder:text-[#999999] focus:border-[#999999]"
           />
@@ -561,9 +593,22 @@ export default function CheckoutVoucher({
               e.stopPropagation();
               void applyVoucherCode();
             }}
-            className="relative z-50 !h-9 shrink-0 pointer-events-auto rounded-lg !bg-[#111111] px-4 text-[10.5px] font-semibold !text-white shadow-none hover:!bg-[#222222] disabled:cursor-not-allowed disabled:!bg-[#D8D8D5] disabled:!text-[#777777]"
+            className="
+              relative isolate h-9 shrink-0 overflow-hidden rounded-lg
+              border border-white/80
+              bg-white/75 px-4 text-[10.5px] font-semibold text-[#303B2D]
+              shadow-[0_2px_8px_rgba(50,60,45,0.10),inset_0_1px_0_rgba(255,255,255,0.95)]
+              backdrop-blur-md transition-all duration-200
+              hover:border-[#C8D2C3] hover:bg-[#F4F7F2]
+              hover:shadow-[0_4px_12px_rgba(50,60,45,0.14)]
+              active:scale-[0.98]
+              disabled:cursor-not-allowed disabled:!bg-[#D8D8D5] disabled:!text-[#777777]
+            "
           >
-            {checkingCode ? "Đang kiểm tra..." : "Áp dụng"}
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-lg bg-gradient-to-b from-white/90 to-transparent" />
+            <span className="relative z-10">
+              {checkingCode ? "Checking..." : "Apply"}
+            </span>
           </Button>
         </div>
       </section>
@@ -579,10 +624,10 @@ export default function CheckoutVoucher({
 
             <div className="min-w-0">
               <p className="text-[11px] font-semibold text-[#333333]">
-                Ưu đãi đang áp dụng
+                Applied offers
               </p>
               <p className="text-[9px] text-[#777777]">
-                Voucher được áp dụng cho đơn hàng
+                Discounts applied to this order
               </p>
             </div>
           </div>
@@ -594,7 +639,7 @@ export default function CheckoutVoucher({
             onClick={() => setOpen(true)}
             className="h-7 shrink-0 rounded-md border-[#DCDDD7] bg-white px-2.5 text-[9px] font-medium text-[#444444] shadow-none hover:bg-[#F5F5F3]"
           >
-            Thay đổi
+            Change
           </Button>
         </div>
 
@@ -617,7 +662,7 @@ export default function CheckoutVoucher({
               </div>
 
               <span className="shrink-0 text-[10px] font-semibold text-[#4F604E]">
-                -{summary.discountAmount.toLocaleString("vi-VN")}đ
+                -{formatMoney(summary.discountAmount)}
               </span>
             </div>
           )}
@@ -631,7 +676,7 @@ export default function CheckoutVoucher({
                 />
                 <div className="min-w-0">
                   <p className="truncate text-[10px] font-semibold text-[#333333]">
-                    Miễn phí vận chuyển
+                    Free shipping
                   </p>
                   <p className="truncate text-[8.5px] text-[#777777]">
                     {summary.shippingVoucher.code}
@@ -640,7 +685,7 @@ export default function CheckoutVoucher({
               </div>
 
               <span className="shrink-0 text-[10px] font-semibold text-[#4F604E]">
-                -{summary.shippingDiscount.toLocaleString("vi-VN")}đ
+                -{formatMoney(summary.shippingDiscount)}
               </span>
             </div>
           )}
@@ -663,7 +708,7 @@ export default function CheckoutVoucher({
               </div>
 
               <span className="shrink-0 text-[10px] font-semibold text-[#4F604E]">
-                -{summary.customerDiscount.toLocaleString("vi-VN")}đ
+                -{formatMoney(summary.customerDiscount ?? 0)}
               </span>
             </div>
           )}
@@ -672,7 +717,7 @@ export default function CheckoutVoucher({
             !summary.shippingVoucher &&
             !summary.customerVoucher && (
               <p className="py-2 text-center text-[9px] text-[#888888]">
-                Chưa có voucher nào được áp dụng.
+                No vouchers applied.
               </p>
             )}
         </div>
@@ -683,18 +728,18 @@ export default function CheckoutVoucher({
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-[8px] font-semibold uppercase tracking-[0.13em] text-[#777777]">
-              Tổng thanh toán
+              Total
             </p>
 
             {summary.totalDiscount > 0 && (
               <p className="mt-1 text-[9px] font-medium text-[#5F6F5D]">
-                Đã giảm {summary.totalDiscount.toLocaleString("vi-VN")}đ
+                You save {formatMoney(summary.totalDiscount)}
               </p>
             )}
           </div>
 
           <p className="shrink-0 text-[18px] font-bold tracking-[-0.02em] text-[#222222]">
-            {finalTotal.toLocaleString("vi-VN")}đ
+            {formatMoney(finalTotal)}
           </p>
         </div>
       </section>

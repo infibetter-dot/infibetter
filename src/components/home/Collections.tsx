@@ -1,4 +1,8 @@
 ﻿import { Link } from "@tanstack/react-router";
+import FeaturedCaseSection from "@/components/home/FeaturedCaseSection";
+import FeaturedProductSection from "@/components/home/FeaturedProductSection";
+import magfoldFeaturedImage from "@/assets/hero/25w_fast.png";
+import VoucherSlider from "@/components/home/VoucherSlider";
 import {
   ArrowRight,
   ExternalLink,
@@ -83,11 +87,13 @@ function ProductMiniCard({
   fallbackImage,
   floatDelay = 0,
   badgeLabel = "New Arrival",
+  fluid = false,
 }: {
   product: CollectionProduct;
   fallbackImage: string;
   floatDelay?: number;
   badgeLabel?: string;
+  fluid?: boolean;
 }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
     getCurrency(),
@@ -241,14 +247,14 @@ function ProductMiniCard({
     <Link
       to="/products/$slug"
       params={{ slug: product.slug }}
-      className="
-        group relative flex w-[210px] flex-none snap-start flex-col
+      className={`
+        group relative flex ${fluid ? "w-full min-w-0" : "w-[210px] flex-none snap-start"} flex-col
         overflow-hidden rounded-[20px] border border-[#E8E3DD]
         bg-white shadow-[0_3px_12px_rgba(24,24,27,0.045)]
         transition-all duration-300
         hover:-translate-y-1 hover:shadow-[0_10px_28px_rgba(24,24,27,0.10)]
-        sm:w-auto
-      "
+        ${fluid ? "" : "sm:w-auto"}
+      `}
     >
       {/* PRODUCT IMAGE */}
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-white">
@@ -668,68 +674,54 @@ export default function Collections({
         ))}
       </div>
 
+      {/* VOUCHER SLIDER — BELOW SHOP BY CATEGORY */}
+      <VoucherSlider />
+
       {/* =====================================================
           FIND YOUR NEXT UPGRADE
       ====================================================== */}
 
       <div className="mt-7 sm:mt-8">
-        {/* HEADER */}
+          {/* HEADER */}
+          <div className="flex items-end justify-between">
+            <div>
+              <h2
+                className="
+                  font-sans text-[28px] font-bold leading-none
+                  tracking-[-0.03em] text-[#171717]
+                  sm:text-[32px] lg:text-[34px]
+                "
+              >
+                Find your next upgrade
+              </h2>
 
-        <div className="flex items-end justify-between">
-          <div>
-            <h2
-              className="
-                font-sans
-                text-[28px]
-                font-bold
-                leading-none
-                tracking-[-0.03em]
-                text-[#171717]
-                sm:text-[32px]
-                lg:text-[34px]
-              "
-            >
-              Find your next upgrade
-            </h2>
-
-            <p
-              className="
-                mt-2
-                flex
-                items-center
-                gap-1.5
-                text-[10px]
-                text-neutral-500
-                sm:text-[11px]
-              "
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
-              The products our customers love most.
-            </p>
+              <p className="mt-2 flex items-center gap-1.5 text-[10px] text-neutral-500 sm:text-[11px]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
+                The products our customers love most.
+              </p>
+            </div>
           </div>
 
-        </div>
+          {/* NEW ARRIVALS LEFT, VIEW ALL RIGHT */}
+          <div className="mt-3 flex h-9 w-full items-center justify-between bg-transparent p-0">
+            <button
+              type="button"
+              aria-current="true"
+              className="flex h-8 flex-none items-center justify-center rounded-[7px] bg-white px-5 text-[9px] font-semibold tracking-[-0.01em] text-[#171717] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED]"
+            >
+              New Arrivals
+            </button>
 
-       {/* NEW ARRIVALS TAB + VIEW ALL */}
-        <div className="mt-3 flex h-9 w-fit items-center gap-1 bg-transparent p-0">
-          <button
-            type="button"
-            aria-current="true"
-            className="flex h-8 flex-none items-center justify-center rounded-[7px] bg-white px-5 text-[9px] font-semibold tracking-[-0.01em] text-[#171717] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED]"
-          >
-            New Arrivals
-          </button>
+            <Link
+              to="/shop"
+              className="group flex h-8 flex-none items-center justify-center gap-1.5 rounded-[8px] border border-white/90 bg-white/65 px-3.5 text-[9px] font-semibold text-[#0066E6] shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl transition-all duration-200 hover:bg-white/90 hover:shadow-[0_4px_12px_rgba(15,23,42,0.12)]"
+            >
+              View all
+              <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
 
-          <Link
-            to="/shop"
-            className="group flex h-8 flex-none items-center justify-center gap-1.5 rounded-[8px] border border-white/90 bg-white/65 px-3.5 text-[9px] font-semibold text-[#0066E6] shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl transition-all duration-200 hover:bg-white/90 hover:shadow-[0_4px_12px_rgba(15,23,42,0.12)]"
-          >
-            View all
-            <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-
-        {/* PRODUCTS */}
+          {/* PRODUCTS */}
 
         <div className="relative mt-3">
           {activeProducts.length > 0 ? (
@@ -859,6 +851,11 @@ export default function Collections({
       </div>
 
       {/* =====================================================
+          FEATURED CASE — ABOVE BEST CHOICE
+      ====================================================== */}
+      <FeaturedCaseSection />
+
+      {/* =====================================================
           BEST CHOICE — PHONE CASES ONLY
       ====================================================== */}
       <div className="mt-9 border-t border-[#ECECEC] pt-7 sm:mt-11 sm:pt-9">
@@ -868,10 +865,10 @@ export default function Collections({
               INFIBETTER SELECTION
             </p>
             <h2 className="font-sans text-[27px] font-bold leading-[1.08] tracking-[-0.035em] text-[#171717] sm:text-[31px] lg:text-[34px]">
-              Best Choice for Your iPhone
+              Made for iPhone
             </h2>
             <p className="mt-2 text-[10px] leading-relaxed text-neutral-500 sm:text-[11px]">
-              MagSafe Compatible · Built-in Ring Stand
+              MagSafe · Ring Stand
             </p>
           </div>
 
@@ -886,23 +883,54 @@ export default function Collections({
         </div>
 
         {bestChoiceProducts.length > 0 ? (
-          <div className="mt-4 grid w-full grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            {bestChoiceProducts.map((product, index) => (
-              <ProductMiniCard
-                key={`best-choice-${product.id}`}
-                product={product}
-                floatDelay={(index % 4) * 0.35}
-                fallbackImage={banner01}
-                badgeLabel="Best Choice"
-              />
-            ))}
-          </div>
+          <>
+            {/* MOBILE — HORIZONTAL SLIDER */}
+            <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden">
+              {bestChoiceProducts.map((product, index) => (
+                <div key={`best-choice-mobile-${product.id}`} className="w-[min(210px,68vw)] flex-none snap-start">
+                  <ProductMiniCard
+                    product={product}
+                    floatDelay={(index % 4) * 0.35}
+                    fallbackImage={banner01}
+                    badgeLabel="Best Choice"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* DESKTOP — PRODUCT GRID */}
+            <div className="mt-4 hidden w-full min-w-0 grid-cols-4 gap-3 sm:grid sm:gap-4">
+              {bestChoiceProducts.map((product, index) => (
+                <ProductMiniCard
+                  key={`best-choice-desktop-${product.id}`}
+                  product={product}
+                  floatDelay={(index % 4) * 0.35}
+                  fallbackImage={banner01}
+                  badgeLabel="Best Choice"
+                  fluid
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <div className="mt-4 flex min-h-[88px] items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-white px-4 text-center text-[11px] text-neutral-400">
             No Best Choice products selected yet.
           </div>
         )}
       </div>
+
+      {/* =====================================================
+          FEATURED PRODUCT — ABOVE EVERYDAY PLUS
+      ====================================================== */}
+      {everydayPlusProducts.length > 0 && (
+        <FeaturedProductSection
+          name="MAGFOLD ULTRA 25W"
+          description="A compact 25W magnetic wireless charger, designed for effortless everyday charging."
+          image={magfoldFeaturedImage}
+          slug="magfold-ultra-25w"
+          eyebrow="INFIBETTER FEATURED"
+        />
+      )}
 
       {/* =====================================================
           EVERYDAY PLUS — EVERYDAY ACCESSORIES
@@ -931,17 +959,35 @@ export default function Collections({
         </div>
 
         {everydayPlusProducts.length > 0 ? (
-          <div className="mt-4 grid w-full grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            {everydayPlusProducts.map((product, index) => (
-              <ProductMiniCard
-                key={`everyday-plus-${product.id}`}
-                product={product}
-                floatDelay={(index % 4) * 0.35}
-                fallbackImage={banner02}
-                badgeLabel="Everyday Plus"
-              />
-            ))}
-          </div>
+          <>
+            {/* MOBILE — HORIZONTAL SLIDER */}
+            <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden">
+              {everydayPlusProducts.map((product, index) => (
+                <div key={`everyday-plus-mobile-${product.id}`} className="w-[min(210px,68vw)] flex-none snap-start">
+                  <ProductMiniCard
+                    product={product}
+                    floatDelay={(index % 4) * 0.35}
+                    fallbackImage={banner02}
+                    badgeLabel="Everyday Plus"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* DESKTOP — PRODUCT GRID */}
+            <div className="mt-4 hidden w-full min-w-0 grid-cols-4 gap-3 sm:grid sm:gap-4">
+              {everydayPlusProducts.map((product, index) => (
+                <ProductMiniCard
+                  key={`everyday-plus-desktop-${product.id}`}
+                  product={product}
+                  floatDelay={(index % 4) * 0.35}
+                  fallbackImage={banner02}
+                  badgeLabel="Everyday Plus"
+                  fluid
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <div className="mt-4 flex min-h-[88px] items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-white px-4 text-center text-[11px] text-neutral-400">
             No everyday products available yet.
