@@ -174,7 +174,7 @@ const VoucherSlider: React.FC = () => {
 
   const scroll = (direction: "prev" | "next") => {
     scrollRef.current?.scrollBy({
-      left: direction === "next" ? 280 : -280,
+      left: direction === "next" ? (scrollRef.current?.clientWidth ?? 280) + 12 : -((scrollRef.current?.clientWidth ?? 280) + 12),
       behavior: "smooth",
     });
   };
@@ -197,7 +197,7 @@ const VoucherSlider: React.FC = () => {
   if (loading || vouchers.length === 0) return null;
 
   return (
-    <section className="my-5 w-full px-3 sm:my-7 sm:px-6 lg:px-0">
+    <section className="my-5 w-full px-2 sm:my-7 sm:px-6 lg:px-0">
       <div className="mx-auto w-full max-w-[1440px]">
 
         {/* SECTION HEADER */}
@@ -225,43 +225,59 @@ const VoucherSlider: React.FC = () => {
             {vouchers.map((voucher) => (
               <article
                 key={voucher.id}
-                className="flex h-[138px] w-[min(270px,78vw)] flex-none snap-start flex-col justify-between rounded-[16px] border border-[#EAE7E2] bg-[#F8F7F4] p-3 sm:h-[142px] sm:w-[290px]"
+                className="relative flex min-h-[196px] w-full min-w-full flex-none snap-start flex-col justify-between gap-4 overflow-hidden rounded-[18px] border border-[#E9E4DC] bg-[linear-gradient(135deg,#FCFBF8_0%,#F7F5F0_58%,#F2EEE7_100%)] p-4 shadow-[0_4px_14px_rgba(48,39,28,0.045)] sm:min-h-[178px] sm:min-w-0 sm:w-[300px]"
               >
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -right-2 top-5 select-none text-[104px] font-black leading-none tracking-[-0.12em] text-[#D8C8B5]/20"
+                >
+                  %
+                </span>
+
                 {/* VOUCHER CONTENT */}
-                <div>
+                <div className="relative z-[1] min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-[8px] font-semibold uppercase tracking-[0.17em] text-[#8B8177]">
+                    <p className="truncate text-[9px] font-bold uppercase tracking-[0.18em] text-[#8B8177]">
                       {voucher.badge || "EXCLUSIVE OFFER"}
                     </p>
 
-                    <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full border border-[#EAE3DA] bg-white text-[#A18B76]">
+                    <div
+                      aria-hidden="true"
+                      className="relative z-10 flex h-10 w-10 flex-none items-center justify-center text-[#A66B43]"
+                      style={{
+                        clipPath:
+                          "polygon(50% 0%,61% 9%,76% 5%,83% 19%,97% 27%,91% 42%,100% 54%,89% 66%,91% 82%,75% 86%,65% 100%,50% 91%,35% 100%,25% 86%,9% 82%,11% 66%,0% 54%,9% 42%,3% 27%,17% 19%,24% 5%,39% 9%)",
+                        background:
+                          "linear-gradient(145deg, #FFFDF8 0%, #F2E7D8 100%)",
+                      }}
+                    >
                       <VoucherIcon type={getVoucherIcon(voucher.type)} />
                     </div>
                   </div>
 
                   {/* DISCOUNT */}
-                  <h3 className="mt-1 truncate text-[24px] font-bold leading-none tracking-[-0.05em] text-[#171717]">
+                  <h3 className="mt-2 truncate text-[27px] font-extrabold leading-none tracking-[-0.055em] text-[#171717]">
                     {getDiscountLabel(voucher)}
                   </h3>
 
                   {/* DESCRIPTION */}
-                  <p className="mt-1 line-clamp-2 text-[10px] leading-[1.4] text-[#77716B]">
+                  <p className="mt-1.5 line-clamp-2 break-words text-[11px] leading-[1.45] text-[#77716B]">
                     {voucher.description || voucher.title}
                   </p>
                 </div>
 
                 {/* PROMO CODE */}
-                <div className="flex items-center justify-between gap-2 border-t border-dashed border-[#D9D3CB] pt-2">
+                <div className="relative z-[1] mt-auto flex shrink-0 items-center justify-between gap-3 border-t border-dashed border-[#D9D3CB]/90 pt-2.5">
                   <div className="min-w-0">
-                    <p className="text-[7px] font-semibold uppercase tracking-[0.15em] text-[#999087]">
+                    <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#999087]">
                       PROMO CODE
                     </p>
 
-                    <p className="mt-0.5 truncate text-[10px] font-bold tracking-[0.07em] text-[#25211E]">
+                    <p className="mt-0.5 truncate text-[11px] font-extrabold tracking-[0.08em] text-[#25211E]">
                       {voucher.code}
                     </p>
 
-                    <p className="mt-0.5 truncate text-[8px] text-[#999087]">
+                    <p className="mt-0.5 truncate text-[9px] text-[#999087]">
                       {getVoucherNote(voucher)}
                     </p>
                   </div>
@@ -270,7 +286,7 @@ const VoucherSlider: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => copyCode(voucher.code)}
-                    className="h-7 flex-none rounded-full border border-[#DCD6CE] bg-white px-3 text-[9px] font-semibold text-[#39332E] transition hover:bg-[#171717] hover:text-white active:scale-95"
+                    className="h-8 flex-none rounded-full border border-[#E3D9CD] bg-white/90 px-4 text-[10px] font-bold text-[#39332E] shadow-[0_2px_6px_rgba(48,39,28,0.06)] transition hover:border-[#CFC0AD] hover:bg-[#171717] hover:text-white active:scale-95"
                   >
                     {copiedCode === voucher.code ? "Copied!" : "Copy code"}
                   </button>
