@@ -1,5 +1,4 @@
-﻿
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Voucher {
@@ -24,24 +23,16 @@ type IconType = "percent" | "shipping" | "tag";
 
 const getVoucherIcon = (type: string): IconType => {
   const normalized = type.toLowerCase();
-
   if (normalized.includes("ship")) return "shipping";
-  if (normalized === "percent" || normalized === "percentage") {
-    return "percent";
-  }
-
+  if (normalized === "percent" || normalized === "percentage") return "percent";
   return "tag";
 };
 
 const getDiscountLabel = (voucher: Voucher) => {
   const type = voucher.type.toLowerCase();
   const value = Number(voucher.value) || 0;
-
   if (type.includes("ship")) return "FREE SHIPPING";
-  if (type === "percent" || type === "percentage") {
-    return `${value}% OFF`;
-  }
-
+  if (type === "percent" || type === "percentage") return `${value}% OFF`;
   return `$${value.toLocaleString("en-US")} OFF`;
 };
 
@@ -49,7 +40,6 @@ const getVoucherNote = (voucher: Voucher) => {
   if (voucher.min_order && voucher.min_order > 0) {
     return `Min. order $${Number(voucher.min_order).toLocaleString("en-US")}`;
   }
-
   return voucher.badge || "Exclusive offer";
 };
 
@@ -73,7 +63,6 @@ const VoucherIcon = ({ type }: { type: IconType }) => {
           <circle cx="17" cy="17" r="2.5" />
         </>
       )}
-
       {type === "shipping" && (
         <>
           <path d="M3 7h11v11H3z" />
@@ -82,7 +71,6 @@ const VoucherIcon = ({ type }: { type: IconType }) => {
           <circle cx="18" cy="18" r="1.8" />
         </>
       )}
-
       {type === "tag" && (
         <>
           <path d="M20 13 13 20 3 10V4h6z" />
@@ -95,7 +83,6 @@ const VoucherIcon = ({ type }: { type: IconType }) => {
 
 const VoucherSlider: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
-
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState("");
@@ -132,33 +119,22 @@ const VoucherSlider: React.FC = () => {
         if (error) throw error;
 
         const now = new Date();
-
         const available = (data ?? []).filter((voucher) => {
-          const start = voucher.start_at
-            ? new Date(voucher.start_at)
-            : null;
-
-          const end = voucher.end_at
-            ? new Date(voucher.end_at)
-            : null;
-
+          const start = voucher.start_at ? new Date(voucher.start_at) : null;
+          const end = voucher.end_at ? new Date(voucher.end_at) : null;
           const quantity = voucher.quantity;
           const used = voucher.used ?? 0;
 
           const validStart = !start || start <= now;
           const validEnd = !end || end > now;
-          const validQuantity =
-            quantity === null || quantity > used;
+          const validQuantity = quantity === null || quantity > used;
 
           return validStart && validEnd && validQuantity;
         });
 
-        if (mounted) {
-          setVouchers(available as Voucher[]);
-        }
+        if (mounted) setVouchers(available as Voucher[]);
       } catch (error) {
         console.error("[VoucherSlider] Load error:", error);
-
         if (mounted) setVouchers([]);
       } finally {
         if (mounted) setLoading(false);
@@ -166,15 +142,20 @@ const VoucherSlider: React.FC = () => {
     };
 
     loadVouchers();
-
     return () => {
       mounted = false;
     };
   }, []);
 
   const scroll = (direction: "prev" | "next") => {
-    scrollRef.current?.scrollBy({
-      left: direction === "next" ? (scrollRef.current?.clientWidth ?? 280) + 12 : -((scrollRef.current?.clientWidth ?? 280) + 12),
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const card = container.querySelector<HTMLElement>("[data-voucher-card]");
+    const distance = card ? card.offsetWidth + 12 : container.clientWidth + 12;
+
+    container.scrollBy({
+      left: direction === "next" ? distance : -distance,
       behavior: "smooth",
     });
   };
@@ -183,11 +164,8 @@ const VoucherSlider: React.FC = () => {
     try {
       await navigator.clipboard.writeText(code);
       setCopiedCode(code);
-
       window.setTimeout(() => {
-        setCopiedCode((current) =>
-          current === code ? "" : current
-        );
+        setCopiedCode((current) => (current === code ? "" : current));
       }, 1800);
     } catch (error) {
       console.error("[VoucherSlider] Copy error:", error);
@@ -199,33 +177,30 @@ const VoucherSlider: React.FC = () => {
   return (
     <section className="my-5 w-full px-2 sm:my-7 sm:px-6 lg:px-0">
       <div className="mx-auto w-full max-w-[1440px]">
-
         {/* SECTION HEADER */}
         <div className="mb-3">
           <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#FF4D00]">
             INFIBETTER PRIVILEGES
           </p>
-
           <h2 className="text-[23px] font-bold tracking-[-0.04em] text-[#171717] sm:text-[28px]">
             Exclusive Offers
           </h2>
-
           <p className="mt-0.5 text-[11px] text-[#888888]">
             A little something for your next upgrade.
           </p>
         </div>
 
-        {/* HORIZONTAL VOUCHER SLIDER */}
+        {/* MOBILE: HORIZONTAL SLIDER | DESKTOP: FULL-WIDTH RESPONSIVE GRID */}
         <div className="relative">
-
           <div
             ref={scrollRef}
-            className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-0.5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-0.5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-2 lg:gap-3 lg:overflow-visible lg:px-0 lg:pb-0"
           >
             {vouchers.map((voucher) => (
               <article
                 key={voucher.id}
-                className="relative flex min-h-[196px] w-full min-w-full flex-none snap-start flex-col justify-between gap-4 overflow-hidden rounded-[18px] border border-[#E9E4DC] bg-[linear-gradient(135deg,#FCFBF8_0%,#F7F5F0_58%,#F2EEE7_100%)] p-4 shadow-[0_4px_14px_rgba(48,39,28,0.045)] sm:min-h-[178px] sm:min-w-0 sm:w-[300px]"
+                data-voucher-card
+                className="relative flex min-h-[196px] w-full min-w-full flex-none snap-start flex-col justify-between gap-4 overflow-hidden rounded-[18px] border border-[#E9E4DC] bg-[linear-gradient(135deg,#FCFBF8_0%,#F7F5F0_58%,#F2EEE7_100%)] p-4 shadow-[0_4px_14px_rgba(48,39,28,0.045)] sm:min-h-[178px] lg:min-w-0 lg:w-full lg:flex-auto"
               >
                 <span
                   aria-hidden="true"
@@ -234,13 +209,11 @@ const VoucherSlider: React.FC = () => {
                   %
                 </span>
 
-                {/* VOUCHER CONTENT */}
                 <div className="relative z-[1] min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-[9px] font-bold uppercase tracking-[0.18em] text-[#8B8177]">
                       {voucher.badge || "EXCLUSIVE OFFER"}
                     </p>
-
                     <div
                       aria-hidden="true"
                       className="relative z-10 flex h-10 w-10 flex-none items-center justify-center text-[#A66B43]"
@@ -255,34 +228,28 @@ const VoucherSlider: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* DISCOUNT */}
                   <h3 className="mt-2 truncate text-[27px] font-extrabold leading-none tracking-[-0.055em] text-[#171717]">
                     {getDiscountLabel(voucher)}
                   </h3>
 
-                  {/* DESCRIPTION */}
                   <p className="mt-1.5 line-clamp-2 break-words text-[11px] leading-[1.45] text-[#77716B]">
                     {voucher.description || voucher.title}
                   </p>
                 </div>
 
-                {/* PROMO CODE */}
                 <div className="relative z-[1] mt-auto flex shrink-0 items-center justify-between gap-3 border-t border-dashed border-[#D9D3CB]/90 pt-2.5">
                   <div className="min-w-0">
                     <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#999087]">
                       PROMO CODE
                     </p>
-
                     <p className="mt-0.5 truncate text-[11px] font-extrabold tracking-[0.08em] text-[#25211E]">
                       {voucher.code}
                     </p>
-
                     <p className="mt-0.5 truncate text-[9px] text-[#999087]">
                       {getVoucherNote(voucher)}
                     </p>
                   </div>
 
-                  {/* COPY BUTTON */}
                   <button
                     type="button"
                     onClick={() => copyCode(voucher.code)}
@@ -295,18 +262,18 @@ const VoucherSlider: React.FC = () => {
             ))}
           </div>
 
-          {/* PREVIOUS BUTTON */}
+          {/* SLIDER CONTROLS: BELOW THE CARD, NEVER COVER VOUCHER CONTENT */}
           {vouchers.length > 1 && (
-            <>
+            <div className="mt-1 flex justify-center gap-2 lg:hidden">
               <button
                 type="button"
                 aria-label="Previous vouchers"
                 onClick={() => scroll("prev")}
-                className="absolute left-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#E7E3DE] bg-white/90 text-[#39332E] shadow-md backdrop-blur-md transition hover:bg-white active:scale-95"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-[#E7E3DE]/70 bg-white/55 text-[#77716B] shadow-sm transition hover:bg-white/80 active:scale-95"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  className="h-4 w-4"
+                  className="h-3.5 w-3.5"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.8"
@@ -314,17 +281,15 @@ const VoucherSlider: React.FC = () => {
                   <path d="m15 18-6-6 6-6" />
                 </svg>
               </button>
-
-              {/* NEXT BUTTON */}
               <button
                 type="button"
                 aria-label="Next vouchers"
                 onClick={() => scroll("next")}
-                className="absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#E7E3DE] bg-white/90 text-[#39332E] shadow-md backdrop-blur-md transition hover:bg-white active:scale-95"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-[#E7E3DE]/70 bg-white/55 text-[#77716B] shadow-sm transition hover:bg-white/80 active:scale-95"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  className="h-4 w-4"
+                  className="h-3.5 w-3.5"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.8"
@@ -332,7 +297,7 @@ const VoucherSlider: React.FC = () => {
                   <path d="m9 18 6-6-6-6" />
                 </svg>
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>

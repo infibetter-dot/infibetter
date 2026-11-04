@@ -1,4 +1,3 @@
-
 import {
   QueryClient,
   QueryClientProvider,
@@ -32,12 +31,11 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { supabase } from "@/integrations/supabase/client";
 
-
-
 /* =========================================================
-   INFIBETTER — META PIXEL CONFIGURATION
+   INFIBETTER — ANALYTICS CONFIGURATION
 ========================================================= */
 
+const GTM_ID = "GTM-NZFD6D2X";
 const META_PIXEL_ID = "1848792186365356";
 
 /* =========================================================
@@ -241,6 +239,19 @@ function RootShell({
       <head>
         <HeadContent />
 
+        {/* GOOGLE TAG MANAGER — HEAD */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+              })(window,document,'script','dataLayer','${GTM_ID}');
+            `,
+          }}
+        />
+
         {/* INFIBETTER ORGANIZATION SCHEMA */}
 
         <script
@@ -258,6 +269,17 @@ function RootShell({
       </head>
 
       <body>
+        {/* GOOGLE TAG MANAGER — NOSCRIPT */}
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+            title="Google Tag Manager"
+          />
+        </noscript>
+
         {/* META PIXEL NOSCRIPT FALLBACK */}
 
         <noscript>
