@@ -416,7 +416,6 @@ function ProductPage() {
     ? Number(selectedVariant.stock ?? 0) > 0
     : Number(product.stock ?? 0) > 0;
   const price = Number(selectedVariant?.price ?? product.price) || 0;
-
   // Meta Pixel: record the selected product/variant price in USD.
   useEffect(() => {
     trackViewContent({
@@ -427,6 +426,46 @@ function ProductPage() {
     });
   }, [product.id, product.name, price]);
 
+  // GA4: send product detail data to GTM without changing Meta Pixel tracking.
+  useEffect(() => {
+    // Wait for the default compatible model to be selected when variants exist.
+    if (compatibleModels.length > 0 && !selectedVariant) return;
+
+    const win = window as Window & {
+      dataLayer?: Array<Record<string, unknown>>;
+    };
+
+    win.dataLayer = win.dataLayer || [];
+    win.dataLayer.push({ ecommerce: null });
+    win.dataLayer.push({
+      event: "view_item",
+      ecommerce: {
+        currency: "USD",
+        value: price,
+        items: [
+          {
+            item_id: String(product.id),
+            item_name: product.name,
+            item_brand: "INFIBETTER",
+            item_variant:
+              selectedVariant?.device_model_name ||
+              selectedColor?.name ||
+              undefined,
+            price,
+            quantity: 1,
+          },
+        ],
+      },
+    });
+  }, [
+    product.id,
+    product.name,
+    price,
+    selectedVariant?.id,
+    selectedVariant?.device_model_name,
+    selectedColor?.name,
+    compatibleModels.length,
+  ]);
   const comparePrice = Number(
     selectedVariant?.compare_at_price ?? product.compare_at_price,
   ) || 0;
