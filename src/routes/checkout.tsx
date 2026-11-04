@@ -131,6 +131,35 @@ const REST_OF_WORLD: CountryOption = {
 const PROCESSING_DAYS: [number, number] = [1, 2];
 const OFFER_DISCOUNT = 0.15;
 
+type Ga4EcommerceItem = {
+  item_id: string;
+  item_name: string;
+  item_brand: string;
+  price: number;
+  quantity: number;
+  item_variant?: string;
+};
+
+function pushGa4Event(
+  eventName: string,
+  ecommerce?: Record<string, unknown>,
+  extraParams: Record<string, unknown> = {},
+) {
+  if (typeof window === "undefined") return;
+
+  const win = window as Window & {
+    dataLayer?: Array<Record<string, unknown>>;
+  };
+
+  win.dataLayer = win.dataLayer || [];
+  win.dataLayer.push({ ecommerce: null });
+  win.dataLayer.push({
+    event: eventName,
+    ...extraParams,
+    ...(ecommerce ? { ecommerce } : {}),
+  });
+}
+
 function flagUrl(code: string) {
   return code === "ROW"
     ? "https://flagcdn.com/w40/un.png"
@@ -263,6 +292,19 @@ function CheckoutPage() {
   const [legalModal, setLegalModal] = useState<LegalDocumentKey | null>(null);
 
   const checkoutEventSent = useRef(false);
+  const ga4BeginCheckoutSent = useRef(false);
+  const ga4NameEnteredSent = useRef(false);
+  const ga4OrderEventsSent = useRef<Set<string>>(new Set());
+
+  function trackCheckoutNameEntered() {
+    if (!fullName.trim() || ga4NameEnteredSent.current) return;
+
+    ga4NameEnteredSent.current = true;
+    // Do not send the customer's name or any other personal data to GA4.
+    pushGa4Event("checkout_name_entered", undefined, {
+      form_step: "contact",
+    });
+  }
 
   const country = getCountry(countryCode);
   const shippingFeeUsd =
@@ -283,16 +325,34 @@ function CheckoutPage() {
 
   // Meta Pixel: fire InitiateCheckout once per checkout-page visit.
   useEffect(() => {
-    if (count <= 0 || checkoutEventSent.current) return;
+    if (count <= 0) return;
 
-    checkoutEventSent.current = true;
-    trackMetaEvent("InitiateCheckout", {
-      content_type: "product",
-      content_ids: items.map((item) => String(item.id)),
-      num_items: count,
-      value: Number(totalUsd.toFixed(2)),
-      currency: "USD",
-    });
+    if (!checkoutEventSent.current) {
+      checkoutEventSent.current = true;
+      trackMetaEvent("InitiateCheckout", {
+        content_type: "product",
+        content_ids: items.map((item) => String(item.id)),
+        num_items: count,
+        value: Number(totalUsd.toFixed(2)),
+        currency: "USD",
+      });
+    }
+
+    if (!ga4BeginCheckoutSent.current) {
+      ga4BeginCheckoutSent.current = true;
+      pushGa4Event("begin_checkout", {
+        currency: "USD",
+        value: Number(totalUsd.toFixed(2)),
+        items: items.map((item): Ga4EcommerceItem => ({
+          item_id: String(item.id),
+          item_name: item.name,
+          item_brand: "INFIBETTER",
+          price: Number(Number(item.price).toFixed(2)),
+          quantity: Number(item.quantity),
+          ...(item.colorName ? { item_variant: item.colorName } : {}),
+        })),
+      });
+    }
   }, [count, items, totalUsd]);
 
   const deliveryRange = useMemo(
@@ -382,6 +442,8 @@ function CheckoutPage() {
   }
 
   function buildPaypalCheckoutPayload() {
+    trackCheckoutNameEntered();
+
     const form = document.querySelector("form");
     if (!form) throw new Error("Checkout form not found.");
 
@@ -436,7 +498,7 @@ function CheckoutPage() {
     return checkout;
   }
 
-  async function createPayPalOrder() {
+  async function createPayPalOrder(paymentType: "PayPal" | "Card") {
     const checkout = buildPaypalCheckoutPayload();
     const { data, error } = await supabase.functions.invoke(
       "paypal-create-order",
@@ -450,7 +512,43 @@ function CheckoutPage() {
       );
     }
 
-    return data.orderId as string;
+    const paypalOrderId = String(data.orderId);
+    if (!ga4OrderEventsSent.current.has(paypalOrderId)) {
+      ga4OrderEventsSent.current.add(paypalOrderId);
+
+      const ga4Items = items.map((item): Ga4EcommerceItem => ({
+        item_id: String(item.id),
+        item_name: item.name,
+        item_brand: "INFIBETTER",
+        price: Number(Number(item.price).toFixed(2)),
+        quantity: Number(item.quantity),
+        ...(item.colorName ? { item_variant: item.colorName } : {}),
+      }));
+
+      pushGa4Event("add_shipping_info", {
+        currency: "USD",
+        value: Number(totalUsd.toFixed(2)),
+        shipping_tier: shippingMethod,
+        items: ga4Items,
+      });
+
+      pushGa4Event("add_payment_info", {
+        currency: "USD",
+        value: Number(totalUsd.toFixed(2)),
+        payment_type: paymentType,
+        items: ga4Items,
+      });
+
+      // Custom event: customer has submitted checkout and a PayPal order was created.
+      pushGa4Event("place_order", {
+        currency: "USD",
+        value: Number(totalUsd.toFixed(2)),
+        payment_type: paymentType,
+        items: ga4Items,
+      });
+    }
+
+    return paypalOrderId;
   }
 
   async function handlePaypalApprove(orderID: string) {
@@ -524,6 +622,26 @@ function CheckoutPage() {
             },
           );
           localStorage.setItem(purchaseEventKey, "1");
+        }
+
+        // GA4 Purchase: fire only after PayPal confirms capture and Supabase returns an order ID.
+        const ga4PurchaseEventKey = `infibetter_ga4_purchase_tracked_${data.dbOrderId}`;
+        if (!localStorage.getItem(ga4PurchaseEventKey)) {
+          pushGa4Event("purchase", {
+            transaction_id: String(data.dbOrderId),
+            value: Number(totalUsd.toFixed(2)),
+            currency: "USD",
+            shipping: Number(shippingFeeUsd.toFixed(2)),
+            items: items.map((item): Ga4EcommerceItem => ({
+              item_id: String(item.id),
+              item_name: item.name,
+              item_brand: "INFIBETTER",
+              price: Number(Number(item.price).toFixed(2)),
+              quantity: Number(item.quantity),
+              ...(item.colorName ? { item_variant: item.colorName } : {}),
+            })),
+          });
+          localStorage.setItem(ga4PurchaseEventKey, "1");
         }
       }
 
@@ -617,6 +735,7 @@ function CheckoutPage() {
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
+                    onBlur={trackCheckoutNameEntered}
                     placeholder="Your full name"
                     className="h-11 w-full rounded-xl border border-[#dcdcdc] bg-white px-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-[#0066e6] focus:ring-4 focus:ring-[#0066e6]/10"
                   />
@@ -786,7 +905,7 @@ function CheckoutPage() {
                         label: "paypal",
                         height: 48,
                       }}
-                      createOrder={async () => createPayPalOrder()}
+                      createOrder={async () => createPayPalOrder("PayPal")}
                       onApprove={async (data) => {
                         await handlePaypalApprove(data.orderID);
                       }}
@@ -813,7 +932,7 @@ function CheckoutPage() {
                         label: "pay",
                         height: 48,
                       }}
-                      createOrder={async () => createPayPalOrder()}
+                      createOrder={async () => createPayPalOrder("Card")}
                       onApprove={async (data) => {
                         await handlePaypalApprove(data.orderID);
                       }}
