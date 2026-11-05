@@ -1,0 +1,254 @@
+﻿.travelmag-section {
+  width: 100%;
+  max-width: 1280px;
+  margin: 42px auto;
+  padding: 0 12px;
+}
+
+.travelmag-banner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 420px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e9e9e9;
+  border-radius: 22px;
+  box-shadow: 0 3px 12px rgba(0,0,0,.07);
+}
+
+.travelmag-visual {
+  position: relative;
+  min-width: 0;
+  min-height: 420px;
+  overflow: hidden;
+  background: #f1f0ef;
+}
+
+.travelmag-image-link {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.travelmag-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  transition: opacity .45s ease;
+}
+
+.travelmag-image.active {
+  opacity: 1;
+}
+
+.travelmag-counter {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  z-index: 2;
+  padding: 7px 13px;
+  border-radius: 30px;
+  background: rgba(35,35,35,.55);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+
+.travelmag-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.94);
+  color: #171717;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateY(-50%);
+  box-shadow: 0 3px 12px rgba(0,0,0,.1);
+  transition: transform .2s ease;
+}
+
+.travelmag-arrow:hover {
+  transform: translateY(-50%) scale(1.08);
+}
+
+.travelmag-prev { left: 20px; }
+.travelmag-next { right: 20px; }
+
+.travelmag-pagination {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  border-radius: 30px;
+  background: rgba(50,50,50,.38);
+  transform: translateX(-50%);
+  backdrop-filter: blur(8px);
+}
+
+.travelmag-dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  background: rgba(255,255,255,.65);
+  cursor: pointer;
+  transition: all .3s ease;
+}
+
+.travelmag-dot.active {
+  width: 30px;
+  background: #fff;
+}
+
+.travelmag-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 45px 36px;
+  text-align: center;
+  background: #fff;
+}
+
+.travelmag-eyebrow {
+  margin-bottom: 22px;
+  color: #ff4d00;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+}
+
+.travelmag-content h2 {
+  margin: 0;
+  color: #101010;
+  font-size: clamp(26px,3vw,42px);
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -1.8px;
+}
+
+.travelmag-description {
+  margin: 22px 0 32px;
+  color: #777;
+  font-size: 17px;
+  line-height: 1.8;
+}
+
+.travelmag-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-width: 175px;
+  min-height: 48px;
+  padding: 0 28px;
+  border: 1px solid #f0f0f0;
+  border-radius: 50px;
+  background: linear-gradient(145deg,#fff,#f8f8f8);
+  color: #171717;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-decoration: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,.09);
+  transition: all .25s ease;
+}
+
+.travelmag-cta:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 9px 22px rgba(0,0,0,.13);
+}
+
+.travelmag-cta span {
+  font-size: 20px;
+}
+
+@media (max-width: 900px) {
+  .travelmag-banner,
+  .travelmag-visual {
+    min-height: 340px;
+  }
+
+  .travelmag-content { padding: 30px 22px; }
+  .travelmag-content h2 { font-size: 28px; }
+  .travelmag-description { font-size: 14px; }
+}
+
+@media (max-width: 640px) {
+  .travelmag-section {
+    margin: 26px auto;
+    padding: 0 14px;
+  }
+
+  .travelmag-banner {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    border-radius: 17px;
+  }
+
+  .travelmag-visual {
+    min-height: 0;
+    aspect-ratio: 1 / .88;
+  }
+
+  .travelmag-content { padding: 27px 18px 32px; }
+
+  .travelmag-eyebrow {
+    margin-bottom: 13px;
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+
+  .travelmag-content h2 {
+    font-size: clamp(23px,6vw,30px);
+    letter-spacing: -1px;
+  }
+
+  .travelmag-description {
+    margin: 13px 0 22px;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .desktop-break { display: none; }
+
+  .travelmag-cta {
+    min-height: 44px;
+    min-width: 155px;
+  }
+
+  .travelmag-arrow {
+    width: 36px;
+    height: 36px;
+    font-size: 25px;
+  }
+
+  .travelmag-prev { left: 10px; }
+  .travelmag-next { right: 10px; }
+
+  .travelmag-counter {
+    top: 12px;
+    right: 12px;
+  }
+
+  .travelmag-pagination { bottom: 12px; }
+}

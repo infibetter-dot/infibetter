@@ -1,4 +1,5 @@
-﻿import { Link } from "@tanstack/react-router";
+import TravelMagBanner from "../TravelMagBanner";
+import { Link } from "@tanstack/react-router";
 import FeaturedCaseSection from "@/components/home/FeaturedCaseSection";
 import FeaturedProductSection from "@/components/home/FeaturedProductSection";
 import magfoldFeaturedImage from "@/assets/hero/25w_fast.png";
@@ -932,6 +933,8 @@ export default function Collections({
         />
       )}
 
+      {/* TRAVELMAG HYBRID 10K BANNER */}
+      <TravelMagBanner />
       {/* =====================================================
           EVERYDAY PLUS — EVERYDAY ACCESSORIES
       ====================================================== */}
