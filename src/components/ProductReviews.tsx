@@ -2,16 +2,20 @@ import {
   useEffect,
   useMemo,
   useState,
+  type FormEvent,
 } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   Star,
+  X,
+  ImagePlus,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ProductReview {
   id: string;
@@ -140,6 +144,17 @@ export default function ProductReviews({
 
   const [showAllReviews, setShowAllReviews] =
     useState(false);
+
+  const queryClient = useQueryClient();
+  const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
+  const [reviewName, setReviewName] = useState("");
+  const [reviewEmail, setReviewEmail] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewContent, setReviewContent] = useState("");
+  const [reviewImage, setReviewImage] = useState<File | null>(null);
+  const [reviewImagePreview, setReviewImagePreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isDesktop, setIsDesktop] =
     useState(false);
@@ -342,6 +357,102 @@ export default function ProductReviews({
     reviews.length >
     initialReviewCount;
 
+  const handleReviewSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    const customerName = reviewName.trim();
+    const customerEmail = reviewEmail.trim().toLowerCase();
+    const title = reviewTitle.trim();
+    const content = reviewContent.trim();
+
+    if (!customerName || !customerEmail || !content) {
+      toast.error("Please enter your name, order email and review.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+
+    if (content.length < 10) {
+      toast.error("Please write at least 10 characters.");
+      return;
+    }
+
+    if (reviewImage && !["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"].includes(reviewImage.type)) {
+      toast.error("Please choose a JPEG, PNG, WebP, GIF or AVIF image.");
+      return;
+    }
+
+    if (reviewImage && reviewImage.size > 10 * 1024 * 1024) {
+      toast.error("Image must be 10 MB or smaller.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      let uploadedImageUrl: string | null = null;
+
+      if (reviewImage) {
+        const uploadData = new FormData();
+        uploadData.append("file", reviewImage);
+        uploadData.append("productId", productId);
+
+        const uploadResponse = await fetch("/api/upload-r2", {
+          method: "POST",
+          body: uploadData,
+        });
+        const uploadResult = await uploadResponse.json();
+
+        if (!uploadResponse.ok || !uploadResult?.success || !uploadResult?.url) {
+          throw new Error(uploadResult?.error || "Image upload failed.");
+        }
+
+        uploadedImageUrl = uploadResult.url;
+      }
+
+      const { error } = await supabase
+        .from("product_reviews")
+        .insert({
+          product_id: productId,
+          customer_name: customerName,
+          customer_email: customerEmail,
+          rating: reviewRating,
+          title: title || null,
+          content,
+          image_url: uploadedImageUrl,
+          video_url: null,
+          verified_purchase: false,
+          is_visible: false,
+          sort_order: 9999,
+        });
+
+      if (error) throw error;
+
+      toast.success("Thanks! Your review has been submitted for approval.");
+      setReviewName("");
+      setReviewEmail("");
+      setReviewRating(5);
+      setReviewTitle("");
+      setReviewContent("");
+      setReviewImage(null);
+      setReviewImagePreview(null);
+      setIsReviewFormOpen(false);
+      await queryClient.invalidateQueries({
+        queryKey: ["product-reviews", productId],
+      });
+    } catch (error) {
+      console.error("PRODUCT REVIEW SUBMIT ERROR:", error);
+      toast.error("Could not submit your review. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   /* =======================================================
      DATE FORMAT
   ======================================================= */
@@ -387,13 +498,6 @@ export default function ProductReviews({
   /* =======================================================
      EMPTY / ERROR
   ======================================================= */
-
-  if (
-    reviewsQuery.isError ||
-    reviews.length === 0
-  ) {
-    return null;
-  }
 
   /* =======================================================
      MAIN
@@ -460,6 +564,195 @@ export default function ProductReviews({
             </span>
           </div>
         </div>
+
+        <div className="mt-5 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setIsReviewFormOpen((open) => !open)}
+            aria-expanded={isReviewFormOpen}
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[9px] border border-[#00B67A] bg-[#00B67A] px-5 text-[13px] font-medium text-white transition hover:border-[#009F6A] hover:bg-[#009F6A]"
+          >
+            {isReviewFormOpen ? <X size={15} /> : <Star size={14} />}
+            {isReviewFormOpen ? "Close review form" : "Write a Review"}
+          </button>
+        </div>
+
+        {isReviewFormOpen && (
+          <form
+            onSubmit={handleReviewSubmit}
+            className="mx-auto mt-5 max-w-[720px] rounded-[14px] border border-[#E5E5E5] bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.035)] sm:p-6"
+          >
+            <div className="mb-5">
+              <h3 className="text-[18px] font-semibold tracking-[-0.02em] text-[#111111]">
+                Write a Review
+              </h3>
+              <p className="mt-1 text-[12px] text-[#6B6B6B]">
+                Share your experience with this product.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
+                  Your name *
+                </span>
+                <input
+                  value={reviewName}
+                  onChange={(event) => setReviewName(event.target.value)}
+                  required
+                  maxLength={80}
+                  autoComplete="name"
+                  placeholder="Enter your name"
+                  className="h-11 w-full rounded-[8px] border border-[#E2E2E2] px-3 text-[13px] outline-none transition focus:border-[#999999]"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
+                  Order email *
+                </span>
+                <input
+                  type="email"
+                  value={reviewEmail}
+                  onChange={(event) => setReviewEmail(event.target.value)}
+                  required
+                  maxLength={254}
+                  autoComplete="email"
+                  placeholder="Email used for your order"
+                  className="h-11 w-full rounded-[8px] border border-[#E2E2E2] px-3 text-[13px] outline-none transition focus:border-[#999999]"
+                />
+              </label>
+
+              <div>
+                <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
+                  Your rating *
+                </span>
+                <div className="flex h-11 items-center gap-1" role="radiogroup" aria-label="Your rating">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={reviewRating === value}
+                      aria-label={`${value} star${value > 1 ? "s" : ""}`}
+                      onClick={() => setReviewRating(value)}
+                      className="flex h-9 w-9 items-center justify-center rounded-md transition hover:bg-[#F5F5F5]"
+                    >
+                      <Star
+                        size={22}
+                        strokeWidth={1.8}
+                        className={reviewRating >= value ? "fill-[#00B67A] text-[#00B67A]" : "text-[#C8C8C8]"}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <label className="mt-4 block">
+              <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
+                Review title (optional)
+              </span>
+              <input
+                value={reviewTitle}
+                onChange={(event) => setReviewTitle(event.target.value)}
+                maxLength={120}
+                placeholder="Give your review a title"
+                className="h-11 w-full rounded-[8px] border border-[#E2E2E2] px-3 text-[13px] outline-none transition focus:border-[#999999]"
+              />
+            </label>
+
+            <label className="mt-4 block">
+              <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
+                Your review *
+              </span>
+              <textarea
+                value={reviewContent}
+                onChange={(event) => setReviewContent(event.target.value)}
+                required
+                minLength={10}
+                maxLength={2000}
+                rows={5}
+                placeholder="Tell us about your experience..."
+                className="w-full resize-y rounded-[8px] border border-[#E2E2E2] px-3 py-2.5 text-[13px] leading-5 outline-none transition focus:border-[#999999]"
+              />
+              <span className="mt-1 block text-right text-[10px] text-[#888888]">
+                {reviewContent.length}/2000
+              </span>
+            </label>
+
+            <div className="mt-4">
+              <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
+                Add a photo (optional)
+              </span>
+              <label className="flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-dashed border-[#CFCFCF] px-4 py-3 text-[12px] font-medium text-[#444444] transition hover:border-[#00B67A] hover:bg-[#F5FBF8]">
+                <ImagePlus size={16} className="text-[#00B67A]" />
+                {reviewImage ? "Choose a different photo" : "Upload a photo"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                  className="sr-only"
+                  disabled={isSubmitting}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] || null;
+                    if (!file) return;
+                    if (file.size > 10 * 1024 * 1024) {
+                      toast.error("Image must be 10 MB or smaller.");
+                      event.target.value = "";
+                      return;
+                    }
+                    setReviewImage(file);
+                    setReviewImagePreview(URL.createObjectURL(file));
+                  }}
+                />
+              </label>
+              <p className="mt-1 text-[10px] text-[#888888]">JPEG, PNG, WebP, GIF or AVIF · Max 10 MB</p>
+              {reviewImagePreview && (
+                <div className="relative mt-3 inline-block">
+                  <img
+                    src={reviewImagePreview}
+                    alt="Review photo preview"
+                    className="h-28 w-28 rounded-[8px] border border-[#E5E5E5] object-cover"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Remove selected photo"
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      if (reviewImagePreview) URL.revokeObjectURL(reviewImagePreview);
+                      setReviewImage(null);
+                      setReviewImagePreview(null);
+                    }}
+                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#222222] text-white shadow"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setIsReviewFormOpen(false)}
+                disabled={isSubmitting}
+                className="min-h-[42px] rounded-[8px] border border-[#E2E2E2] px-5 text-[13px] font-medium text-[#333333] transition hover:bg-[#F7F7F7] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="min-h-[42px] rounded-[8px] bg-[#00B67A] px-6 text-[13px] font-medium text-white transition hover:bg-[#009F6A] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSubmitting ? "Submitting..." : "Submit Review"}
+              </button>
+            </div>
+            <p className="mt-3 text-[10px] leading-4 text-[#888888]">
+              Your order email is used to help verify your purchase and is not displayed publicly. Reviews are checked before they appear publicly.
+            </p>
+          </form>
+        )}
 
         {/* =================================================
             REVIEW SUMMARY
@@ -636,6 +929,12 @@ export default function ProductReviews({
             </div>
           </div>
         </div>
+
+        {reviews.length === 0 && (
+          <p className="py-10 text-center text-[13px] text-[#6B6B6B]">
+            No reviews yet. Be the first to share your experience.
+          </p>
+        )}
 
         {/* =================================================
             REVIEW LIST

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -19,6 +19,19 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin/reviews")({
+  beforeLoad: async () => {
+    const { data, error } = await supabase.auth.getUser();
+
+    if (
+      error ||
+      !data.user ||
+      data.user.email?.toLowerCase() !== "infibetter@gmail.com"
+    ) {
+      throw redirect({ to: "/" });
+    }
+
+    return { user: data.user };
+  },
   component: ReviewsAdminPage,
 });
 
@@ -72,6 +85,7 @@ function ReviewsAdminPage() {
 
   const [selectedProductId, setSelectedProductId] = useState("all");
   const [keyword, setKeyword] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved">("pending");
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ReviewForm>(emptyForm);
@@ -91,7 +105,7 @@ function ReviewsAdminPage() {
     },
   });
 
-  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
+  const { data: reviews = [], isLoading: reviewsLoading, isError: reviewsError, error: reviewsQueryError, refetch: refetchReviews } = useQuery({
     queryKey: ["admin-product-reviews"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -127,13 +141,19 @@ function ReviewsAdminPage() {
         review.content.toLowerCase().includes(search) ||
         product?.name.toLowerCase().includes(search);
 
-      return matchProduct && matchKeyword;
+      const matchStatus =
+        statusFilter === "all" ||
+        (statusFilter === "pending" && !review.is_visible) ||
+        (statusFilter === "approved" && review.is_visible);
+
+      return matchProduct && matchKeyword && matchStatus;
     });
-  }, [reviews, products, productMap, selectedProductId, keyword]);
+  }, [reviews, productMap, selectedProductId, keyword, statusFilter]);
 
   const stats = useMemo(() => {
     const total = reviews.length;
     const visible = reviews.filter((review) => review.is_visible).length;
+    const pending = total - visible;
     const verified = reviews.filter((review) => review.verified_purchase).length;
     const average =
       total > 0
@@ -144,6 +164,7 @@ function ReviewsAdminPage() {
     return {
       total,
       visible,
+      pending,
       verified,
       average: average.toFixed(1),
     };
@@ -260,14 +281,18 @@ function ReviewsAdminPage() {
   }
 
   async function toggleVisibility(review: Review) {
+    const nextVisible = !review.is_visible;
+    if (nextVisible && !window.confirm(`Approve the review from "${review.customer_name}" and publish it on the product page?`)) {
+      return;
+    }
     const { error } = await supabase
       .from("product_reviews")
-      .update({ is_visible: !review.is_visible })
+      .update({ is_visible: nextVisible })
       .eq("id", review.id);
 
     if (error) {
       console.error("TOGGLE REVIEW ERROR:", error);
-      alert(error.message);
+      alert(`Unable to ${nextVisible ? "approve" : "hide"} review: ${error.message}`);
       return;
     }
 
@@ -312,14 +337,37 @@ function ReviewsAdminPage() {
           </button>
         </div>
 
-        <div className="mb-3 grid grid-cols-4 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.025)]">
+        <div className="mb-3 grid grid-cols-2 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.025)] sm:grid-cols-5">
           <StatCard label="Total reviews" value={stats.total} />
-          <StatCard label="Visible" value={stats.visible} />
+          <StatCard label="Pending approval" value={stats.pending} />
+          <StatCard label="Approved" value={stats.visible} />
           <StatCard label="Verified" value={stats.verified} />
           <StatCard label="Average rating" value={`${stats.average} / 5`} />
         </div>
 
         <div className="mb-3 rounded-xl border border-neutral-200 bg-white p-2.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {([
+              ["pending", `Pending (${stats.pending})`],
+              ["approved", `Approved (${stats.visible})`],
+              ["all", `All (${stats.total})`],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setStatusFilter(value)}
+                className={`h-8 rounded-lg px-3 text-[10px] font-semibold transition ${
+                  statusFilter === value
+                    ? value === "pending"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-neutral-900 text-white"
+                    : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="grid gap-2 lg:grid-cols-[1fr_300px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
@@ -355,7 +403,21 @@ function ReviewsAdminPage() {
             <HeaderLabel className="text-right">Actions</HeaderLabel>
           </div>
 
-          {loading ? (
+          {reviewsError ? (
+            <div className="px-6 py-12 text-center">
+              <p className="text-sm font-semibold text-red-700">Unable to load customer reviews</p>
+              <p className="mx-auto mt-2 max-w-2xl break-words text-[11px] text-neutral-600">
+                {reviewsQueryError instanceof Error ? reviewsQueryError.message : "Supabase could not return product_reviews."}
+              </p>
+              <button
+                type="button"
+                onClick={() => refetchReviews()}
+                className="mt-4 h-9 rounded-lg bg-neutral-900 px-4 text-[11px] font-semibold text-white hover:bg-black"
+              >
+                Try again
+              </button>
+            </div>
+          ) : loading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 5 }).map((_, index) => (
                 <div
@@ -373,7 +435,11 @@ function ReviewsAdminPage() {
                 No reviews yet
               </p>
               <p className="mt-1 text-[11px] text-neutral-500">
-                Add the first review for a product.
+                {statusFilter === "pending"
+                  ? "No reviews waiting for approval."
+                  : statusFilter === "approved"
+                    ? "No approved reviews found."
+                    : "No reviews match your search."}
               </p>
             </div>
           ) : (
@@ -402,6 +468,9 @@ function ReviewsAdminPage() {
                     <p className="mt-1 truncate text-[11px] font-medium text-neutral-800">
                       {review.title || "Customer review"}
                     </p>
+                    <p className="mt-0.5 text-[9px] text-neutral-400">
+                      {new Date(review.created_at).toLocaleString()}
+                    </p>
 
                     <p className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-neutral-500">
                       {review.content}
@@ -409,11 +478,29 @@ function ReviewsAdminPage() {
 
                     <div className="mt-1.5 flex items-center gap-2 text-[9px] text-neutral-400">
                       {review.image_url && (
-                        <span className="inline-flex items-center gap-1">
-                          <ImageIcon className="h-3 w-3" />
-                          Photo
-                        </span>
-                      )}
+  <a
+    href={review.image_url}
+    target="_blank"
+    rel="noopener noreferrer"
+    onClick={(event) => event.stopPropagation()}
+    className="group mt-2 inline-flex items-center gap-2"
+    title="Click to view full image"
+  >
+    <img
+      src={review.image_url}
+      alt={`Review photo from ${review.customer_name}`}
+      loading="lazy"
+      className="h-14 w-14 rounded-lg border border-neutral-200 object-cover transition group-hover:opacity-80"
+      onError={(event) => {
+        event.currentTarget.style.display = "none";
+      }}
+    />
+
+    <span className="text-[9px] font-medium text-neutral-500">
+      View photo
+    </span>
+  </a>
+)}
                       {review.video_url && (
                         <span className="inline-flex items-center gap-1">
                           <Video className="h-3 w-3" />
@@ -443,21 +530,22 @@ function ReviewsAdminPage() {
                   <button
                     type="button"
                     onClick={() => toggleVisibility(review)}
-                    className={`inline-flex h-7 w-fit items-center gap-1.5 rounded-full px-2 text-[9px] font-semibold ${
+                    className={`inline-flex h-7 w-fit items-center gap-1.5 rounded-full px-2.5 text-[9px] font-semibold transition ${
                       review.is_visible
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-neutral-100 text-neutral-500"
+                        ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        : "bg-amber-50 text-amber-800 hover:bg-amber-100"
                     }`}
+                    title={review.is_visible ? "Click to hide this review" : "Click to approve this review"}
                   >
                     {review.is_visible ? (
                       <>
                         <Eye className="h-3 w-3" />
-                        Visible
+                        Approved · Hide
                       </>
                     ) : (
                       <>
                         <EyeOff className="h-3 w-3" />
-                        Hidden
+                        Pending · Approve
                       </>
                     )}
                   </button>
