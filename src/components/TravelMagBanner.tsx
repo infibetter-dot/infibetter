@@ -18,6 +18,45 @@ const slides = [
   },
 ];
 
+function Chevron({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {direction === "left" ? (
+        <path d="m15 18-6-6 6-6" />
+      ) : (
+        <path d="m9 18 6-6-6-6" />
+      )}
+    </svg>
+  );
+}
+
+function ArrowRight() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </svg>
+  );
+}
+
 export default function TravelMagBanner() {
   const [activeSlide, setActiveSlide] = useState(0);
 
@@ -65,7 +104,7 @@ export default function TravelMagBanner() {
             onClick={previousSlide}
             aria-label="Previous slide"
           >
-            ‹
+            <Chevron direction="left" />
           </button>
 
           <button
@@ -74,7 +113,7 @@ export default function TravelMagBanner() {
             onClick={nextSlide}
             aria-label="Next slide"
           >
-            ›
+            <Chevron direction="right" />
           </button>
 
           <div className="travelmag-pagination">
@@ -105,8 +144,9 @@ export default function TravelMagBanner() {
             Charge anywhere, work and stream hands-free.
           </p>
 
-          <a href={PRODUCT_URL} className="travelmag-cta">
-            SHOP NOW <span>→</span>
+          <a href={PRODUCT_URL} className="travelmag-cta group">
+            SHOP NOW
+            <ArrowRight />
           </a>
         </div>
       </div>

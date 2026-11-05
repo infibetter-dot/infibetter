@@ -1,19 +1,27 @@
 ﻿.travelmag-section {
-  width: 100%;
-  max-width: 1280px;
-  margin: 42px auto;
+  position: relative;
+  left: 50%;
+  width: 100vw;
+  max-width: 100vw;
+  margin: 26px 0;
   padding: 0 12px;
+  box-sizing: border-box;
+  transform: translateX(-50%);
 }
 
 .travelmag-banner {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  width: 100%;
+  max-width: 1440px;
   min-height: 420px;
+  margin-inline: auto;
   overflow: hidden;
   background: #fff;
   border: 1px solid #e9e9e9;
   border-radius: 22px;
   box-shadow: 0 3px 12px rgba(0,0,0,.07);
+  box-sizing: border-box;
 }
 
 .travelmag-visual {
@@ -24,11 +32,7 @@
   background: #f1f0ef;
 }
 
-.travelmag-image-link {
-  position: absolute;
-  inset: 0;
-  display: block;
-}
+.travelmag-image-link { position: absolute; inset: 0; display: block; }
 
 .travelmag-image {
   position: absolute;
@@ -41,9 +45,7 @@
   transition: opacity .45s ease;
 }
 
-.travelmag-image.active {
-  opacity: 1;
-}
+.travelmag-image.active { opacity: 1; }
 
 .travelmag-counter {
   position: absolute;
@@ -73,18 +75,13 @@
   border-radius: 50%;
   background: rgba(255,255,255,.94);
   color: #171717;
-  font-size: 30px;
-  line-height: 1;
   cursor: pointer;
   transform: translateY(-50%);
   box-shadow: 0 3px 12px rgba(0,0,0,.1);
   transition: transform .2s ease;
 }
 
-.travelmag-arrow:hover {
-  transform: translateY(-50%) scale(1.08);
-}
-
+.travelmag-arrow:hover { transform: translateY(-50%) scale(1.08); }
 .travelmag-prev { left: 20px; }
 .travelmag-next { right: 20px; }
 
@@ -114,10 +111,7 @@
   transition: all .3s ease;
 }
 
-.travelmag-dot.active {
-  width: 30px;
-  background: #fff;
-}
+.travelmag-dot.active { width: 30px; background: #fff; }
 
 .travelmag-content {
   display: flex;
@@ -173,82 +167,49 @@
   transition: all .25s ease;
 }
 
-.travelmag-cta:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 9px 22px rgba(0,0,0,.13);
+.travelmag-cta:hover { transform: translateY(-3px); box-shadow: 0 9px 22px rgba(0,0,0,.13); }
+
+@media (min-width: 640px) {
+  .travelmag-section {
+    position: static;
+    left: auto;
+    width: 100%;
+    max-width: none;
+    margin: 40px auto;
+    padding: 0 24px;
+    transform: none;
+  }
 }
 
-.travelmag-cta span {
-  font-size: 20px;
+@media (min-width: 1024px) {
+  .travelmag-section { margin: 48px auto; padding: 0 32px; }
 }
 
 @media (max-width: 900px) {
-  .travelmag-banner,
-  .travelmag-visual {
-    min-height: 340px;
-  }
-
+  .travelmag-banner, .travelmag-visual { min-height: 340px; }
   .travelmag-content { padding: 30px 22px; }
   .travelmag-content h2 { font-size: 28px; }
   .travelmag-description { font-size: 14px; }
 }
 
-@media (max-width: 640px) {
-  .travelmag-section {
-    margin: 26px auto;
-    padding: 0 14px;
-  }
-
+@media (max-width: 639px) {
   .travelmag-banner {
     grid-template-columns: 1fr;
     min-height: 0;
     border-radius: 17px;
   }
 
-  .travelmag-visual {
-    min-height: 0;
-    aspect-ratio: 1 / .88;
-  }
-
+  .travelmag-visual { min-height: 0; aspect-ratio: 1 / .88; }
   .travelmag-content { padding: 27px 18px 32px; }
 
-  .travelmag-eyebrow {
-    margin-bottom: 13px;
-    font-size: 10px;
-    letter-spacing: 2px;
-  }
-
-  .travelmag-content h2 {
-    font-size: clamp(23px,6vw,30px);
-    letter-spacing: -1px;
-  }
-
-  .travelmag-description {
-    margin: 13px 0 22px;
-    font-size: 13px;
-    line-height: 1.65;
-  }
-
+  .travelmag-eyebrow { margin-bottom: 13px; font-size: 10px; letter-spacing: 2px; }
+  .travelmag-content h2 { font-size: clamp(23px,6vw,30px); letter-spacing: -1px; }
+  .travelmag-description { margin: 13px 0 22px; font-size: 13px; line-height: 1.65; }
   .desktop-break { display: none; }
-
-  .travelmag-cta {
-    min-height: 44px;
-    min-width: 155px;
-  }
-
-  .travelmag-arrow {
-    width: 36px;
-    height: 36px;
-    font-size: 25px;
-  }
-
+  .travelmag-cta { min-height: 44px; min-width: 155px; }
+  .travelmag-arrow { width: 36px; height: 36px; }
   .travelmag-prev { left: 10px; }
   .travelmag-next { right: 10px; }
-
-  .travelmag-counter {
-    top: 12px;
-    right: 12px;
-  }
-
+  .travelmag-counter { top: 12px; right: 12px; }
   .travelmag-pagination { bottom: 12px; }
 }

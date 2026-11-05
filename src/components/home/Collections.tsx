@@ -851,6 +851,7 @@ export default function Collections({
         </div>
       </div>
 
+
       {/* =====================================================
           FEATURED CASE — ABOVE BEST CHOICE
       ====================================================== */}
@@ -997,6 +998,93 @@ export default function Collections({
           </div>
         )}
       </div>
+
+      {/* =====================================================
+          CUSTOMER REVIEWS OVERVIEW
+          Links to the all-reviews page.
+      ====================================================== */}
+      <section
+        aria-labelledby="customer-reviews-heading"
+        className="
+          mt-9 rounded-[18px] border border-[#E8E8E8] bg-white
+          px-5 py-6 shadow-[0_3px_14px_rgba(17,24,39,0.035)]
+          sm:mt-11 sm:px-7 sm:py-7
+          lg:grid lg:grid-cols-[1.35fr_1fr] lg:gap-8 lg:px-8 lg:py-7
+        "
+      >
+        <div className="flex min-w-0 flex-col items-start justify-center">
+          <p className="mb-3 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#0066E6] sm:text-[10px]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
+            Customer feedback
+          </p>
+
+          <h2
+            id="customer-reviews-heading"
+            className="max-w-xl font-sans text-[25px] font-semibold leading-[1.12] tracking-[-0.04em] text-[#111111] sm:text-[30px] lg:text-[34px]"
+          >
+            What customers are saying
+          </h2>
+
+          <p className="mt-3 max-w-[440px] text-[12px] leading-[1.65] text-[#626B78] sm:text-[13px]">
+            Discover feedback on the accessories people use every day, at home, at work, and on the move.
+          </p>
+
+          <a
+            href="/reviews"
+            className="
+              group mt-5 inline-flex min-h-10 items-center justify-center gap-3
+              rounded-[11px] bg-[#171717] px-4 py-2.5
+              text-[11px] font-semibold text-white
+              shadow-[0_2px_5px_rgba(0,0,0,0.12)]
+              transition-all duration-200 hover:-translate-y-0.5
+              hover:bg-[#303030] hover:shadow-[0_5px_12px_rgba(0,0,0,0.15)]
+              focus-visible:outline-none focus-visible:ring-2
+              focus-visible:ring-[#0066E6] focus-visible:ring-offset-2
+            "
+          >
+            Read all reviews
+            <ArrowRight
+              size={14}
+              strokeWidth={2}
+              className="transition-transform group-hover:translate-x-0.5"
+            />
+          </a>
+        </div>
+
+        <div
+          className="
+            mt-6 flex min-w-0 flex-col justify-between gap-6
+            border-t border-[#E5E7EB] pt-5
+            sm:mt-7 sm:pt-6
+            lg:mt-0 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0
+          "
+        >
+          <div>
+            <p className="mb-3 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#0066E6] sm:text-[10px]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
+              Our review community
+            </p>
+            <p className="font-sans text-[25px] font-semibold leading-none tracking-[-0.045em] text-[#111111] sm:text-[30px] lg:text-[34px]">
+              All product reviews
+            </p>
+            <p className="mt-2 text-[12px] leading-relaxed text-[#626B78] sm:text-[13px]">
+              One place to explore customer feedback across INFIBETTER.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-[11px] font-medium text-[#303846] sm:text-[12px]">
+            <span className="inline-flex items-center gap-2">
+              <ExternalLink size={14} className="text-[#0066E6]" />
+              Product experiences
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <ShoppingCart size={14} className="text-[#0066E6]" />
+              Product-specific reviews
+            </span>
+          </div>
+        </div>
+      </section>
+
     </section>
   );
 }

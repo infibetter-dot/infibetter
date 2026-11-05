@@ -19,6 +19,7 @@ import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as FlashsaleRouteImport } from './routes/flashsale'
 import { Route as OrderSuccessRouteImport } from './routes/order-success'
 import { Route as PopupRouteImport } from './routes/popup'
+import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as VoucherRegisterRouteImport } from './routes/voucher-register'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
@@ -86,6 +87,11 @@ const OrderSuccessRoute = OrderSuccessRouteImport.update({
 const PopupRoute = PopupRouteImport.update({
   id: '/popup',
   path: '/popup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewsRoute = ReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShopRoute = ShopRouteImport.update({
@@ -206,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/flashsale': typeof FlashsaleRoute
   '/order-success': typeof OrderSuccessRoute
   '/popup': typeof PopupRoute
+  '/reviews': typeof ReviewsRoute
   '/shop': typeof ShopRoute
   '/voucher-register': typeof VoucherRegisterRouteWithChildren
   '/account': typeof AuthenticatedAccountRoute
@@ -236,6 +243,7 @@ export interface FileRoutesByTo {
   '/flashsale': typeof FlashsaleRoute
   '/order-success': typeof OrderSuccessRoute
   '/popup': typeof PopupRoute
+  '/reviews': typeof ReviewsRoute
   '/shop': typeof ShopRoute
   '/voucher-register': typeof VoucherRegisterRouteWithChildren
   '/account': typeof AuthenticatedAccountRoute
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/flashsale': typeof FlashsaleRoute
   '/order-success': typeof OrderSuccessRoute
   '/popup': typeof PopupRoute
+  '/reviews': typeof ReviewsRoute
   '/shop': typeof ShopRoute
   '/voucher-register': typeof VoucherRegisterRouteWithChildren
   '/_authenticated/account': typeof AuthenticatedAccountRoute
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
     | '/flashsale'
     | '/order-success'
     | '/popup'
+    | '/reviews'
     | '/shop'
     | '/voucher-register'
     | '/account'
@@ -330,6 +340,7 @@ export interface FileRouteTypes {
     | '/flashsale'
     | '/order-success'
     | '/popup'
+    | '/reviews'
     | '/shop'
     | '/voucher-register'
     | '/account'
@@ -361,6 +372,7 @@ export interface FileRouteTypes {
     | '/flashsale'
     | '/order-success'
     | '/popup'
+    | '/reviews'
     | '/shop'
     | '/voucher-register'
     | '/_authenticated/account'
@@ -393,6 +405,7 @@ export interface RootRouteChildren {
   FlashsaleRoute: typeof FlashsaleRoute
   OrderSuccessRoute: typeof OrderSuccessRoute
   PopupRoute: typeof PopupRoute
+  ReviewsRoute: typeof ReviewsRoute
   ShopRoute: typeof ShopRoute
   VoucherRegisterRoute: typeof VoucherRegisterRouteWithChildren
   AccountOldRoute: typeof AccountOldRoute
@@ -470,6 +483,13 @@ declare module '@tanstack/react-router' {
       path: '/popup'
       fullPath: '/popup'
       preLoaderRoute: typeof PopupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reviews': {
+      id: '/reviews'
+      path: '/reviews'
+      fullPath: '/reviews'
+      preLoaderRoute: typeof ReviewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shop': {
@@ -692,6 +712,7 @@ const rootRouteChildren: RootRouteChildren = {
   FlashsaleRoute: FlashsaleRoute,
   OrderSuccessRoute: OrderSuccessRoute,
   PopupRoute: PopupRoute,
+  ReviewsRoute: ReviewsRoute,
   ShopRoute: ShopRoute,
   VoucherRegisterRoute: VoucherRegisterRouteWithChildren,
   AccountOldRoute: AccountOldRoute,
