@@ -317,49 +317,65 @@ const PowerStationSection: React.FC = () => {
           {/* FEATURES */}
           <div
             className="
-              mt-5 flex max-w-[440px]
-              flex-wrap items-center
-              justify-center gap-2
-              sm:mt-6
+              mt-4 flex w-full max-w-none
+              flex-nowrap items-center
+              justify-center gap-1.5
+              sm:mt-6 sm:max-w-[440px]
+              sm:flex-wrap sm:gap-2
             "
           >
             <span
               className="
-                inline-flex items-center gap-1.5
-                rounded-full border border-[#E8E8E8]
-                bg-white px-3 py-2
-                text-[9px] font-medium
-                text-[#555555] sm:text-[10px]
+                relative inline-flex shrink-0 items-center gap-1 overflow-hidden
+                whitespace-nowrap rounded-full border border-white/90
+                bg-gradient-to-b from-white via-white/95 to-[#E9EEF5]
+                px-2 py-1.5 text-[8px] font-medium text-[#444B55]
+                shadow-[0_2px_7px_rgba(15,23,42,0.09),inset_0_1px_1px_rgba(255,255,255,1)]
+                before:pointer-events-none before:absolute before:inset-y-0 before:left-[12%]
+                before:w-[32%] before:-skew-x-[22deg]
+                before:bg-gradient-to-r before:from-transparent before:via-white/95 before:to-transparent
+                before:opacity-90 before:content-['']
+                sm:gap-1.5 sm:px-3 sm:py-2 sm:text-[10px]
               "
             >
-              <Zap size={12} className="text-[#0066E6]" />
-              Up to 105W
+              <Zap size={10} className="relative z-10 shrink-0 text-[#0066E6] sm:h-3 sm:w-3" />
+              <span className="relative z-10">Up to 105W</span>
             </span>
 
             <span
               className="
-                inline-flex items-center gap-1.5
-                rounded-full border border-[#E8E8E8]
-                bg-white px-3 py-2
-                text-[9px] font-medium
-                text-[#555555] sm:text-[10px]
+                relative inline-flex shrink-0 items-center gap-1 overflow-hidden
+                whitespace-nowrap rounded-full border border-white/90
+                bg-gradient-to-b from-white via-white/95 to-[#E9EEF5]
+                px-2 py-1.5 text-[8px] font-medium text-[#444B55]
+                shadow-[0_2px_7px_rgba(15,23,42,0.09),inset_0_1px_1px_rgba(255,255,255,1)]
+                before:pointer-events-none before:absolute before:inset-y-0 before:left-[12%]
+                before:w-[32%] before:-skew-x-[22deg]
+                before:bg-gradient-to-r before:from-transparent before:via-white/95 before:to-transparent
+                before:opacity-90 before:content-['']
+                sm:gap-1.5 sm:px-3 sm:py-2 sm:text-[10px]
               "
             >
-              <Cable size={12} className="text-[#0066E6]" />
-              Retractable cables
+              <Cable size={10} className="relative z-10 shrink-0 text-[#0066E6] sm:h-3 sm:w-3" />
+              <span className="relative z-10">Retractable cables</span>
             </span>
 
             <span
               className="
-                inline-flex items-center gap-1.5
-                rounded-full border border-[#E8E8E8]
-                bg-white px-3 py-2
-                text-[9px] font-medium
-                text-[#555555] sm:text-[10px]
+                relative inline-flex shrink-0 items-center gap-1 overflow-hidden
+                whitespace-nowrap rounded-full border border-white/90
+                bg-gradient-to-b from-white via-white/95 to-[#E9EEF5]
+                px-2 py-1.5 text-[8px] font-medium text-[#444B55]
+                shadow-[0_2px_7px_rgba(15,23,42,0.09),inset_0_1px_1px_rgba(255,255,255,1)]
+                before:pointer-events-none before:absolute before:inset-y-0 before:left-[12%]
+                before:w-[32%] before:-skew-x-[22deg]
+                before:bg-gradient-to-r before:from-transparent before:via-white/95 before:to-transparent
+                before:opacity-90 before:content-['']
+                sm:gap-1.5 sm:px-3 sm:py-2 sm:text-[10px]
               "
             >
-              <Zap size={12} className="text-[#0066E6]" />
-              Magnetic wireless
+              <Zap size={10} className="relative z-10 shrink-0 text-[#0066E6] sm:h-3 sm:w-3" />
+              <span className="relative z-10">Magnetic wireless</span>
             </span>
           </div>
 

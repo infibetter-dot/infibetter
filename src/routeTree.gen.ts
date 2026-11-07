@@ -34,6 +34,7 @@ import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminPotentialCustomersRouteImport } from './routes/_authenticated/admin/potential-customers'
 import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin/products'
 import { Route as AuthenticatedAdminReviewsRouteImport } from './routes/_authenticated/admin/reviews'
+import { Route as AuthenticatedAdminSupportRouteImport } from './routes/_authenticated/admin/support'
 import { Route as AuthenticatedAdminVoucherCustomersRouteImport } from './routes/_authenticated/admin/voucher-customers'
 import { Route as AuthenticatedAdminVouchersRouteImport } from './routes/_authenticated/admin/vouchers'
 import { Route as AuthenticatedAdminOrdersIdRouteImport } from './routes/_authenticated/admin/orders.$id'
@@ -171,6 +172,12 @@ const AuthenticatedAdminReviewsRoute =
     path: '/admin/reviews',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminSupportRoute =
+  AuthenticatedAdminSupportRouteImport.update({
+    id: '/admin/support',
+    path: '/admin/support',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminVoucherCustomersRoute =
   AuthenticatedAdminVoucherCustomersRouteImport.update({
     id: '/admin/voucher-customers',
@@ -227,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/admin/potential-customers': typeof AuthenticatedAdminPotentialCustomersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/admin/reviews': typeof AuthenticatedAdminReviewsRoute
+  '/admin/support': typeof AuthenticatedAdminSupportRoute
   '/admin/voucher-customers': typeof AuthenticatedAdminVoucherCustomersRoute
   '/admin/vouchers': typeof AuthenticatedAdminVouchersRoute
   '/admin/orders/$id': typeof AuthenticatedAdminOrdersIdRoute
@@ -258,6 +266,7 @@ export interface FileRoutesByTo {
   '/admin/potential-customers': typeof AuthenticatedAdminPotentialCustomersRoute
   '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/admin/reviews': typeof AuthenticatedAdminReviewsRoute
+  '/admin/support': typeof AuthenticatedAdminSupportRoute
   '/admin/voucher-customers': typeof AuthenticatedAdminVoucherCustomersRoute
   '/admin/vouchers': typeof AuthenticatedAdminVouchersRoute
   '/admin/orders/$id': typeof AuthenticatedAdminOrdersIdRoute
@@ -291,6 +300,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/potential-customers': typeof AuthenticatedAdminPotentialCustomersRoute
   '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/_authenticated/admin/reviews': typeof AuthenticatedAdminReviewsRoute
+  '/_authenticated/admin/support': typeof AuthenticatedAdminSupportRoute
   '/_authenticated/admin/voucher-customers': typeof AuthenticatedAdminVoucherCustomersRoute
   '/_authenticated/admin/vouchers': typeof AuthenticatedAdminVouchersRoute
   '/_authenticated/admin/orders/$id': typeof AuthenticatedAdminOrdersIdRoute
@@ -324,6 +334,7 @@ export interface FileRouteTypes {
     | '/admin/potential-customers'
     | '/admin/products'
     | '/admin/reviews'
+    | '/admin/support'
     | '/admin/voucher-customers'
     | '/admin/vouchers'
     | '/admin/orders/$id'
@@ -355,6 +366,7 @@ export interface FileRouteTypes {
     | '/admin/potential-customers'
     | '/admin/products'
     | '/admin/reviews'
+    | '/admin/support'
     | '/admin/voucher-customers'
     | '/admin/vouchers'
     | '/admin/orders/$id'
@@ -387,6 +399,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/potential-customers'
     | '/_authenticated/admin/products'
     | '/_authenticated/admin/reviews'
+    | '/_authenticated/admin/support'
     | '/_authenticated/admin/voucher-customers'
     | '/_authenticated/admin/vouchers'
     | '/_authenticated/admin/orders/$id'
@@ -590,6 +603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminReviewsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/support': {
+      id: '/_authenticated/admin/support'
+      path: '/admin/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AuthenticatedAdminSupportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/voucher-customers': {
       id: '/_authenticated/admin/voucher-customers'
       path: '/admin/voucher-customers'
@@ -667,6 +687,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminPotentialCustomersRoute: typeof AuthenticatedAdminPotentialCustomersRoute
   AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRouteWithChildren
   AuthenticatedAdminReviewsRoute: typeof AuthenticatedAdminReviewsRoute
+  AuthenticatedAdminSupportRoute: typeof AuthenticatedAdminSupportRoute
   AuthenticatedAdminVoucherCustomersRoute: typeof AuthenticatedAdminVoucherCustomersRoute
   AuthenticatedAdminVouchersRoute: typeof AuthenticatedAdminVouchersRoute
 }
@@ -681,6 +702,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedAdminPotentialCustomersRoute,
   AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRouteWithChildren,
   AuthenticatedAdminReviewsRoute: AuthenticatedAdminReviewsRoute,
+  AuthenticatedAdminSupportRoute: AuthenticatedAdminSupportRoute,
   AuthenticatedAdminVoucherCustomersRoute:
     AuthenticatedAdminVoucherCustomersRoute,
   AuthenticatedAdminVouchersRoute: AuthenticatedAdminVouchersRoute,

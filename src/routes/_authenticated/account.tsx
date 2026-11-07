@@ -20,6 +20,7 @@ import {
   Star,
   FolderTree,
   Flame,
+  Headset,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -115,6 +116,11 @@ const navigationGroups = [
         label: "Khách tiềm năng",
         href: "/admin/potential-customers",
         icon: UserRound,
+      },
+      {
+        label: "Support Requests",
+        href: "/admin/support",
+        icon: Headset,
       },
     ],
   },
@@ -790,7 +796,7 @@ function AccountPage() {
                 text-[#20251F]
               "
             >
-              OLIVE LIVING
+              INFIBETTER
             </Link>
 
             <button

@@ -1,3 +1,4 @@
+
 import {
   QueryClient,
   QueryClientProvider,
@@ -29,6 +30,7 @@ import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import FloatingSupport from "@/components/FloatingSupport";
 import { supabase } from "@/integrations/supabase/client";
 
 /* =========================================================
@@ -372,6 +374,14 @@ function RootComponent() {
   } = Route.useRouteContext();
 
   const router = useRouter();
+  const location = useLocation();
+
+  /* =================================================
+     ADMIN ROUTE DETECTION
+  ================================================== */
+
+  const isAdminRoute =
+    location.pathname.startsWith("/admin");
 
   /* =================================================
      AUTH STATE
@@ -422,6 +432,8 @@ function RootComponent() {
 
             {/* <SetagoVoucherPopup /> */}
 
+            {/* MAIN WEBSITE */}
+
             <div className="flex min-h-screen flex-col">
               <SiteHeader />
 
@@ -431,6 +443,10 @@ function RootComponent() {
 
               <SiteFooter />
             </div>
+
+            {/* FLOATING SUPPORT — HIDDEN ON ADMIN */}
+
+            {!isAdminRoute && <FloatingSupport />}
           </>
 
           <Toaster position="top-center" />
