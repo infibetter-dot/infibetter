@@ -4,6 +4,7 @@ import FeaturedCaseSection from "@/components/home/FeaturedCaseSection";
 import FeaturedProductSection from "@/components/home/FeaturedProductSection";
 import magfoldFeaturedImage from "@/assets/hero/25w_fast.png";
 import VoucherSlider from "@/components/home/VoucherSlider";
+import PowerStationSection from "@/components/home/PowerStationSection";
 import {
   ArrowRight,
   ExternalLink,
@@ -857,69 +858,8 @@ export default function Collections({
       ====================================================== */}
       <FeaturedCaseSection />
 
-      {/* =====================================================
-          BEST CHOICE — PHONE CASES ONLY
-      ====================================================== */}
-      <div className="mt-9 border-t border-[#ECECEC] pt-7 sm:mt-11 sm:pt-9">
-        <div className="flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#0066E6] sm:text-[10px]">
-              INFIBETTER SELECTION
-            </p>
-            <h2 className="font-sans text-[27px] font-bold leading-[1.08] tracking-[-0.035em] text-[#171717] sm:text-[31px] lg:text-[34px]">
-              Made for iPhone
-            </h2>
-            <p className="mt-2 text-[10px] leading-relaxed text-neutral-500 sm:text-[11px]">
-              MagSafe · Ring Stand
-            </p>
-          </div>
-
-          <Link
-            to="/shop"
-            search={{ category: "iphone-cases" } as never}
-            className="group mb-0.5 flex h-8 flex-none items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 text-[9px] font-semibold text-[#0066E6] shadow-[0_2px_8px_rgba(15,23,42,0.045)] transition-all hover:border-[#0066E6]/30 hover:bg-[#F8FBFF]"
-          >
-            View all
-            <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-
-        {bestChoiceProducts.length > 0 ? (
-          <>
-            {/* MOBILE — HORIZONTAL SLIDER */}
-            <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden">
-              {bestChoiceProducts.map((product, index) => (
-                <div key={`best-choice-mobile-${product.id}`} className="w-[min(210px,68vw)] flex-none snap-start">
-                  <ProductMiniCard
-                    product={product}
-                    floatDelay={(index % 4) * 0.35}
-                    fallbackImage={banner01}
-                    badgeLabel="Best Choice"
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* DESKTOP — PRODUCT GRID */}
-            <div className="mt-4 hidden w-full min-w-0 grid-cols-4 gap-3 sm:grid sm:gap-4">
-              {bestChoiceProducts.map((product, index) => (
-                <ProductMiniCard
-                  key={`best-choice-desktop-${product.id}`}
-                  product={product}
-                  floatDelay={(index % 4) * 0.35}
-                  fallbackImage={banner01}
-                  badgeLabel="Best Choice"
-                  fluid
-                />
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="mt-4 flex min-h-[88px] items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-white px-4 text-center text-[11px] text-neutral-400">
-            No Best Choice products selected yet.
-          </div>
-        )}
-      </div>
+      {/* POWER STATION */}
+      <PowerStationSection />
 
       {/* =====================================================
           FEATURED PRODUCT — ABOVE EVERYDAY PLUS
