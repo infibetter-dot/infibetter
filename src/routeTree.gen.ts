@@ -29,6 +29,7 @@ import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as VoucherRegisterBackupRouteImport } from './routes/voucher-register.backup'
 import { Route as AuthenticatedAdminAccessoriesRouteImport } from './routes/_authenticated/admin/accessories'
 import { Route as AuthenticatedAdminFlashSaleRouteImport } from './routes/_authenticated/admin/flash-sale'
+import { Route as AuthenticatedAdminHomepageCategoriesRouteImport } from './routes/_authenticated/admin/homepage-categories'
 import { Route as AuthenticatedAdminMegaMenuRouteImport } from './routes/_authenticated/admin/mega-menu'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin/orders'
 import { Route as AuthenticatedAdminPotentialCustomersRouteImport } from './routes/_authenticated/admin/potential-customers'
@@ -142,6 +143,12 @@ const AuthenticatedAdminFlashSaleRoute =
     path: '/admin/flash-sale',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminHomepageCategoriesRoute =
+  AuthenticatedAdminHomepageCategoriesRouteImport.update({
+    id: '/admin/homepage-categories',
+    path: '/admin/homepage-categories',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminMegaMenuRoute =
   AuthenticatedAdminMegaMenuRouteImport.update({
     id: '/admin/mega-menu',
@@ -229,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/voucher-register/backup': typeof VoucherRegisterBackupRoute
   '/admin/accessories': typeof AuthenticatedAdminAccessoriesRoute
   '/admin/flash-sale': typeof AuthenticatedAdminFlashSaleRoute
+  '/admin/homepage-categories': typeof AuthenticatedAdminHomepageCategoriesRoute
   '/admin/mega-menu': typeof AuthenticatedAdminMegaMenuRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRouteWithChildren
   '/admin/potential-customers': typeof AuthenticatedAdminPotentialCustomersRoute
@@ -261,6 +269,7 @@ export interface FileRoutesByTo {
   '/voucher-register/backup': typeof VoucherRegisterBackupRoute
   '/admin/accessories': typeof AuthenticatedAdminAccessoriesRoute
   '/admin/flash-sale': typeof AuthenticatedAdminFlashSaleRoute
+  '/admin/homepage-categories': typeof AuthenticatedAdminHomepageCategoriesRoute
   '/admin/mega-menu': typeof AuthenticatedAdminMegaMenuRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRouteWithChildren
   '/admin/potential-customers': typeof AuthenticatedAdminPotentialCustomersRoute
@@ -295,6 +304,7 @@ export interface FileRoutesById {
   '/voucher-register/backup': typeof VoucherRegisterBackupRoute
   '/_authenticated/admin/accessories': typeof AuthenticatedAdminAccessoriesRoute
   '/_authenticated/admin/flash-sale': typeof AuthenticatedAdminFlashSaleRoute
+  '/_authenticated/admin/homepage-categories': typeof AuthenticatedAdminHomepageCategoriesRoute
   '/_authenticated/admin/mega-menu': typeof AuthenticatedAdminMegaMenuRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRouteWithChildren
   '/_authenticated/admin/potential-customers': typeof AuthenticatedAdminPotentialCustomersRoute
@@ -329,6 +339,7 @@ export interface FileRouteTypes {
     | '/voucher-register/backup'
     | '/admin/accessories'
     | '/admin/flash-sale'
+    | '/admin/homepage-categories'
     | '/admin/mega-menu'
     | '/admin/orders'
     | '/admin/potential-customers'
@@ -361,6 +372,7 @@ export interface FileRouteTypes {
     | '/voucher-register/backup'
     | '/admin/accessories'
     | '/admin/flash-sale'
+    | '/admin/homepage-categories'
     | '/admin/mega-menu'
     | '/admin/orders'
     | '/admin/potential-customers'
@@ -394,6 +406,7 @@ export interface FileRouteTypes {
     | '/voucher-register/backup'
     | '/_authenticated/admin/accessories'
     | '/_authenticated/admin/flash-sale'
+    | '/_authenticated/admin/homepage-categories'
     | '/_authenticated/admin/mega-menu'
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/potential-customers'
@@ -568,6 +581,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminFlashSaleRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/homepage-categories': {
+      id: '/_authenticated/admin/homepage-categories'
+      path: '/admin/homepage-categories'
+      fullPath: '/admin/homepage-categories'
+      preLoaderRoute: typeof AuthenticatedAdminHomepageCategoriesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/mega-menu': {
       id: '/_authenticated/admin/mega-menu'
       path: '/admin/mega-menu'
@@ -682,6 +702,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedAdminAccessoriesRoute: typeof AuthenticatedAdminAccessoriesRoute
   AuthenticatedAdminFlashSaleRoute: typeof AuthenticatedAdminFlashSaleRoute
+  AuthenticatedAdminHomepageCategoriesRoute: typeof AuthenticatedAdminHomepageCategoriesRoute
   AuthenticatedAdminMegaMenuRoute: typeof AuthenticatedAdminMegaMenuRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRouteWithChildren
   AuthenticatedAdminPotentialCustomersRoute: typeof AuthenticatedAdminPotentialCustomersRoute
@@ -696,6 +717,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedAdminAccessoriesRoute: AuthenticatedAdminAccessoriesRoute,
   AuthenticatedAdminFlashSaleRoute: AuthenticatedAdminFlashSaleRoute,
+  AuthenticatedAdminHomepageCategoriesRoute:
+    AuthenticatedAdminHomepageCategoriesRoute,
   AuthenticatedAdminMegaMenuRoute: AuthenticatedAdminMegaMenuRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRouteWithChildren,
   AuthenticatedAdminPotentialCustomersRoute:

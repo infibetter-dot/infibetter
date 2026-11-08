@@ -51,6 +51,74 @@ const homeData = queryOptions({
       throw error;
     }
 
+    // CATEGORY TREE: include child categories when filtering homepage tabs
+    const { data: categoryTreeData, error: categoryTreeError } = await (supabase as any)
+      .from("categories")
+      .select("id, parent_id");
+
+    if (categoryTreeError) {
+      console.error("INFIBETTER CATEGORY TREE ERROR:", categoryTreeError);
+    }
+
+    const categoryChildren = new Map<string, string[]>();
+
+    (categoryTreeData ?? []).forEach((category: any) => {
+      if (!category.parent_id) return;
+
+      const children = categoryChildren.get(category.parent_id) ?? [];
+      children.push(category.id);
+      categoryChildren.set(category.parent_id, children);
+    });
+
+    const getCategoryBranchIds = (rootId: string): string[] => {
+      const result = new Set<string>([rootId]);
+      const pending = [rootId];
+
+      while (pending.length > 0) {
+        const currentId = pending.pop()!;
+
+        for (const childId of categoryChildren.get(currentId) ?? []) {
+          if (result.has(childId)) continue;
+          result.add(childId);
+          pending.push(childId);
+        }
+      }
+
+      return [...result];
+    };
+    // HOMEPAGE CATEGORY TILES: Admin-configured categories
+    const { data: homepageTilesData, error: homepageTilesError } = await (supabase as any)
+      .from("homepage_category_tiles")
+      .select(`
+        id,
+        position,
+        title,
+        image_url,
+        category:categories (
+          id,
+          slug,
+          name
+        )
+      `)
+      .eq("is_active", true)
+      .order("position", { ascending: true });
+
+    if (homepageTilesError) {
+      console.error("INFIBETTER HOMEPAGE TILES ERROR:", homepageTilesError);
+    }
+
+    const homepageTiles = (homepageTilesData ?? [])
+      .filter((tile: any) => tile.category?.slug)
+      .map((tile: any) => ({
+        id: tile.id,
+        position: tile.position,
+        title: tile.title || tile.category.name,
+        image_url: tile.image_url,
+        category_id: tile.category.id,
+        category_ids: getCategoryBranchIds(tile.category.id),
+        category_slug: tile.category.slug,
+        category_name: tile.category.name,
+      }));
     const allProducts = (data ?? []).map((product) => {
       const price = Number(product.price);
       const compareAtPrice = Number(product.compare_at_price);
@@ -128,6 +196,7 @@ const homeData = queryOptions({
 
     return {
       products: allProducts,
+      homepageTiles,
       newArrivals,
       featured: newArrivals,
       bestSellers,
@@ -172,6 +241,7 @@ function HomePage() {
         <div className="px-4 sm:px-6 lg:px-8">
           <Collections
             products={data.products}
+            homepageTiles={data.homepageTiles}
             newArrivals={data.newArrivals}
             bestChoiceProducts={data.bestChoiceProducts}
             everydayPlusProducts={data.everydayPlusProducts}
@@ -185,3 +255,5 @@ function HomePage() {
     </main>
   );
 }
+
+

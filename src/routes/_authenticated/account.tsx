@@ -1,4 +1,4 @@
-import {
+﻿import {
   createFileRoute,
   Link,
   useNavigate,
@@ -90,6 +90,11 @@ const navigationGroups = [
       label: "Mega Menu",
       href: "/admin/mega-menu",
       icon: Menu,
+    },
+    {
+      label: "Homepage Categories",
+      href: "/admin/homepage-categories",
+      icon: LayoutDashboard,
     },
     {
       label: "Reviews",

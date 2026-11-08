@@ -1,4 +1,4 @@
-import TravelMagBanner from "../TravelMagBanner";
+﻿import TravelMagBanner from "../TravelMagBanner";
 import { Link } from "@tanstack/react-router";
 import FeaturedCaseSection from "@/components/home/FeaturedCaseSection";
 import FeaturedProductSection from "@/components/home/FeaturedProductSection";
@@ -11,6 +11,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ShoppingCart,
+  Sparkles,
+  Zap,
+  BatteryCharging,
+  Plane,
 } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { useCart } from "@/lib/cart";
@@ -38,12 +42,24 @@ interface CollectionProduct {
   best_choice?: boolean | null;
   everyday_plus?: boolean | null;
   is_active?: boolean | null;
+  category_id?: string | null;
   category_slug?: string | null;
   category_name?: string | null;
   category?: string | { slug?: string | null; name?: string | null } | null;
 }
 
+interface HomepageTile {
+  id: string;
+  position: number;
+  title: string;
+  image_url?: string | null;
+  category_ids?: string[];
+  category_slug: string;
+  category_name: string;
+}
+
 interface CollectionsProps {
+  homepageTiles?: HomepageTile[];
   products?: CollectionProduct[];
   newArrivals?: CollectionProduct[];
   bestChoiceProducts?: CollectionProduct[];
@@ -59,26 +75,10 @@ const categoryImages = [
 
 // Keep these slugs in sync with the category query parameters supported by /shop.
 const collections = [
-  {
-    title: "iPhone Cases",
-    subtitle: "Shop iPhone Cases",
-    slug: "iphone-cases",
-  },
-  {
-    title: "Wireless Charging",
-    subtitle: "Shop Wireless Chargers",
-    slug: "wireless-charging",
-  },
-  {
-    title: "Power Banks",
-    subtitle: "Shop Power Banks",
-    slug: "power-banks",
-  },
-  {
-    title: "Travel Power",
-    subtitle: "Shop Travel Power",
-    slug: "travel-power",
-  },
+  { title: "iPhone Cases", subtitle: "Shop iPhone Cases", slug: "iphone-cases" },
+  { title: "Wireless Charging", subtitle: "Shop Wireless Chargers", slug: "wireless-charging" },
+  { title: "Power Banks", subtitle: "Shop Power Banks", slug: "power-banks" },
+  { title: "Travel Power", subtitle: "Shop Travel Power", slug: "travel-power" },
 ];
 
 // Fallback images used by product cards when a product has no image_url.
@@ -175,7 +175,7 @@ function ProductMiniCard({
     const cleaned = value
       .trim()
       .replace(/USD/gi, "")
-      .replace(/[$€£₫]/g, "")
+      .replace(/[$â‚¬Â£â‚«]/g, "")
       .replace(/\s/g, "");
 
     if (!cleaned) return null;
@@ -199,7 +199,7 @@ function ProductMiniCard({
     const usd = toNumber(value);
 
     if (usd === null) {
-      return "—";
+      return "â€”";
     }
 
     // Always fall back to USD if the saved currency is invalid.
@@ -321,7 +321,7 @@ function ProductMiniCard({
         </h3>
 
         <p className="mt-1 line-clamp-1 text-[9px] leading-4 text-neutral-400 sm:text-[10px]">
-          Modern design · everyday practical
+          Modern design Â· everyday practical
         </p>
 
         <div className="mt-auto flex min-w-0 items-center justify-between gap-2 pt-3">
@@ -373,15 +373,17 @@ function ProductMiniCard({
 }
 
 export default function Collections({
+  homepageTiles = [],
   products = [],
   newArrivals = [],
   bestChoiceProducts: selectedBestChoiceProducts,
   everydayPlusProducts: selectedEverydayPlusProducts,
 }: CollectionsProps) {
-  const [mobileIndex, setMobileIndex] = useState(0);
   const [desktopStartIndex, setDesktopStartIndex] = useState(0);
+  const [activeCollectionTab, setActiveCollectionTab] = useState("new-arrivals");
 
   const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const mobileProductsScrollRef = useRef<HTMLDivElement>(null);
   // Use the actual image from the Travelmag Hybrid product for the Travel Power category card.
   // Product images come from the product data already passed into this component.
   const travelPowerProduct = [...products, ...newArrivals].find((product) => {
@@ -391,8 +393,46 @@ export default function Collections({
   });
   const travelPowerImage = travelPowerProduct?.image_url || banner02;
 
+  const displayCollections = homepageTiles.map((tile, index) => ({
+    id: tile.id,
+    title: tile.title || tile.category_name,
+    slug: tile.category_slug,
+    image:
+      tile.image_url ||
+      (index === 2 ? travelPowerImage : categoryImages[index] || banner02),
+  }));
+
   // New Arrivals remains its own section.
-  const activeProducts = newArrivals;
+  // Keep all Admin-configured homepage tabs visible.
+  const visibleHomepageTiles = homepageTiles;
+  const selectedHomepageTile = visibleHomepageTiles.find(
+    (tile) => tile.id === activeCollectionTab
+  );
+
+  const isChargingStationTab = selectedHomepageTile
+    ? (
+        selectedHomepageTile.category_slug === "power-station" ||
+        selectedHomepageTile.category_slug === "charging-stations" ||
+        selectedHomepageTile.title.toLowerCase().includes("charging station")
+      )
+    : false;
+
+  const activeProducts = selectedHomepageTile
+    ? isChargingStationTab
+      ? products
+          .filter((product) =>
+            product.category_slug === "power-station" ||
+            product.category?.slug === "power-station"
+          )
+          .slice(0, 12)
+      : products
+          .filter((product) =>
+            !!product.category_id &&
+            (selectedHomepageTile.category_ids ?? [selectedHomepageTile.category_id])
+              .includes(product.category_id)
+          )
+          .slice(0, 12)
+    : newArrivals;
 
   // Keep a de-duplicated source for sections that still use the general
   // product list. Admin-selected sections use the exact arrays from the
@@ -437,35 +477,30 @@ export default function Collections({
     })
     .slice(0, 4);
 
-  // Mobile: current product + a small peek of the next product.
-  const mobileProducts = activeProducts.slice(
-    mobileIndex,
-    mobileIndex + 2,
-  );
-
-  // Desktop: keep a 5-product window.
+  // Desktop: keep a 5-product window. Mobile renders the full list
+  // inside a native horizontal scroller so touch-swipe works across all items.
   const desktopProducts = activeProducts.slice(
     desktopStartIndex,
     desktopStartIndex + 5,
   );
 
-  const canGoNext = mobileIndex < activeProducts.length - 1;
-  const canGoPrev = mobileIndex > 0;
-
   const canGoDesktopNext =
     desktopStartIndex + 5 < activeProducts.length;
   const canGoDesktopPrev = desktopStartIndex > 0;
 
-  const nextProducts = () => {
-    if (canGoNext) {
-      setMobileIndex((prev) => prev + 1);
-    }
-  };
+  const scrollMobileProducts = (direction: "next" | "prev") => {
+    const container = mobileProductsScrollRef.current;
+    if (!container) return;
 
-  const prevProducts = () => {
-    if (canGoPrev) {
-      setMobileIndex((prev) => Math.max(0, prev - 1));
-    }
+    const firstCard = container.querySelector<HTMLElement>("[data-product-card]");
+    const distance = firstCard
+      ? firstCard.getBoundingClientRect().width + 12
+      : 220;
+
+    container.scrollBy({
+      left: direction === "next" ? distance : -distance,
+      behavior: "smooth",
+    });
   };
 
   const nextDesktopProducts = () => {
@@ -584,7 +619,7 @@ export default function Collections({
         </div>
       </div>
 
-      {/* SHOP BY CATEGORY — three balanced feature cards */}
+      {/* SHOP BY CATEGORY â€” three balanced feature cards */}
       <div
         ref={categoryScrollRef}
         className="
@@ -676,7 +711,7 @@ export default function Collections({
         ))}
       </div>
 
-      {/* VOUCHER SLIDER — BELOW SHOP BY CATEGORY */}
+      {/* VOUCHER SLIDER â€” BELOW SHOP BY CATEGORY */}
       <VoucherSlider />
 
       {/* =====================================================
@@ -705,18 +740,56 @@ export default function Collections({
           </div>
 
           {/* NEW ARRIVALS LEFT, VIEW ALL RIGHT */}
-          <div className="mt-3 flex h-9 w-full items-center justify-between bg-transparent p-0">
+          <div className="mt-3 flex min-h-12 w-full items-center justify-between gap-3 bg-transparent p-0">
+              <div className="flex min-w-0 flex-1 max-w-full items-center gap-1.5 overflow-x-auto whitespace-nowrap py-2 pl-2 pr-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
-              type="button"
-              aria-current="true"
-              className="flex h-8 flex-none items-center justify-center rounded-[7px] bg-white px-5 text-[9px] font-semibold tracking-[-0.01em] text-[#171717] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED]"
-            >
-              New Arrivals
-            </button>
+  type="button"
+  aria-current={activeCollectionTab === "new-arrivals" ? "true" : undefined}
+  onClick={() => {
+    setActiveCollectionTab("new-arrivals");
+    setDesktopStartIndex(0);
+  }}
+  className={`flex h-7 sm:h-8 flex-none items-center justify-center whitespace-nowrap rounded-[7px] px-2.5 sm:px-4 text-[8px] sm:text-[9px] font-semibold tracking-[-0.01em] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED] ${
+    activeCollectionTab === "new-arrivals"
+      ? "bg-[#EAF8EF] text-[#15803D] ring-[#86EFAC]"
+      : "bg-white text-neutral-500"
+  }`}
+>
+  New Arrivals
+</button>
 
+{visibleHomepageTiles.map((tile) => (
+  <button
+    key={tile.id}
+    type="button"
+    aria-current={activeCollectionTab === tile.id ? "true" : undefined}
+    onClick={() => {
+      setActiveCollectionTab(tile.id);
+      setDesktopStartIndex(0);
+    }}
+    className={`flex h-7 sm:h-8 flex-none items-center justify-center whitespace-nowrap rounded-[7px] px-2.5 sm:px-4 text-[8px] sm:text-[9px] font-semibold tracking-[-0.01em] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED] ${
+      activeCollectionTab === tile.id
+        ? "bg-[#EAF8EF] text-[#15803D] ring-[#86EFAC]"
+        : "bg-white text-neutral-500"
+    }`}
+  >
+    <span className="flex items-center gap-1.5">
+      {tile.category_slug.toLowerCase().includes("travel") ? (
+        <Plane size={11} />
+      ) : tile.title.toLowerCase().includes("qi2") ? (
+        <Zap size={11} />
+      ) : (
+        <BatteryCharging size={11} />
+      )}
+      {tile.title}
+    </span>
+  </button>
+))}
+
+              </div>
             <Link
               to="/shop"
-              className="group flex h-8 flex-none items-center justify-center gap-1.5 rounded-[8px] border border-white/90 bg-white/65 px-3.5 text-[9px] font-semibold text-[#0066E6] shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl transition-all duration-200 hover:bg-white/90 hover:shadow-[0_4px_12px_rgba(15,23,42,0.12)]"
+              className="group ml-auto hidden h-8 flex-none sm:flex items-center justify-center gap-1.5 rounded-[8px] border border-white/90 bg-white/65 px-3.5 text-[9px] font-semibold text-[#0066E6] shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl transition-all duration-200 hover:bg-white/90 hover:shadow-[0_4px_12px_rgba(15,23,42,0.12)]"
             >
               View all
               <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
@@ -729,36 +802,41 @@ export default function Collections({
           {activeProducts.length > 0 ? (
             <>
               {/* MOBILE CAROUSEL */}
-              <div className="relative lg:hidden">
+              <div className="relative w-full min-w-0 lg:hidden">
                 <div
+                  ref={mobileProductsScrollRef}
+                  aria-label="New arrival products"
                   className="
-                    flex snap-x snap-mandatory gap-3
-                    overflow-x-auto overscroll-x-contain
-                    pb-2 pr-1.5 scroll-smooth
+                    flex w-full min-w-0 snap-x snap-mandatory gap-3
+                    overflow-x-auto overflow-y-hidden overscroll-x-contain
+                    touch-pan-x [-webkit-overflow-scrolling:touch]
+                    pb-3 pr-4 scroll-smooth
                     [scrollbar-width:none]
                     [&::-webkit-scrollbar]:hidden
                   "
                 >
-                  {mobileProducts.map((product, index) => (
-                    <ProductMiniCard
+                  {activeProducts.map((product, index) => (
+                    <div
                       key={product.id}
-                      product={product}
-                      floatDelay={((mobileIndex + index) % 5) * 0.35}
-                      fallbackImage={
-                        demoProductImages[
-                          (mobileIndex + index) % demoProductImages.length
-                        ]
-                      }
-                    />
+                      data-product-card
+                      className="w-[min(210px,68vw)] flex-none snap-start"
+                    >
+                      <ProductMiniCard
+                        product={product}
+                        floatDelay={(index % 5) * 0.35}
+                        fallbackImage={
+                          demoProductImages[index % demoProductImages.length]
+                        }
+                      />
+                    </div>
                   ))}
                 </div>
 
                 {activeProducts.length > 1 && (
-                  <div className="pointer-events-none absolute top-[132px] right-3 z-20 flex items-center">
+                  <div className="pointer-events-none absolute right-2 top-[132px] z-20 flex items-center">
                     <button
                       type="button"
-                      onClick={nextProducts}
-                      disabled={!canGoNext}
+                      onClick={() => scrollMobileProducts("next")}
                       aria-label="Next products"
                       className="
                         pointer-events-auto relative flex h-8 w-8 items-center justify-center
@@ -767,7 +845,6 @@ export default function Collections({
                         text-neutral-700/80
                         shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]
                         backdrop-blur-xl transition-all active:scale-95
-                        disabled:cursor-not-allowed disabled:opacity-35
                       "
                     >
                       <span aria-hidden="true" className="pointer-events-none absolute inset-x-1 top-px h-1/2 rounded-full bg-gradient-to-b from-white/80 to-transparent" />
@@ -797,7 +874,7 @@ export default function Collections({
                 {activeProducts.length > 5 && (
                   <div className="mt-3 flex items-center justify-end gap-1">
                     <span className="mr-2 text-[9px] text-neutral-400">
-                      {desktopStartIndex + 1}–
+                      {desktopStartIndex + 1}â€“
                       {Math.min(
                         desktopStartIndex + 5,
                         activeProducts.length,
@@ -854,7 +931,7 @@ export default function Collections({
 
 
       {/* =====================================================
-          FEATURED CASE — ABOVE BEST CHOICE
+          FEATURED CASE â€” ABOVE BEST CHOICE
       ====================================================== */}
       <FeaturedCaseSection />
 
@@ -862,7 +939,7 @@ export default function Collections({
       <PowerStationSection />
 
       {/* =====================================================
-          FEATURED PRODUCT — ABOVE EVERYDAY PLUS
+          FEATURED PRODUCT â€” ABOVE EVERYDAY PLUS
       ====================================================== */}
       {everydayPlusProducts.length > 0 && (
         <FeaturedProductSection
@@ -877,7 +954,7 @@ export default function Collections({
       {/* TRAVELMAG HYBRID 10K BANNER */}
       <TravelMagBanner />
       {/* =====================================================
-          EVERYDAY PLUS — EVERYDAY ACCESSORIES
+          EVERYDAY PLUS â€” EVERYDAY ACCESSORIES
       ====================================================== */}
       <div className="mt-9 border-t border-[#ECECEC] pt-7 sm:mt-11 sm:pt-9">
         <div className="flex items-end justify-between gap-3">
@@ -904,7 +981,7 @@ export default function Collections({
 
         {everydayPlusProducts.length > 0 ? (
           <>
-            {/* MOBILE — HORIZONTAL SLIDER */}
+            {/* MOBILE â€” HORIZONTAL SLIDER */}
             <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden">
               {everydayPlusProducts.map((product, index) => (
                 <div key={`everyday-plus-mobile-${product.id}`} className="w-[min(210px,68vw)] flex-none snap-start">
@@ -918,7 +995,7 @@ export default function Collections({
               ))}
             </div>
 
-            {/* DESKTOP — PRODUCT GRID */}
+            {/* DESKTOP â€” PRODUCT GRID */}
             <div className="mt-4 hidden w-full min-w-0 grid-cols-4 gap-3 sm:grid sm:gap-4">
               {everydayPlusProducts.map((product, index) => (
                 <ProductMiniCard
@@ -1028,3 +1105,13 @@ export default function Collections({
     </section>
   );
 }
+
+
+
+
+
+
+
+
+
+
