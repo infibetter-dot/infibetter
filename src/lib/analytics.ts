@@ -23,6 +23,37 @@ declare global {
   }
 }
 
+
+export function trackRemoveFromCart(
+  items: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }>,
+) {
+  if (typeof window === "undefined" || items.length === 0) return;
+
+  window.dataLayer = window.dataLayer || [];
+
+  window.dataLayer.push({ ecommerce: null });
+  window.dataLayer.push({
+    event: "remove_from_cart",
+    ecommerce: {
+      currency: "USD",
+      value: items.reduce(
+        (total, item) => total + item.price * item.quantity,
+        0,
+      ),
+      items: items.map((item) => ({
+        item_id: String(item.id),
+        item_name: item.name,
+        price: Number(item.price),
+        quantity: item.quantity,
+      })),
+    },
+  });
+}
 export function trackProductInteraction(
   eventName: ProductInteractionEvent,
   params: ProductInteractionParams,

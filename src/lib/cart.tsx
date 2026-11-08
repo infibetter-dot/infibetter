@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { trackAddToCart } from "@/lib/meta-pixel";
+import { trackRemoveFromCart } from "@/lib/analytics";
 
 export interface CartItem {
   id: string;
@@ -94,8 +95,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
         currency: "USD",
       });
     },
-    remove: (id) =>
-      setItems((previous) => previous.filter((item) => item.id !== id)),
+    
+    remove: (id) => {
+  console.log("[CART REMOVE] Clicked ID:", id);
+  console.log("[CART REMOVE] Current items:", items);
+
+  const removedItems = items.filter((item) => item.id === id);
+
+  console.log("[CART REMOVE] Matched items:", removedItems);
+
+  if (removedItems.length > 0) {
+    trackRemoveFromCart(removedItems);
+    console.log("[CART REMOVE] Tracking called");
+  } else {
+    console.warn("[CART REMOVE] No matching item found");
+  }
+
+  setItems((previous) => previous.filter((item) => item.id !== id));
+},
+
     setQuantity: (id, qty) =>
       setItems((previous) =>
         qty <= 0
