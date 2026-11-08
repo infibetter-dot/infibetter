@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
@@ -33,6 +33,10 @@ import {
   RotateCcw,
 
   Check,
+
+  X,
+
+  ArrowUpRight,
 
 } from "lucide-react";
 
@@ -435,37 +439,34 @@ const productOptions = (slug: string) =>
       }));
 
       const relatedResult = await supabase
-
         .from("products")
-
-        .select("id, slug, name, price, compare_at_price, image_url, stock")
-
+        .select("id, slug, name, price, compare_at_price, image_url, stock, is_active, status")
         .eq("category_id", data.category_id!)
-
         .neq("id", data.id)
+        .limit(30);
 
-        .limit(4);
+      if (relatedResult.error) {
+        console.error("RELATED PRODUCTS QUERY ERROR:", relatedResult.error);
+      }
+
+      // Match Admin Products and Checkout visibility rules:
+      // only active products that are not marked as hidden can be recommended.
+      const visibleRelatedProducts = (relatedResult.data ?? [])
+        .filter(
+          (item: any) => item.is_active === true && item.status !== "hidden",
+        )
+        .slice(0, 4);
 
       return {
-
         product: {
-
           ...data,
-
           product_colors: colors,
-
           product_variants: variantsWithModels,
-
           product_specifications: specificationsResult.data ?? data.product_specifications ?? [],
-
           product_faqs: faqsResult.data ?? data.product_faqs ?? [],
-
           product_usps: uspsResult.data ?? data.product_usps ?? [],
-
         },
-
-        related: relatedResult.data ?? [],
-
+        related: visibleRelatedProducts,
       };
 
     },
@@ -512,6 +513,36 @@ function ProductPage() {
 
   const { product, related } = data;
 
+  // Keep the rating summary in sync with the visible customer reviews.
+  const productReviewSummaryQuery = useQuery({
+    queryKey: ["product-review-summary", product.id],
+    enabled: Boolean(product.id),
+    queryFn: async () => {
+      const { data: reviewRows, error } = await supabase
+        .from("product_reviews")
+        .select("rating")
+        .eq("product_id", product.id)
+        .eq("is_visible", true);
+
+      if (error) {
+        console.error("PRODUCT REVIEW SUMMARY ERROR:", error);
+        return [] as Array<{ rating: number }>;
+      }
+
+      return (reviewRows ?? []) as Array<{ rating: number }>;
+    },
+    staleTime: 60_000,
+  });
+
+  const productReviewSummary = useMemo(() => {
+    const rows = productReviewSummaryQuery.data ?? [];
+    if (rows.length === 0) return null;
+    const average =
+      rows.reduce((sum, review) => sum + Number(review.rating || 0), 0) /
+      rows.length;
+    return { average, total: rows.length };
+  }, [productReviewSummaryQuery.data]);
+
   const [selectedImage, setSelectedImage] = useState("");
 
   const [selectedColor, setSelectedColor] = useState<any>(
@@ -531,6 +562,40 @@ function ProductPage() {
   const videoCarouselRef = useRef<HTMLDivElement | null>(null);
 
   const [quantity, setQuantity] = useState(1);
+  const [isShortDescriptionExpanded, setIsShortDescriptionExpanded] = useState(false);
+  const primaryAddToCartRef = useRef<HTMLButtonElement | null>(null);
+  const [showStickyAddToCart, setShowStickyAddToCart] = useState(false);
+  const [activeTrustInfo, setActiveTrustInfo] = useState<{
+    title: string;
+    description: string;
+    icon: typeof Truck;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!activeTrustInfo) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setActiveTrustInfo(null);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [activeTrustInfo]);
+
+  useEffect(() => {
+    const button = primaryAddToCartRef.current;
+    if (!button || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowStickyAddToCart(
+          !entry.isIntersecting && entry.boundingClientRect.bottom < 0,
+        );
+      },
+      { threshold: 0.01 },
+    );
+
+    observer.observe(button);
+    return () => observer.disconnect();
+  }, [product.id]);
 
   const [openSpecs, setOpenSpecs] = useState(false);
 
@@ -1177,51 +1242,91 @@ function ProductPage() {
       null;
 
     cart.add(
+
       {
+
         id: product.id,
+
         slug: product.slug,
+
         name: product.name,
+
         price,
+
         image,
+
         productColorId: selectedColor?.id,
+
         colorName: selectedColor?.name,
+
         colorHex: selectedColor?.hex,
+
         variantId: selectedVariant?.id,
+
         deviceModelId: selectedVariant?.device_model_id,
+
         deviceModelName: selectedVariant?.device_model_name,
+
       } as any,
+
       quantity,
+
     );
 
     // GA4: track a successful add-to-cart action through GTM.
+
     const win = window as Window & {
+
       dataLayer?: Array<Record<string, unknown>>;
+
     };
 
     win.dataLayer = win.dataLayer || [];
+
     win.dataLayer.push({ ecommerce: null });
+
     win.dataLayer.push({
+
       event: "add_to_cart",
+
       ecommerce: {
+
         currency: "USD",
+
         value: price * quantity,
+
         items: [
+
           {
+
             item_id: String(product.id),
+
             item_name: product.name,
+
             item_brand: "INFIBETTER",
+
             item_variant:
+
               selectedVariant?.device_model_name ||
+
               selectedColor?.name ||
+
               undefined,
+
             price,
+
             quantity,
+
           },
+
         ],
+
       },
+
     });
 
     toast.success("Added to cart");
+    window.dispatchEvent(new Event("infibetter:open-cart"));
 
   }
 
@@ -1237,7 +1342,6 @@ function ProductPage() {
 
   addToCart();
 
-  window.dispatchEvent(new Event("infibetter:open-cart"));
 
 }
 
@@ -1517,7 +1621,7 @@ function ProductPage() {
 
             <div className="max-w-[520px]">
 
-              <div className="mb-4 flex items-center gap-2 text-[11px] text-[#6E6E73]">
+              <div className="mb-2.5 flex items-center gap-2 text-[11px] text-[#6E6E73]">
 
                 <span
 
@@ -1533,27 +1637,65 @@ function ProductPage() {
 
               </div>
 
-              <h1 className="text-[32px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[36px] lg:text-[38px]">
+              <h1 className="text-[28px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[34px] lg:text-[36px]">
 
                 {product.name}
 
               </h1>
 
-              {product.short_description && (
-
-                <p className="mt-4 max-w-[480px] text-[15px] leading-6 text-[#6E6E73]">
-
-                  {product.short_description}
-
-                </p>
-
+              {productReviewSummary && (
+                <a
+                  href="#product-reviews"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    document.getElementById("product-reviews")?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }}
+                  className="mt-1.5 inline-flex items-center gap-2 text-[12px] text-[#6E6E73] transition hover:text-[#1D1D1F]"
+                  aria-label={`Rated ${productReviewSummary.average.toFixed(1)} out of 5 from ${productReviewSummary.total} reviews. View reviews.`}
+                >
+                  <span className="tracking-[1px] text-[#00B67A]" aria-hidden="true">★★★★★</span>
+                  <span className="font-semibold text-[#1D1D1F]">
+                    {productReviewSummary.average.toFixed(1)}
+                  </span>
+                  <span>({productReviewSummary.total} reviews)</span>
+                </a>
               )}
 
-              <div className="mt-6">
+              {product.short_description && (
+                <div className="mt-2.5 max-w-[480px]">
+                  <p
+                    className={`text-[14px] leading-[1.45rem] text-[#6E6E73] ${
+                      isShortDescriptionExpanded ? "" : "line-clamp-2"
+                    }`}
+                  >
+                    {product.short_description}
+                  </p>
+                  {product.short_description.length > 105 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsShortDescriptionExpanded((value) => !value)}
+                      aria-expanded={isShortDescriptionExpanded}
+                      className="mt-1 inline-flex items-center gap-1 text-[12px] font-semibold text-[#1D1D1F] underline decoration-[#B8B8B8] underline-offset-2 transition hover:text-[#0071E3]"
+                    >
+                      {isShortDescriptionExpanded ? "Read less" : "Read more"}
+                      <ChevronDown
+                        size={13}
+                        className={`transition-transform ${isShortDescriptionExpanded ? "rotate-180" : ""}`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  )}
+                </div>
+              )}
 
-                <div className="flex flex-wrap items-baseline gap-3">
+              <div className="mt-3">
 
-                  <span className="text-[28px] font-semibold tracking-[-0.025em]">
+                <div className="flex flex-wrap items-baseline gap-2.5">
+
+                  <span className="text-[26px] font-semibold tracking-[-0.025em]">
 
                     {formatProductPrice(price, safeCurrency)}
 
@@ -1589,77 +1731,52 @@ function ProductPage() {
 
               </div>
 
-              {/* Color */}
-
+              {/* Premium compact color selector */}
               {product.product_colors?.length > 0 && (
-
-                <div className="mt-8 pt-1">
-
-                  <div className="flex items-center justify-between">
-
-                    <span className="text-[13px] font-semibold">
-
+                <div className="mt-3 min-w-0">
+                  <div className="mb-2 flex min-w-0 items-center justify-between gap-3">
+                    <span className="text-[12px] font-semibold tracking-[-0.01em] text-[#303036]">
                       Color
-
                     </span>
-
-                    <span className="text-[12px] text-[#6E6E73]">
-
-                      {selectedColor?.name || "Select color"}
-
+                    <span className="min-w-0 truncate text-[11px] font-medium text-[#6E6E73]">
+                      {selectedColor?.name || "Choose a color"}
                     </span>
-
                   </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2.5">
-
-                    {product.product_colors.map((color: any) => (
-
-                      <button
-
-                        key={color.id}
-
-                        type="button"
-
-                        title={color.name}
-
-                        onClick={() => handleColorChange(color)}
-
-                        className={`h-9 w-9 rounded-full border-2 p-[2px] transition ${
-
-                          selectedColor?.id === color.id
-
-                            ? "border-[#1D1D1F]"
-
-                            : "border-transparent"
-
-                        }`}
-
-                      >
-
-                        <span
-
-                          className="block h-full w-full rounded-full border border-black/10"
-
-                          style={{ backgroundColor: color.hex || "#D2D2D7" }}
-
-                        />
-
-                      </button>
-
-                    ))}
-
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    {product.product_colors.map((color: any) => {
+                      const isSelected = selectedColor?.id === color.id;
+                      return (
+                        <button
+                          key={color.id}
+                          type="button"
+                          title={color.name}
+                          aria-label={`Select ${color.name} color`}
+                          aria-pressed={isSelected}
+                          onClick={() => handleColorChange(color)}
+                          className={`group flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 ${
+                            isSelected
+                              ? "border border-[#252525] bg-white p-[3px] shadow-[0_0_0_1px_rgba(255,255,255,1)]"
+                              : "border border-transparent bg-transparent p-[3px] hover:bg-[#F3F3F4]"
+                          }`}
+                        >
+                          <span
+                            className={`block h-full w-full rounded-full border ${
+                              isSelected ? "border-black/10" : "border-black/[0.12] group-hover:border-black/20"
+                            }`}
+                            style={{ backgroundColor: color.hex || "#D2D2D7" }}
+                          />
+                        </button>
+                      );
+                    })}
                   </div>
-
                 </div>
-
               )}
 
               {/* Compatible device models */}
 
               {compatibleModels.length > 0 && (
 
-                <div className="mt-6 pt-0">
+                <div className="mt-3 pt-0">
 
                   <label
 
@@ -1837,13 +1954,13 @@ function ProductPage() {
 
               {/* Quantity + CTA */}
 
-              <div className="mt-8 pt-1">
+              <div className="mt-3 pt-0">
 
                 <div className="flex items-center justify-between">
 
                   <span className="text-[13px] font-semibold">Quantity</span>
 
-                  <div className="flex h-10 items-center rounded-[12px] border border-[#D2D2D7] bg-white">
+                  <div className="flex h-9 items-center rounded-[10px] border border-[#D2D2D7] bg-white">
 
                     <button
 
@@ -1851,7 +1968,7 @@ function ProductPage() {
 
                       onClick={() => setQuantity((value) => Math.max(1, value - 1))}
 
-                      className="flex h-10 w-10 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
+                      className="flex h-9 w-9 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
 
                     >
 
@@ -1885,7 +2002,7 @@ function ProductPage() {
 
                       }
 
-                      className="flex h-10 w-10 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
+                      className="flex h-9 w-9 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
 
                     >
 
@@ -1899,13 +2016,15 @@ function ProductPage() {
 
                 <button
 
+                  ref={primaryAddToCartRef}
+
                   type="button"
 
                   onClick={addToCart}
 
                   disabled={!inStock}
 
-                  className="mt-4 flex h-[50px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#0071E3] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0077ED] disabled:cursor-not-allowed disabled:bg-[#D2D2D7]"
+                  className="mt-2.5 flex h-[44px] w-full items-center justify-center gap-2 rounded-[10px] bg-[#0071E3] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0077ED] disabled:cursor-not-allowed disabled:bg-[#D2D2D7]"
 
                 >
 
@@ -1923,7 +2042,7 @@ function ProductPage() {
 
                   disabled={!inStock}
 
-                  className="mt-2 flex h-[46px] w-full items-center justify-center gap-2 rounded-[12px] bg-[#FFC439] px-6 text-[14px] font-semibold text-[#003087] transition hover:bg-[#F7B928] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-1.5 flex h-[40px] w-full items-center justify-center gap-2 rounded-[10px] bg-[#FFC439] px-6 text-[14px] font-semibold text-[#003087] transition hover:bg-[#F7B928] disabled:cursor-not-allowed disabled:opacity-50"
 
                   aria-label="Pay with PayPal"
 
@@ -1935,89 +2054,74 @@ function ProductPage() {
 
               </div>
 
-              {/* Benefits / Trust Features */}
+              {/* Benefits / Trust Features — aligned with INFIBETTER policies */}
+              <section className="mt-3 w-full min-w-0" aria-label="Shopping benefits">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#777F89]">
+                    Shop with confidence
+                  </p>
+                  <span className="h-px flex-1 bg-[#ECEEF1]" aria-hidden="true" />
+                </div>
 
-<div
-
-  className="
-
-    mt-6
-
-    w-full
-
-    min-w-0
-
-    box-border
-
-    overflow-hidden
-
-    rounded-[12px]
-
-    border
-
-    border-[#E8E8EA]
-
-    bg-[#FBFBFC]
-
-    px-4
-
-    py-3.5
-
-    shadow-[0_2px_10px_rgba(0,0,0,0.035)]
-
-    sm:px-5
-
-    sm:py-4
-
-  "
-
->
-
-  <div className="grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-3 sm:gap-x-6 sm:gap-y-3.5">
-
-    {[
-
-      { icon: Truck, text: "Tracked shipping" },
-
-      { icon: RotateCcw, text: "30-day returns" },
-
-      { icon: ShieldCheck, text: "Secure payments" },
-
-      { icon: Check, text: "Product support" },
-
-    ].map(({ icon: Icon, text }) => (
-
-      <div
-
-        key={text}
-
-        className="flex min-w-0 items-center gap-2.5"
-
-      >
-
-        <Icon
-
-          size={16}
-
-          strokeWidth={1.6}
-
-          className="shrink-0 text-[#55585D]"
-
-        />
-
-        <span className="min-w-0 truncate text-[12px] font-normal leading-4 text-[#55585D] sm:text-[12px]">
-
-          {text}
-
-        </span>
-
-      </div>
-
-    ))}
-
-  </div>
-
-</div>
+                <div className="grid w-full min-w-0 grid-cols-2 gap-2.5">
+                  {[
+                    {
+                      icon: Truck,
+                      text: "Tracked delivery",
+                      hint: "Tracking after dispatch",
+                      description:
+                        "Orders are generally processed within 1–2 business days before dispatch. After dispatch, tracking details are sent so you can follow your delivery. Estimated transit times are 5–9 business days for the US, Canada, Europe, and Australia/New Zealand; 5–8 business days for the UK; and 5–12 business days for other destinations. Battery products may take approximately 4–10 business days after dispatch, depending on destination and carrier. These are estimates, not guarantees. Customs, weather, carrier delays, and other local disruptions may affect delivery. For help, email infibetter@gmail.com.",
+                    },
+                    {
+                      icon: RotateCcw,
+                      text: "30-day returns",
+                      hint: "Clear return policy",
+                      description:
+                        "You may request a standard return within 30 days of delivery. Items must be unused, unopened, complete, and in their original packaging. For standard non-defective returns, customers are responsible for tracked return shipping unless applicable law says otherwise. We charge no restocking fee (0%). Please contact infibetter@gmail.com and receive return approval and instructions before sending anything back. Defective, damaged, or incorrect items are handled under the Refund Policy, and mandatory consumer rights remain unaffected.",
+                    },
+                    {
+                      icon: ShieldCheck,
+                      text: "Secure checkout",
+                      hint: "Payment options at checkout",
+                      description:
+                        "Available payment methods are shown at checkout. Your payment is processed through the method you select during checkout. Please enter payment information only through the checkout payment form. For questions about a payment or transaction, contact infibetter@gmail.com.",
+                    },
+                    {
+                      icon: Check,
+                      text: "Customer support",
+                      hint: "We're here to help",
+                      description:
+                        "Need help with an order, delivery, return, refund, or product? Contact INFIBETTER at infibetter@gmail.com. For order-related requests, include your order number and a clear description of the issue. For damaged, defective, or incorrect items, please contact us as soon as possible and include photos or video of the item and its packaging.",
+                    },
+                  ].map(({ icon: Icon, text, hint, description }) => (
+                    <button
+                      key={text}
+                      type="button"
+                      onClick={() => setActiveTrustInfo({ title: text, description, icon: Icon })}
+                      aria-haspopup="dialog"
+                      className="group flex min-h-[94px] min-w-0 flex-col rounded-[13px] border border-[#E9EBEF] bg-[#F7F8FA] p-3 text-left outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-[#D8DDE5] hover:bg-[#F2F4F7] hover:shadow-[0_5px_16px_rgba(20,30,45,0.07)] focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 active:translate-y-0 sm:min-h-[100px] sm:p-3.5"
+                    >
+                      <span className="flex w-full min-w-0 items-center justify-between gap-2">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-white bg-white text-[#34465D] shadow-[0_1px_3px_rgba(20,30,45,0.06)]">
+                          <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
+                        </span>
+                        <ArrowUpRight
+                          size={15}
+                          strokeWidth={1.8}
+                          aria-hidden="true"
+                          className="shrink-0 text-[#9299A3] transition duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#34465D]"
+                        />
+                      </span>
+                      <span className="mt-2 block min-w-0 truncate text-[11px] font-semibold leading-4 text-[#303640] sm:text-[12px]">
+                        {text}
+                      </span>
+                      <span className="mt-0.5 block min-w-0 truncate text-[10px] leading-4 text-[#858C96] sm:text-[11px]">
+                        {hint}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
 
               {/* Description */}
 
@@ -2299,29 +2403,35 @@ function ProductPage() {
 
 {/* FAQ / Product information */}
 
-      <section className="bg-[#F8F8F9]">
+      <section className="border-y border-[#ECEEF1] bg-[#F7F8FA]">
 
-        <div className="mx-auto max-w-[1240px] px-5 py-16 md:px-8 md:py-20 lg:py-24">
+        <div className="mx-auto max-w-[1240px] px-5 py-10 md:px-8 md:py-14 lg:py-16">
 
-          <div className="mx-auto max-w-[860px]">
+          <div className="mx-auto max-w-[760px]">
 
-            <div className="text-center">
+            <div className="mb-5 text-left sm:mb-6">
 
-              <h2 className="text-[28px] font-semibold tracking-[-0.035em] text-[#1D1D1F] sm:text-[32px]">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#858991]">
+
+                Product details
+
+              </p>
+
+              <h2 className="text-[24px] font-semibold leading-tight tracking-[-0.04em] text-[#17191C] sm:text-[28px]">
 
                 Need to know more?
 
               </h2>
 
-              <p className="mt-2 text-[14px] leading-6 text-[#6E6E73]">
+              <p className="mt-1.5 text-[13px] leading-5 text-[#737780] sm:text-[14px]">
 
-                Everything you need to know about this product.
+                The details that help you choose with confidence.
 
               </p>
 
             </div>
 
-            <div className="mt-8 overflow-hidden rounded-[14px] border border-[#E5E5EA] bg-white">
+            <div className="overflow-hidden rounded-[16px] border border-[#E4E6EA] bg-white shadow-[0_2px_10px_rgba(20,24,32,0.035)]">
 
               {faqItems.map((faq, index) => (
 
@@ -2343,11 +2453,14 @@ function ProductPage() {
 
                     }
 
-                    className="group flex min-h-[64px] w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFA] sm:px-6"
+                    aria-expanded={openFaq === index}
+                    className={`group flex min-h-[58px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#F8F9FB] sm:min-h-[62px] sm:gap-3.5 sm:px-5 ${
+                      openFaq === index ? "bg-[#FAFBFC]" : "bg-white"
+                    }`}
 
                   >
 
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#6E6E73]">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#F3F4F6] text-[#555D68]">
 
                       {index === 0 && (
 
@@ -2375,13 +2488,13 @@ function ProductPage() {
 
                     </span>
 
-                    <span className="flex-1 text-[14px] font-medium text-[#1D1D1F]">
+                    <span className="flex-1 text-[13px] font-semibold tracking-[-0.01em] text-[#25282D] sm:text-[14px]">
 
                       {faq.question}
 
                     </span>
 
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#6E6E73]">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#E7E9ED] text-[#656B75] transition-colors group-hover:border-[#D5D9DF]">
 
                       <Plus
 
@@ -2405,13 +2518,13 @@ function ProductPage() {
 
                     <div
 
-                      className={`px-5 pb-6 pt-1 sm:px-6 ${
+                      className={`px-4 pb-5 pt-1 sm:px-5 sm:pb-6 ${
 
                         faq.type === "specs" || faq.type === "faq"
 
                           ? ""
 
-                          : "pl-[68px] sm:pl-[76px]"
+                          : "pl-[60px] sm:pl-[68px]"
 
                       }`}
 
@@ -2661,7 +2774,9 @@ function ProductPage() {
 
       {/* Product Reviews */}
 
-      <ProductReviews productId={product.id} />
+      <div id="product-reviews" className="scroll-mt-24">
+        <ProductReviews productId={product.id} />
+      </div>
 
       {/* Related */}
 
@@ -2773,6 +2888,312 @@ function ProductPage() {
 
         </section>
 
+      )}
+
+      {showStickyAddToCart && inStock && (
+        <div className="fixed bottom-0 left-4 right-20 z-[90] pb-[calc(env(safe-area-inset-bottom)+12px)] md:hidden">
+          <div className="flex w-full items-center gap-2 rounded-2xl border border-white/90 bg-white/95 px-2.5 py-2 shadow-[0_8px_28px_rgba(0,0,0,0.12)] backdrop-blur-xl">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[10px] font-medium text-[#6E6E73]">
+                {product.name}
+              </p>
+              <div className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
+                <p className={`text-[16px] font-bold tracking-[-0.02em] ${hasDiscount ? "text-[#00B67A]" : "text-[#1D1D1F]"}`}>
+                  {formatProductPrice(price, safeCurrency)}
+                </p>
+                {hasDiscount && (
+                  <>
+                    <p className="text-[11px] font-medium text-[#8E8E93] line-through">
+                      {formatProductPrice(comparePrice, safeCurrency)}
+                    </p>
+                    <span className="text-[10px] font-semibold text-[#6E6E73]">
+                      -{discountPercent}%
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={addToCart}
+              aria-label="Add to cart"
+              title="Add to cart"
+              className="group relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white bg-gradient-to-br from-white via-[#F3F6FA] to-[#DCE4EE] text-[#263445] shadow-[0_3px_10px_rgba(15,23,42,0.12),inset_0_1px_1px_rgba(255,255,255,0.95)] transition duration-300 active:scale-95 before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:rotate-12 before:bg-gradient-to-r before:from-transparent before:via-white/90 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-[450%]"
+            >
+              <ShoppingBag size={17} className="relative z-10" />
+            </button>
+
+            <button
+              type="button"
+              onClick={buyNow}
+              aria-label="Buy now"
+              className="group relative flex h-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/90 bg-gradient-to-br from-white via-[#EAF1FA] to-[#C9D8EA] px-3.5 text-[12px] font-bold text-[#172B46] shadow-[0_3px_12px_rgba(15,23,42,0.16),inset_0_1px_1px_rgba(255,255,255,0.95)] transition duration-300 active:scale-95 before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:rotate-12 before:bg-gradient-to-r before:from-transparent before:via-white/95 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-[450%]"
+            >
+              <span className="relative z-10">Buy now</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTrustInfo && (
+        <div
+          className="
+            fixed inset-0 z-[120]
+            flex items-end justify-center
+            bg-[#101828]/50
+            p-0 backdrop-blur-[4px]
+            sm:items-center sm:p-5
+          "
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setActiveTrustInfo(null);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trust-info-title"
+            className="
+              relative flex max-h-[85dvh] w-full max-w-[460px]
+              flex-col overflow-hidden
+              rounded-t-[26px] border border-white/80
+              bg-[#FFFEFC]
+              shadow-[0_24px_80px_rgba(0,0,0,0.24)]
+              animate-in slide-in-from-bottom-4 duration-200
+              sm:max-h-[min(620px,86dvh)]
+              sm:rounded-[24px]
+              sm:animate-in sm:zoom-in-[0.98]
+            "
+          >
+            <div className="shrink-0 border-b border-[#EEECE7] px-5 pb-5 pt-5 sm:px-7 sm:pt-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[15px] border border-[#E9EDF2] bg-gradient-to-br from-white to-[#EEF2F7] text-[#34465D] shadow-[0_2px_8px_rgba(25,40,60,0.06)]">
+                    <activeTrustInfo.icon size={22} strokeWidth={1.7} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.19em] text-[#A0A5AD]">
+                      INFIBETTER · SHOP WITH CONFIDENCE
+                    </p>
+                    <h2
+                      id="trust-info-title"
+                      className="mt-1 text-[18px] font-semibold leading-tight tracking-[-0.035em] text-[#1D1D1F] sm:text-[20px]"
+                    >
+                      {activeTrustInfo.title}
+                    </h2>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTrustInfo(null)}
+                  aria-label="Close information"
+                  className="
+                    grid h-9 w-9 shrink-0 place-items-center
+                    rounded-full border border-[#ECEAE5]
+                    bg-white text-[#737780]
+                    transition-colors
+                    hover:bg-[#F3F2EF] hover:text-[#1D1D1F]
+                    focus-visible:outline-none focus-visible:ring-2
+                    focus-visible:ring-[#0071E3] focus-visible:ring-offset-2
+                  "
+                >
+                  <X size={17} strokeWidth={1.8} />
+                </button>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-7 sm:py-6">
+              {activeTrustInfo.title === "Tracked delivery" ? (
+                <div className="space-y-5">
+                  <div className="rounded-[14px] border border-[#ECEEF1] bg-white px-4 py-3.5">
+                    <p className="text-[13px] leading-[1.85] text-[#626873]">
+                      Orders are generally processed within{" "}
+                      <strong className="font-semibold text-[#252A32]">1–2 business days</strong>{" "}
+                      before dispatch. Once your order is on its way, tracking details are sent so you can follow its journey.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex min-h-[112px] flex-col rounded-[14px] border border-[#E5EAF0] bg-[#F7F8FA] p-4">
+                      <p className="text-[9px] font-bold uppercase leading-4 tracking-[0.16em] text-[#9299A3]">Processing time</p>
+                      <p className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.025em] text-[#252A32]">1–2 days</p>
+                      <p className="mt-2 text-[11px] leading-[1.5] text-[#858C96]">Before dispatch</p>
+                    </div>
+                    <div className="flex min-h-[112px] flex-col rounded-[14px] border border-[#E5EAF0] bg-[#F7F8FA] p-4">
+                      <p className="text-[9px] font-bold uppercase leading-4 tracking-[0.16em] text-[#9299A3]">Order tracking</p>
+                      <p className="mt-3 text-[18px] font-semibold leading-[1.25] tracking-[-0.015em] text-[#252A32]">Included</p>
+                      <p className="mt-2 text-[11px] leading-[1.5] text-[#858C96]">After dispatch</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-2.5 flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9299A3]">Estimated delivery</span>
+                      <span className="h-px flex-1 bg-[#ECEEF1]" />
+                    </div>
+                    <div className="overflow-hidden rounded-[13px] border border-[#E9EDF2]">
+                      {[
+                        ["US, Canada, Europe, Australia & New Zealand", "5–9 business days"],
+                        ["United Kingdom", "5–8 business days"],
+                        ["Other destinations", "5–12 business days"],
+                        ["Battery products", "4–10 business days"],
+                      ].map(([region, timing], index) => (
+                        <div key={region} className={`flex items-center justify-between gap-3 px-3.5 py-3.5 ${index ? "border-t border-[#ECEEF1]" : ""}`}>
+                          <span className="min-w-0 flex-1 text-[11px] leading-[1.65] text-[#626873]">{region}</span>
+                          <span className="max-w-[44%] shrink-0 text-right text-[11px] font-semibold leading-[1.55] text-[#303640]">{timing}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[10px] leading-[1.6] text-[#9299A3]">
+                      Battery delivery estimates apply after dispatch and may vary by destination and carrier.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2.5 rounded-[12px] bg-[#F7F8FA] p-3.5">
+                    <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[#7B8796]" />
+                    <p className="text-[11px] leading-[1.7] text-[#747C87]">
+                      Delivery times are estimates, not guarantees. Customs, weather, carrier delays and other local disruptions may affect delivery.
+                    </p>
+                  </div>
+                </div>
+              ) : activeTrustInfo.title === "30-day returns" ? (
+                <div className="space-y-4">
+                  <div className="rounded-[14px] border border-[#E9EDF2] bg-[#F7F8FA] p-4">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#9299A3]">Return window</p>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="text-[30px] font-semibold leading-none tracking-[-0.05em] text-[#252A32]">30</span>
+                      <span className="text-[12px] font-medium text-[#626873]">days from delivery</span>
+                    </div>
+                    <p className="mt-2 text-[11px] leading-5 text-[#747C87]">You may request a standard return within 30 days of delivery.</p>
+                  </div>
+
+                  <div>
+                    <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9299A3]">Return conditions</p>
+                    <ul className="space-y-2.5">
+                      {[
+                        "Items must be unused and unopened.",
+                        "Items must be complete and in their original packaging.",
+                        "Contact us and receive return approval and instructions before sending anything back.",
+                      ].map((item) => (
+                        <li key={item} className="flex items-start gap-2.5 text-[12px] leading-5 text-[#626873]">
+                          <Check size={15} className="mt-0.5 shrink-0 text-[#5F806D]" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="rounded-[12px] border border-[#E9EDF2] p-3">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#9299A3]">Restocking fee</p>
+                      <p className="mt-1 text-[17px] font-semibold text-[#252A32]">0%</p>
+                      <p className="text-[10px] text-[#858C96]">No restocking fee</p>
+                    </div>
+                    <div className="rounded-[12px] border border-[#E9EDF2] p-3">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#9299A3]">Return shipping</p>
+                      <p className="mt-1 text-[12px] font-semibold leading-5 text-[#252A32]">Customer-paid</p>
+                      <p className="text-[10px] leading-4 text-[#858C96]">Tracked shipping for standard returns</p>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] leading-[1.7] text-[#9299A3]">
+                    For standard non-defective returns, customers are responsible for tracked return shipping unless applicable law says otherwise. Defective, damaged or incorrect items are handled under the Refund Policy. Mandatory consumer rights remain unaffected.
+                  </p>
+                </div>
+              ) : activeTrustInfo.title === "Secure checkout" ? (
+                <div className="space-y-3.5">
+                  <p className="text-[13px] leading-6 text-[#626873]">
+                    We make checkout straightforward. Your available payment methods are displayed clearly when you place your order.
+                  </p>
+
+                  <div className="space-y-2.5">
+                    <div className="flex items-start gap-3 rounded-[13px] border border-[#E9EDF2] bg-[#F7F8FA] p-3.5">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-white text-[#53657A] shadow-sm">
+                        <ShoppingBag size={16} />
+                      </span>
+                      <div>
+                        <p className="text-[12px] font-semibold text-[#303640]">Choose your payment method</p>
+                        <p className="mt-1 text-[11px] leading-5 text-[#7B838E]">Available payment options are shown at checkout.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-[13px] border border-[#E9EDF2] bg-[#F7F8FA] p-3.5">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-white text-[#53657A] shadow-sm">
+                        <ShieldCheck size={16} />
+                      </span>
+                      <div>
+                        <p className="text-[12px] font-semibold text-[#303640]">Payment processing</p>
+                        <p className="mt-1 text-[11px] leading-5 text-[#7B838E]">Your payment is processed through the method you select during checkout.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[12px] border border-[#E9EDF2] px-3.5 py-3">
+                    <p className="text-[11px] leading-[1.7] text-[#747C87]">
+                      For your security, enter payment information only through the checkout payment form. For questions about a payment or transaction, contact our support team.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-[13px] leading-6 text-[#626873]">
+                    Need help with an order, delivery, return, refund or product? Our support team is here to help.
+                  </p>
+
+                  <a
+                    href="mailto:infibetter@gmail.com"
+                    className="flex items-center justify-between gap-3 rounded-[14px] border border-[#E5EAF0] bg-[#F7F8FA] p-4 transition hover:border-[#CAD3DE] hover:bg-[#F2F5F8]"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#9299A3]">Email our team</p>
+                      <p className="mt-1 truncate text-[13px] font-semibold text-[#273444]">infibetter@gmail.com</p>
+                    </div>
+                    <ArrowUpRight size={17} className="shrink-0 text-[#64748B]" />
+                  </a>
+
+                  <div>
+                    <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9299A3]">To help us assist you faster</p>
+                    <ul className="space-y-2.5">
+                      {[
+                        "Include your order number.",
+                        "Describe the issue clearly.",
+                        "For damaged, defective or incorrect items, include photos or a video of the item and its packaging.",
+                      ].map((item) => (
+                        <li key={item} className="flex items-start gap-2.5 text-[12px] leading-5 text-[#626873]">
+                          <Check size={15} className="mt-0.5 shrink-0 text-[#5F806D]" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="shrink-0 border-t border-[#EEECE7] bg-[#FFFEFC] px-5 py-3.5 sm:px-7">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] font-medium tracking-[0.02em] text-[#A0A5AD]">
+                  We're here to help
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTrustInfo(null)}
+                  className="
+                    inline-flex min-h-10 items-center justify-center
+                    rounded-full bg-[#17191C] px-6
+                    text-[12px] font-semibold text-white
+                    transition-colors hover:bg-[#34383D]
+                    focus-visible:outline-none focus-visible:ring-2
+                    focus-visible:ring-[#0071E3] focus-visible:ring-offset-2
+                  "
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
       )}
 
     </main>
