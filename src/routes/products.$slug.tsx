@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 
 import { toast } from "sonner";
+import { trackProductInteraction } from "@/lib/analytics";
 
 import { supabase } from "@/integrations/supabase/client";
 
