@@ -1367,6 +1367,14 @@ function ProductPage() {
 
     setSelectedImage(productImages[nextIndex].image_url);
 
+    trackProductInteraction("product_gallery_change", {
+      product_id: String(product.id),
+      product_name: product.name,
+      interaction_type: direction,
+      interaction_value: String(nextIndex + 1),
+      gallery_image_index: nextIndex,
+    });
+
   }
 
   return (
@@ -1521,7 +1529,17 @@ function ProductPage() {
 
                       type="button"
 
-                      onClick={() => setSelectedImage(image.image_url)}
+                      onClick={() => {
+                        setSelectedImage(image.image_url);
+
+                        trackProductInteraction("product_gallery_change", {
+                          product_id: String(product.id),
+                          product_name: product.name,
+                          interaction_type: "thumbnail_click",
+                          interaction_value: String(index + 1),
+                          gallery_image_index: index,
+                        });
+                      }}
 
                       aria-label={`View image ${index + 1}`}
 
@@ -2133,7 +2151,19 @@ function ProductPage() {
 
                     type="button"
 
-                    onClick={() => setOpenSpecs((value) => !value)}
+                    onClick={() => {
+                      const nextOpen = !openSpecs;
+                      setOpenSpecs(nextOpen);
+
+                      if (nextOpen) {
+                        trackProductInteraction("product_description_click", {
+                          product_id: String(product.id),
+                          product_name: product.name,
+                          interaction_type: "description_open",
+                          content_section: "product_description",
+                        });
+                      }
+                    }}
 
                     className="flex w-full items-center justify-between text-left"
 
@@ -2447,11 +2477,19 @@ function ProductPage() {
 
                     type="button"
 
-                    onClick={() =>
+                    onClick={() => {
+                      const nextOpen = openFaq !== index;
+                      setOpenFaq((value) => (value === index ? null : index));
 
-                      setOpenFaq((value) => (value === index ? null : index))
-
-                    }
+                      if (nextOpen) {
+                        trackProductInteraction("faq_expand", {
+                          product_id: String(product.id),
+                          product_name: product.name,
+                          interaction_type: "main_faq",
+                          interaction_value: faq.question,
+                        });
+                      }
+                    }}
 
                     aria-expanded={openFaq === index}
                     className={`group flex min-h-[58px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#F8F9FB] sm:min-h-[62px] sm:gap-3.5 sm:px-5 ${
@@ -2674,15 +2712,21 @@ function ProductPage() {
 
                                     type="button"
 
-                                    onClick={() =>
-
+                                    onClick={() => {
+                                      const nextOpen = openProductFaq !== item.id;
                                       setOpenProductFaq((value) =>
-
                                         value === item.id ? null : item.id,
+                                      );
 
-                                      )
-
-                                    }
+                                      if (nextOpen) {
+                                        trackProductInteraction("faq_expand", {
+                                          product_id: String(product.id),
+                                          product_name: product.name,
+                                          interaction_type: "product_faq",
+                                          interaction_value: item.question,
+                                        });
+                                      }
+                                    }}
 
                                     className="flex min-h-[56px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FAFAFA]"
 
@@ -2833,6 +2877,14 @@ function ProductPage() {
                     to="/products/$slug"
 
                     params={{ slug: item.slug }}
+                    onClick={() => {
+                      trackProductInteraction("related_product_click", {
+                        product_id: String(product.id),
+                        product_name: product.name,
+                        interaction_type: "related_product",
+                        interaction_value: String(item.name),
+                      });
+                    }}
 
                     className="group min-w-0"
 
