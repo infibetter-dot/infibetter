@@ -69,3 +69,61 @@ export function trackProductInteraction(
     page_location: window.location.href,
   });
 }
+
+type EcommerceListItem = {
+  id: string;
+  name: string;
+  price: number;
+  index: number;
+  category?: string;
+};
+
+export function trackViewItemList(
+  listName: string,
+  items: EcommerceListItem[],
+) {
+  if (typeof window === "undefined" || items.length === 0) return;
+
+  window.dataLayer = window.dataLayer || [];
+
+  window.dataLayer.push({ ecommerce: null });
+  window.dataLayer.push({
+    event: "view_item_list",
+    ecommerce: {
+      item_list_name: listName,
+      items: items.map((item) => ({
+        item_id: String(item.id),
+        item_name: item.name,
+        price: Number(item.price),
+        index: item.index,
+        ...(item.category ? { item_category: item.category } : {}),
+      })),
+    },
+  });
+}
+
+export function trackSelectItem(
+  listName: string,
+  item: EcommerceListItem,
+) {
+  if (typeof window === "undefined") return;
+
+  window.dataLayer = window.dataLayer || [];
+
+  window.dataLayer.push({ ecommerce: null });
+  window.dataLayer.push({
+    event: "select_item",
+    ecommerce: {
+      item_list_name: listName,
+      items: [
+        {
+          item_id: String(item.id),
+          item_name: item.name,
+          price: Number(item.price),
+          index: item.index,
+          ...(item.category ? { item_category: item.category } : {}),
+        },
+      ],
+    },
+  });
+}

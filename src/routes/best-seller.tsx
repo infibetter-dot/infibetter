@@ -1,7 +1,10 @@
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductCard } from "@/components/product-card";
+import { trackViewItemList } from "@/lib/analytics";
 
 export const Route = createFileRoute("/best-seller")({
   head: () => ({
@@ -20,49 +23,75 @@ export const Route = createFileRoute("/best-seller")({
 });
 
 function BestSellerPage() {
+  const trackedListRef = useRef("");
 
   const productsQ = useQuery({
-  queryKey: ["best-seller-products"],
+    queryKey: ["best-seller-products"],
 
-  staleTime: 1000 * 60 * 10,
-  gcTime: 1000 * 60 * 30,
-  refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
 
-  queryFn: async () => {
-
+    queryFn: async () => {
       const { data } = await supabase
         .from("products")
         .select(`
-  id,
-  slug,
-  name,
-  price,
-  stock,
-  best_seller,
-  image_url
-`)
+          id,
+          slug,
+          name,
+          price,
+          stock,
+          best_seller,
+          image_url
+        `)
         .eq("best_seller", true)
         .order("created_at", {
           ascending: false,
-          
         });
-        
 
       return (
         data?.map((item: any) => ({
           ...item,
-         
-            image_url: item.image_url,
+          image_url: item.image_url,
         })) ?? []
       );
     },
   });
 
+  // Track view_item_list
+  useEffect(() => {
+    const products = productsQ.data;
+
+    if (
+      productsQ.isLoading ||
+      !products ||
+      products.length === 0
+    ) {
+      return;
+    }
+
+    const listKey = products
+      .map((product) => product.id)
+      .join("|");
+
+    if (trackedListRef.current === listKey) return;
+
+    trackedListRef.current = listKey;
+
+    trackViewItemList(
+      "Best Seller",
+      products.map((product, index) => ({
+        id: product.id,
+        name: product.name,
+        price: Number(product.price),
+        index: index + 1,
+      })),
+    );
+  }, [productsQ.data, productsQ.isLoading]);
+
   return (
     <div className="container-x py-14">
-
       <header className="mb-12 text-center">
-
         <p className="text-sm font-medium uppercase tracking-[0.25em] text-primary">
           Infi Better
         </p>
@@ -74,10 +103,9 @@ function BestSellerPage() {
         <p className="mx-auto mt-5 max-w-2xl text-neutral-600">
           Products that are frequently chosen and highly rated by customers.
         </p>
-
       </header>
 
-            {productsQ.isLoading ? (
+      {productsQ.isLoading ? (
         <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div
@@ -100,29 +128,29 @@ function BestSellerPage() {
         <>
           <div className="mb-8 flex items-center justify-between">
             <p className="text-sm text-neutral-500">
-              {productsQ.data.length} sản phẩm được yêu thích
+              {productsQ.data?.length ?? 0} sản phẩm được yêu thích
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-x-5 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
-            {productsQ.data.map((product) => (
-
-            <ProductCard
-  key={product.id}
-  product={{
-    ...product,
-    rating: 4.9,
-    old_price: Number(product.price) * 1.35,
-    discount_percent: 26,
-    likes: Math.floor(Math.random() * 400) + 300,
-  }}
-  variant="best-seller"
-/>
+            {productsQ.data?.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                product={{
+                  ...product,
+                  rating: 4.9,
+                  old_price: Number(product.price) * 1.35,
+                  discount_percent: 26,
+                  likes: Math.floor(Math.random() * 400) + 300,
+                }}
+                variant="best-seller"
+                itemListName="Best Seller"
+                itemIndex={index + 1}
+              />
             ))}
           </div>
         </>
       )}
-
-          </div>
+    </div>
   );
 }

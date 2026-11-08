@@ -4,6 +4,7 @@ import { getImageUrl } from "@/lib/storage";
 import { useCart } from "@/lib/cart";
 import { toast } from "sonner";
 import { ShoppingCart } from "lucide-react";
+import { trackSelectItem } from "@/lib/analytics";
 
 export interface ProductCardProduct {
   id: string;
@@ -50,10 +51,15 @@ function formatPrice(value: number | string | undefined): string {
 export function ProductCard({
   product,
   variant = "default",
+  itemListName,
+  itemIndex,
 }: {
   product: ProductCardProduct;
   variant?: "default" | "best-seller";
+  itemListName?: string;
+  itemIndex?: number;
 }) {
+
   const isNew = product.is_new || product.badge?.toLowerCase() === "new";
   const isBestSeller =
     variant === "best-seller" && !isNew && product.badge?.toLowerCase() !== "new";
@@ -89,6 +95,16 @@ export function ProductCard({
     <Link
       to="/products/$slug"
       params={{ slug: product.slug }}
+      onClick={() => {
+  if (itemListName && itemIndex !== undefined) {
+    trackSelectItem(itemListName, {
+      id: product.id,
+      name: product.name,
+      price: currentPrice,
+      index: itemIndex,
+    });
+  }
+}}
       aria-label={`View ${product.name}`}
       className="group flex h-full min-w-0 flex-col overflow-hidden rounded-[20px] border border-[#E9EBEF] bg-white p-2.5 shadow-[0_4px_14px_rgba(15,23,42,0.055)] transition-[border-color,box-shadow] duration-300 hover:border-[#D9DEE7] hover:shadow-[0_8px_20px_rgba(15,23,42,0.09)] sm:p-3"
     >

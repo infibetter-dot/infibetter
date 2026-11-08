@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
+import { trackViewItemList } from "@/lib/analytics";
 
 import { supabase } from "@/integrations/supabase/client";
 import { ProductCard } from "@/components/product-card";
@@ -624,6 +625,50 @@ function ShopPage() {
       selectedModel,
       sp.max,
     ]);
+
+      // Track view_item_list for Shop
+  const trackedListRef = useRef("");
+
+  useEffect(() => {
+    if (productsQ.isLoading || filteredProducts.length === 0) {
+      return;
+    }
+
+    const listKey = [
+      sp.category ?? "all",
+      sp.q ?? "",
+      sp.sort ?? "newest",
+      sp.max ?? "",
+      ...filteredProducts.map((product: any) => product.id),
+    ].join("|");
+
+    if (trackedListRef.current === listKey) {
+      return;
+    }
+
+    trackedListRef.current = listKey;
+
+    const listName = sp.category
+      ? `Shop - ${sp.category}`
+      : "Shop - All Products";
+
+    trackViewItemList(
+      listName,
+      filteredProducts.map((product: any, index: number) => ({
+        id: product.id,
+        name: product.name,
+        price: Number(product.price),
+        index: index + 1,
+      })),
+    );
+  }, [
+    productsQ.isLoading,
+    filteredProducts,
+    sp.category,
+    sp.q,
+    sp.sort,
+    sp.max,
+  ]);
 
   /* =======================================================
      DEVICE COUNTS
@@ -1355,24 +1400,23 @@ function ShopPage() {
             >
 
               {filteredProducts.map(
-                (
-                  product: any,
-                ) => (
-                  <ProductCard
-                    key={
-                      product.id
-                    }
-                    product={
-                      product
-                    }
-                    variant={
-                      product.best_seller
-                        ? "best-seller"
-                        : "default"
-                    }
-                  />
-                ),
-              )}
+  (
+    product: any,
+    index: number,
+  ) => (
+    <ProductCard
+      key={product.id}
+      product={product}
+      variant={
+        product.best_seller
+          ? "best-seller"
+          : "default"
+      }
+      itemListName="Shop"
+      itemIndex={index + 1}
+    />
+  ),
+)}
 
             </div>
           )}
