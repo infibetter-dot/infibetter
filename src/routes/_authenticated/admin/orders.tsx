@@ -17,6 +17,7 @@ import {
   Gift,
   Eye,
   EyeOff,
+  ExternalLink,
   Package,
 
   PackageCheck,
@@ -894,15 +895,15 @@ function OrdersAdminPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1080px] table-fixed border-collapse">
               <thead className="border-b border-slate-200 bg-slate-50">
-                <tr className="text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                  <th className="w-[13%] px-3 py-3">Đơn hàng</th>
-                  <th className="w-[16%] px-3 py-3">Khách hàng</th>
-                  <th className="w-[11%] px-3 py-3">Thanh toán</th>
-                  <th className="w-[15%] px-3 py-3">Voucher</th>
-                  <th className="w-[11%] px-3 py-3 text-right">Tổng tiền</th>
-                  <th className="w-[14%] px-3 py-3">Trạng thái</th>
-                  <th className="w-[12%] px-3 py-3">Ghi chú</th>
-                  <th className="w-[8%] px-3 py-3 text-right">Thao tác</th>
+                <tr className="text-center text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
+                  <th className="w-[12%] px-3 py-3 text-center">Đơn hàng</th>
+                  <th className="w-[15%] px-3 py-3 text-center">Khách hàng</th>
+                  <th className="w-[12%] px-3 py-3 text-center">Thanh toán</th>
+                  <th className="w-[12%] px-3 py-3 text-center">Voucher</th>
+                  <th className="w-[12%] px-3 py-3 text-center">Tổng tiền</th>
+                  <th className="w-[15%] px-3 py-3 text-center">Trạng thái</th>
+                  <th className="w-[13%] px-3 py-3 text-center">Ghi chú</th>
+                  <th className="w-[9%] px-3 py-3 text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -924,7 +925,7 @@ function OrdersAdminPage() {
                           order.status === "pending" ? "bg-amber-50/50" : "hover:bg-slate-50"
                         }`}
                       >
-                        <td className="px-4 py-4 align-middle">
+                        <td className="px-3 py-3 align-middle text-center">
                           <p className="font-mono text-[11px] font-bold text-slate-900">#{order.id.slice(0, 8)}</p>
                           <p className="mt-1 text-[10px] text-slate-400">
                             {new Date(order.created_at).toLocaleString("vi-VN", {
@@ -932,12 +933,12 @@ function OrdersAdminPage() {
                             })}
                           </p>
                         </td>
-                        <td className="px-4 py-4 align-middle">
+                        <td className="px-3 py-3 align-middle text-center">
                           <p className="truncate text-sm font-semibold text-slate-900">{order.full_name || "-"}</p>
                           <p className="mt-0.5 truncate text-xs text-slate-500">{order.phone || order.email || "-"}</p>
                         </td>
-                        <td className="px-4 py-4 align-middle">
-                          <div className="flex flex-col items-start gap-1">
+                        <td className="px-3 py-3 align-middle text-center">
+                          <div className="flex flex-col items-center justify-center gap-1">
                             <span className="inline-flex rounded-md bg-neutral-100 px-2 py-1 text-[9px] font-bold uppercase text-neutral-700">{order.payment_method || "-"}</span>
                             {order.payment_status === "paid" ? (
                               <span className="text-[9px] font-medium text-emerald-700">● Đã thanh toán</span>
@@ -950,8 +951,8 @@ function OrdersAdminPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-4 align-middle">
-                          <div className="flex max-w-[130px] flex-col gap-1">
+                        <td className="px-3 py-3 align-middle text-center">
+                          <div className="mx-auto flex max-w-[130px] flex-col items-center justify-center gap-1">
                             {order.discount_voucher_code && (
                               <span className="inline-flex w-fit max-w-full items-center gap-1 truncate rounded-md bg-emerald-50 px-1.5 py-1 text-[8px] font-semibold text-emerald-700">
                                 <Gift className="h-3 w-3 shrink-0" />{order.discount_voucher_code}
@@ -963,20 +964,20 @@ function OrdersAdminPage() {
                               </span>
                             )}
                             {!order.discount_voucher_code && !order.shipping_voucher_code && (
-                              <span className="text-[10px] text-slate-400">Không có</span>
+                              <span className="text-center text-[10px] text-slate-400">Không có</span>
                             )}
                           </div>
                         </td>
-                        <td className="px-3.5 py-3.5 text-right align-middle">
+                        <td className="px-3 py-3 text-center align-middle">
                           <span className="whitespace-nowrap text-xs font-bold">{formatUSD(Number(order.total ?? 0))}</span>
                         </td>
-                        <td className="px-4 py-4 align-middle">
+                        <td className="px-3 py-3 align-middle text-center">
                           <Select
                             value={order.status}
                             disabled={updatingOrderId === order.id}
                             onValueChange={(value) => updateOrderStatus(order.id, value)}
                           >
-                            <SelectTrigger className={`h-10 w-[160px] rounded-xl px-2.5 text-xs font-semibold shadow-none ${STATUS_STYLES[order.status] ?? ""}`}>
+                            <SelectTrigger className={`mx-auto flex h-9 w-[150px] justify-center rounded-lg px-2 text-[11px] font-semibold shadow-none [&>span]:flex-1 [&>span]:text-center ${STATUS_STYLES[order.status] ?? ""}`}>
                               <StatusIcon className="h-3.5 w-3.5 shrink-0" />
                               <SelectValue />
                             </SelectTrigger>
@@ -1009,15 +1010,15 @@ function OrdersAdminPage() {
                         </td>
                         <td className="px-4 py-4 align-middle">
                           {order.admin_note ? (
-                            <span title={order.admin_note} className="block max-w-[120px] truncate rounded-md border border-neutral-200 bg-white px-2 py-1 text-[9px] text-neutral-600">{order.admin_note}</span>
+                            <span title={order.admin_note} className="mx-auto block max-w-[130px] truncate rounded-md border border-neutral-200 bg-white px-2 py-1 text-center text-[9px] text-neutral-600">{order.admin_note}</span>
                           ) : (
-                            <button type="button" onClick={() => setSelectedOrder(order)} className="rounded-lg border border-dashed border-slate-200 px-2.5 py-2 text-[10px] text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700">
+                            <button type="button" onClick={() => setSelectedOrder(order)} className="mx-auto rounded-lg border border-dashed border-slate-200 px-2.5 py-2 text-[10px] text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700">
                               + Thêm ghi chú
                             </button>
                           )}
                         </td>
-                        <td className="px-3.5 py-3.5 text-right align-middle">
-                          <div className="inline-flex items-center justify-end gap-1.5">
+                        <td className="px-3 py-3 text-center align-middle">
+                          <div className="mx-auto inline-flex items-center justify-center gap-1.5">
                             <button
                               type="button"
                               title={order.is_hidden ? "Khôi phục đơn hàng" : "Ẩn đơn hàng"}
@@ -1028,8 +1029,14 @@ function OrdersAdminPage() {
                             >
                               {order.is_hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                             </button>
-                            <button type="button" onClick={() => setSelectedOrder(order)} className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700">
-                              Xem →
+                            <button
+                              type="button"
+                              title="Xem chi tiết đơn hàng"
+                              aria-label="Xem chi tiết đơn hàng"
+                              onClick={() => setSelectedOrder(order)}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                            >
+                              <ExternalLink className="h-4 w-4" />
                             </button>
                           </div>
                         </td>
