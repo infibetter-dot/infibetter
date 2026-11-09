@@ -43,7 +43,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({
-    meta: [{ title: "Dashboard — Olive Living" }],
+    meta: [{ title: "Dashboard — INFIBETTER" }],
   }),
   component: AccountPage,
 });
@@ -59,6 +59,8 @@ type Order = {
   status: string | null;
   total: number | null;
   created_at: string;
+  full_name?: string | null;
+  phone?: string | null;
 };
 
 type ChartPoint = {
@@ -155,6 +157,16 @@ function formatShortDate(value: string) {
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
     month: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatOrderDateTime(value: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   }).format(new Date(value));
 }
 
@@ -334,8 +346,9 @@ function AccountPage() {
         await supabase
           .from("orders")
           .select(
-            "id, status, total, created_at",
+            "id, status, total, created_at, is_hidden",
           )
+          .eq("is_hidden", false)
           .gte(
             "created_at",
             start.toISOString(),
@@ -362,21 +375,47 @@ function AccountPage() {
   const recentOrdersQ = useQuery({
     queryKey: [
       "admin-dashboard-recent-orders",
+      period,
     ],
 
     enabled: !!user,
 
     queryFn: async () => {
-      const { data, error } =
-        await supabase
-          .from("orders")
-          .select(
-            "id, status, total, created_at",
-          )
-          .order("created_at", {
-            ascending: false,
-          })
-          .limit(8);
+      const now = new Date();
+
+      let start: Date;
+      let end: Date;
+
+      if (period === "today") {
+        start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+
+        end = new Date(start);
+        end.setDate(end.getDate() + 1);
+      } else if (period === "yesterday") {
+        end = new Date(now);
+        end.setHours(0, 0, 0, 0);
+
+        start = new Date(end);
+        start.setDate(start.getDate() - 1);
+      } else {
+        start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - (period - 1));
+
+        end = new Date(now);
+        end.setHours(0, 0, 0, 0);
+        end.setDate(end.getDate() + 1);
+      }
+
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, status, total, created_at, is_hidden, full_name, phone")
+        .eq("is_hidden", false)
+        .gte("created_at", start.toISOString())
+        .lt("created_at", end.toISOString())
+        .order("created_at", { ascending: false })
+        .limit(5);
 
       if (error) throw error;
 
@@ -1015,10 +1054,12 @@ function AccountPage() {
           className="
             mx-auto
             max-w-[1500px]
-            px-4
-            pb-8
-            pt-6
+            px-3
+            pb-6
+            pt-3
             sm:px-6
+            sm:pb-8
+            sm:pt-6
             lg:px-8
             lg:pt-8
           "
@@ -1054,7 +1095,7 @@ function AccountPage() {
 
             <div className="hidden lg:block">
               <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-[#6F8B5E]">
-                OLIVE LIVING
+                INFIBETTER
               </p>
 
               <h1 className="mt-1 font-display text-[28px] text-[#252824]">
@@ -1081,7 +1122,7 @@ function AccountPage() {
                 "
               >
                 <Search
-                  size={17}
+                  size={14}
                   strokeWidth={1.7}
                 />
               </button>
@@ -1109,7 +1150,7 @@ function AccountPage() {
                     {profileQ
                       .data
                       ?.full_name ||
-                      "Olive Living Admin"}
+                      "INFIBETTER Admin"}
                   </p>
 
                   <p className="text-[9px] text-neutral-400">
@@ -1122,12 +1163,15 @@ function AccountPage() {
 
           {/* MOBILE TITLE */}
 
-          <div className="mt-6 lg:hidden">
-            <p className="text-[9px] font-medium uppercase tracking-[0.28em] text-[#6F8B5E]">
-              OLIVE LIVING
-            </p>
+          <div className="mt-2 lg:hidden">
+            <div className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#6F8B5E]" />
+              <p className="text-[8px] font-semibold uppercase tracking-[0.2em] text-[#6F8B5E]">
+                INFIBETTER
+              </p>
+            </div>
 
-            <h1 className="mt-1 font-display text-3xl text-[#252824]">
+            <h1 className="mt-0.5 font-display text-2xl font-medium leading-tight tracking-tight text-[#252824]">
               Dashboard
             </h1>
           </div>
@@ -1136,22 +1180,21 @@ function AccountPage() {
               WELCOME
           ================================================= */}
 
-          <section className="mt-8">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">
+          <section className="mt-2.5 sm:mt-8">
+            <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-neutral-400">
               Tổng quan
             </p>
 
-            <h2 className="mt-1 text-xl font-medium text-[#30332F]">
+            <h2 className="mt-0.5 text-base font-semibold leading-snug tracking-tight text-[#30332F] sm:mt-1 sm:text-xl sm:font-medium">
               Xin chào,{" "}
               {profileQ
                 .data
                 ?.full_name ||
-                "Olive Living Admin"}
+                "INFIBETTER Admin"}
             </h2>
 
-            <p className="mt-1 text-sm text-neutral-500">
-              Theo dõi hoạt động cửa
-              hàng và đơn hàng của bạn.
+            <p className="mt-0.5 text-[10px] leading-4 text-neutral-500 sm:mt-1 sm:text-sm">
+              Theo dõi hoạt động cửa hàng và đơn hàng của bạn.
             </p>
           </section>
 
@@ -1159,18 +1202,18 @@ function AccountPage() {
               KPI
           ================================================= */}
 
-          <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="mt-3 grid grid-cols-2 gap-1.5 sm:mt-7 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
             {/* DOANH THU */}
 
-            <div className="rounded-[22px] border border-[#E7E4DD] bg-white p-5">
+            <div className="min-w-0 rounded-xl border border-[#E7E4DD] bg-white p-2.5 sm:rounded-[22px] sm:p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[11px] text-neutral-400">
+                  <p className="text-[9px] leading-3 text-neutral-400 sm:text-[11px]">
                     Doanh thu
                   </p>
 
-                  <p className="mt-3 text-2xl font-semibold tracking-tight text-[#282B27]">
+                  <p className="mt-1 text-base font-semibold leading-tight tracking-tight text-[#282B27] sm:mt-3 sm:text-2xl">
                     {loading
                       ? "..."
                       : formatUSDFromVND(
@@ -1179,7 +1222,7 @@ function AccountPage() {
                   </p>
                 </div>
 
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E9F0E5] text-[#58734F]">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md sm:h-9 sm:w-9 sm:rounded-xl bg-[#E9F0E5] text-[#58734F]">
                   <WalletCards
                     size={17}
                     strokeWidth={1.7}
@@ -1187,7 +1230,7 @@ function AccountPage() {
                 </div>
               </div>
 
-              <p className="mt-4 text-[10px] text-neutral-400">
+              <p className="mt-1.5 text-[8px] leading-3 text-neutral-400 sm:mt-4 sm:text-[10px]">
                 {period ===
                 "today"
                   ? "Hôm nay"
@@ -1200,14 +1243,14 @@ function AccountPage() {
 
             {/* ĐƠN HÀNG */}
 
-            <div className="rounded-[22px] border border-[#E7E4DD] bg-white p-5">
+            <div className="min-w-0 rounded-xl border border-[#E7E4DD] bg-white p-2.5 sm:rounded-[22px] sm:p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[11px] text-neutral-400">
+                  <p className="text-[9px] leading-3 text-neutral-400 sm:text-[11px]">
                     Đơn hàng
                   </p>
 
-                  <p className="mt-3 text-2xl font-semibold tracking-tight text-[#282B27]">
+                  <p className="mt-1 text-base font-semibold leading-tight tracking-tight text-[#282B27] sm:mt-3 sm:text-2xl">
                     {loading
                       ? "..."
                       : analytics.orders.toLocaleString(
@@ -1216,7 +1259,7 @@ function AccountPage() {
                   </p>
                 </div>
 
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F4EEE5] text-[#9A7950]">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md sm:h-9 sm:w-9 sm:rounded-xl bg-[#F4EEE5] text-[#9A7950]">
                   <ShoppingBag
                     size={17}
                     strokeWidth={1.7}
@@ -1224,21 +1267,21 @@ function AccountPage() {
                 </div>
               </div>
 
-              <p className="mt-4 text-[10px] text-neutral-400">
+              <p className="mt-1.5 text-[8px] leading-3 text-neutral-400 sm:mt-4 sm:text-[10px]">
                 Không tính đơn đã hủy
               </p>
             </div>
 
             {/* KHÁCH HÀNG */}
 
-            <div className="rounded-[22px] border border-[#E7E4DD] bg-white p-5">
+            <div className="min-w-0 rounded-xl border border-[#E7E4DD] bg-white p-2.5 sm:rounded-[22px] sm:p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[11px] text-neutral-400">
+                  <p className="text-[9px] leading-3 text-neutral-400 sm:text-[11px]">
                     Khách hàng
                   </p>
 
-                  <p className="mt-3 text-2xl font-semibold tracking-tight text-[#282B27]">
+                  <p className="mt-1 text-base font-semibold leading-tight tracking-tight text-[#282B27] sm:mt-3 sm:text-2xl">
                     {loading
                       ? "..."
                       : customersQ.data?.toLocaleString(
@@ -1247,7 +1290,7 @@ function AccountPage() {
                   </p>
                 </div>
 
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EDF2EF] text-[#5C786A]">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md sm:h-9 sm:w-9 sm:rounded-xl bg-[#EDF2EF] text-[#5C786A]">
                   <Users
                     size={17}
                     strokeWidth={1.7}
@@ -1255,21 +1298,21 @@ function AccountPage() {
                 </div>
               </div>
 
-              <p className="mt-4 text-[10px] text-neutral-400">
+              <p className="mt-1.5 text-[8px] leading-3 text-neutral-400 sm:mt-4 sm:text-[10px]">
                 Hồ sơ khách hàng
               </p>
             </div>
 
             {/* SẢN PHẨM */}
 
-            <div className="rounded-[22px] border border-[#E7E4DD] bg-white p-5">
+            <div className="min-w-0 rounded-xl border border-[#E7E4DD] bg-white p-2.5 sm:rounded-[22px] sm:p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[11px] text-neutral-400">
+                  <p className="text-[9px] leading-3 text-neutral-400 sm:text-[11px]">
                     Sản phẩm
                   </p>
 
-                  <p className="mt-3 text-2xl font-semibold tracking-tight text-[#282B27]">
+                  <p className="mt-1 text-base font-semibold leading-tight tracking-tight text-[#282B27] sm:mt-3 sm:text-2xl">
                     {loading
                       ? "..."
                       : productsQ.data?.toLocaleString(
@@ -1278,7 +1321,7 @@ function AccountPage() {
                   </p>
                 </div>
 
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F0EEE9] text-[#706D63]">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md sm:h-9 sm:w-9 sm:rounded-xl bg-[#F0EEE9] text-[#706D63]">
                   <Package
                     size={17}
                     strokeWidth={1.7}
@@ -1286,7 +1329,7 @@ function AccountPage() {
                 </div>
               </div>
 
-              <p className="mt-4 text-[10px] text-neutral-400">
+              <p className="mt-1.5 text-[8px] leading-3 text-neutral-400 sm:mt-4 sm:text-[10px]">
                 {categoriesQ.data ??
                   0}{" "}
                 danh mục
@@ -1298,21 +1341,21 @@ function AccountPage() {
               ANALYTICS
           ================================================= */}
 
-          <section className="mt-5 rounded-[26px] border border-[#E7E4DD] bg-white p-5 sm:p-6 lg:p-7">
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <section className="mt-2.5 rounded-xl border border-[#E7E4DD] bg-white p-3 sm:mt-5 sm:rounded-[26px] sm:p-6 lg:p-7">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-neutral-400">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-neutral-400">
                   Analytics
                 </p>
 
-                <h2 className="mt-1 text-lg font-medium text-[#30332F]">
+                <h2 className="mt-0.5 text-base font-semibold tracking-tight text-[#30332F] sm:text-lg">
                   Doanh thu & đơn hàng
                 </h2>
               </div>
 
               {/* FILTER */}
 
-              <div className="flex w-fit flex-wrap rounded-full border border-[#E7E4DD] bg-[#FAF9F6] p-1">
+              <div className="grid w-full grid-cols-5 gap-0.5 rounded-xl border border-[#E7E4DD] bg-[#FAF9F6] p-1 sm:flex sm:w-fit sm:gap-0 sm:rounded-full">
                 {(
                   [
                     "today",
@@ -1334,11 +1377,17 @@ function AccountPage() {
                         )
                       }
                       className={`
-                        rounded-full
-                        px-4
-                        py-1.5
-                        text-[11px]
+                        min-w-0
+                        rounded-lg
+                        px-1
+                        py-2
+                        text-[9px]
+                        leading-none
                         transition-all
+                        sm:rounded-full
+                        sm:px-4
+                        sm:py-1.5
+                        sm:text-[11px]
 
                         ${
                           period ===
@@ -1363,7 +1412,7 @@ function AccountPage() {
 
             {/* CHART */}
 
-            <div className="mt-7 h-[300px] w-full">
+            <div className="mt-2.5 h-[180px] w-full sm:mt-6 sm:h-[300px]">
               {ordersQ.isLoading ? (
                 <div className="flex h-full items-center justify-center text-sm text-neutral-400">
                   Đang tải dữ liệu...
@@ -1378,9 +1427,9 @@ function AccountPage() {
                       analytics.chart
                     }
                     margin={{
-                      top: 10,
-                      right: 5,
-                      left: -15,
+                      top: 6,
+                      right: 2,
+                      left: -22,
                       bottom: 0,
                     }}
                   >
@@ -1418,17 +1467,17 @@ function AccountPage() {
                     <XAxis
                       dataKey="label"
                       tick={{
-                        fontSize: 10,
+                        fontSize: 9,
                         fill: "#999",
                       }}
                       axisLine={false}
                       tickLine={false}
-                      minTickGap={25}
+                      minTickGap={18}
                     />
 
                     <YAxis
                       tick={{
-                        fontSize: 10,
+                        fontSize: 9,
                         fill: "#999",
                       }}
                       axisLine={false}
@@ -1492,7 +1541,7 @@ function AccountPage() {
                       type="monotone"
                       dataKey="revenue"
                       stroke="#6F8B5E"
-                      strokeWidth={2}
+                      strokeWidth={1.8}
                       fill="url(#revenueGradient)"
                       dot={false}
                       activeDot={{
@@ -1504,9 +1553,9 @@ function AccountPage() {
               )}
             </div>
 
-            <div className="mt-3 flex items-center gap-5 text-[10px] text-neutral-400">
+            <div className="mt-1.5 flex items-center gap-3 text-[9px] text-neutral-400">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#6F8B5E]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#6F8B5E]" />
                 Doanh thu
               </div>
 
@@ -1523,35 +1572,71 @@ function AccountPage() {
           </section>
 
           {/* =================================================
+              QUICK ACCESS
+          ================================================= */}
+
+          <section className="mt-2 grid grid-cols-2 gap-1.5 sm:mt-4 sm:grid-cols-3 sm:gap-3 lg:grid-cols-3">
+            <QuickAccess
+              icon={Package}
+              title="Quản lý sản phẩm"
+              description="Thêm, sửa và quản lý tồn kho"
+              href="/admin/products"
+            />
+
+            <QuickAccess
+              icon={FolderTree}
+              title="Danh mục"
+              description="Quản lý nhóm sản phẩm"
+              href="/admin/categories"
+            />
+
+            <QuickAccess
+              icon={Menu}
+              title="Mega Menu"
+              description="Chỉnh menu Header"
+              href="/admin/mega-menu"
+            />
+
+            <QuickAccess
+  icon={Star}
+  title="Reviews"
+  description="Quản lý đánh giá sản phẩm"
+  href="/admin/reviews"
+/>
+
+            <QuickAccess
+              icon={TicketPercent}
+              title="Voucher"
+              description="Tạo và quản lý mã giảm giá"
+              href="/admin/vouchers"
+            />
+
+            <QuickAccess
+              icon={Settings}
+              title="Đơn hàng"
+              description="Theo dõi và xử lý đơn"
+              href="/admin/orders"
+            />
+          </section>
+
+
+
+                    {/* =================================================
               RECENT ORDERS
           ================================================= */}
 
-          <section className="mt-5 rounded-[26px] border border-[#E7E4DD] bg-white">
-            <div className="flex flex-col justify-between gap-3 border-b border-[#ECEAE5] p-5 sm:flex-row sm:items-center sm:px-6">
-              <div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-neutral-400">
-                  Sales
-                </p>
-
-                <h2 className="mt-1 text-lg font-medium text-[#30332F]">
-                  Đơn hàng gần đây
-                </h2>
-              </div>
+          <section className="mt-3 rounded-2xl border border-[#E7E4DD] bg-white sm:mt-5 sm:rounded-[26px]">
+            <div className="flex items-center justify-between gap-3 border-b border-[#ECEAE5] px-3 py-2.5 sm:px-5 sm:py-3">
+              <h2 className="min-w-0 text-sm font-semibold tracking-tight text-[#30332F] sm:text-base">
+                Đơn hàng gần đây
+              </h2>
 
               <Link
                 to="/admin/orders"
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  text-xs
-                  font-medium
-                  text-[#58734F]
-                  hover:text-[#2F3528]
-                "
+                className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[#58734F] transition hover:text-[#2F3528] sm:text-xs"
               >
                 Xem tất cả
-                <span>→</span>
+                <span aria-hidden="true">→</span>
               </Link>
             </div>
 
@@ -1563,6 +1648,10 @@ function AccountPage() {
                   <tr className="border-b border-[#ECEAE5] text-[10px] uppercase tracking-[0.14em] text-neutral-400">
                     <th className="px-6 py-4 font-medium">
                       Mã đơn
+                    </th>
+
+                    <th className="px-6 py-4 font-medium">
+                      Người mua
                     </th>
 
                     <th className="px-6 py-4 font-medium">
@@ -1587,7 +1676,7 @@ function AccountPage() {
                   {recentOrdersQ.isLoading ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-6 py-10 text-center text-sm text-neutral-400"
                       >
                         Đang tải đơn
@@ -1620,10 +1709,19 @@ function AccountPage() {
                             </span>
                           </td>
 
-                          <td className="px-6 py-4 text-xs text-neutral-500">
-                            {formatShortDate(
-                              order.created_at,
+                          <td className="px-6 py-4">
+                            <p className="text-xs font-medium text-[#30332F]">
+                              {order.full_name || "-"}
+                            </p>
+                            {order.phone && (
+                              <p className="mt-0.5 text-[10px] text-neutral-400">
+                                {order.phone}
+                              </p>
                             )}
+                          </td>
+
+                          <td className="px-6 py-4 text-xs text-neutral-500">
+                            {formatOrderDateTime(order.created_at)}
                           </td>
 
                           <td className="px-6 py-4 text-sm font-medium text-[#30332F]">
@@ -1692,7 +1790,7 @@ function AccountPage() {
                       key={
                         order.id
                       }
-                      className="p-5"
+                      className="p-3.5 sm:p-5"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
@@ -1704,10 +1802,11 @@ function AccountPage() {
                             )}
                           </p>
 
-                          <p className="mt-1 text-[11px] text-neutral-400">
-                            {formatShortDate(
-                              order.created_at,
-                            )}
+                          <p className="mt-0.5 text-[10px] text-neutral-400">
+                            {formatOrderDateTime(order.created_at)}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-[#30332F]">
+                            {order.full_name || "Khách hàng"}
                           </p>
                         </div>
 
@@ -1759,58 +1858,10 @@ function AccountPage() {
             </div>
           </section>
 
-          {/* =================================================
-              QUICK ACCESS
-          ================================================= */}
-
-          <section className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <QuickAccess
-              icon={Package}
-              title="Quản lý sản phẩm"
-              description="Thêm, sửa và quản lý tồn kho"
-              href="/admin/products"
-            />
-
-            <QuickAccess
-              icon={FolderTree}
-              title="Danh mục"
-              description="Quản lý nhóm sản phẩm"
-              href="/admin/categories"
-            />
-
-            <QuickAccess
-              icon={Menu}
-              title="Mega Menu"
-              description="Chỉnh menu Header"
-              href="/admin/mega-menu"
-            />
-
-            <QuickAccess
-  icon={Star}
-  title="Reviews"
-  description="Quản lý đánh giá sản phẩm"
-  href="/admin/reviews"
-/>
-
-            <QuickAccess
-              icon={TicketPercent}
-              title="Voucher"
-              description="Tạo và quản lý mã giảm giá"
-              href="/admin/vouchers"
-            />
-
-            <QuickAccess
-              icon={Settings}
-              title="Đơn hàng"
-              description="Theo dõi và xử lý đơn"
-              href="/admin/orders"
-            />
-          </section>
-
           {/* FOOTER */}
 
-          <div className="py-8 text-center text-[10px] tracking-[0.12em] text-neutral-400">
-            OLIVE LIVING · ADMIN DASHBOARD
+          <div className="py-5 text-center text-[9px] tracking-[0.12em] text-neutral-400 sm:py-8 sm:text-[10px]">
+            INFIBETTER · ADMIN DASHBOARD
           </div>
         </div>
       </main>
@@ -1838,11 +1889,19 @@ function QuickAccess({
       to={href as never}
       className="
         group
-        rounded-[20px]
+        flex
+        min-h-[44px]
+        items-center
+        rounded-lg
         border
         border-[#E7E4DD]
         bg-white
-        p-5
+        px-2
+        py-1.5
+        sm:min-h-[60px]
+        sm:rounded-xl
+        sm:px-3
+        sm:py-2.5
         transition-all
         duration-300
         hover:-translate-y-0.5
@@ -1850,20 +1909,20 @@ function QuickAccess({
         hover:shadow-[0_12px_35px_rgba(40,45,35,0.06)]
       "
     >
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EDF2EA] text-[#58734F] transition-transform duration-300 group-hover:scale-105">
+      <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#EDF2EA] text-[#58734F] transition-transform duration-300 group-hover:scale-105 sm:h-8 sm:w-8 sm:rounded-lg">
           <Icon
             size={17}
             strokeWidth={1.7}
           />
         </div>
 
-        <div>
-          <p className="text-sm font-medium text-[#30332F]">
+        <div className="min-w-0">
+          <p className="truncate text-[10px] font-semibold leading-tight text-[#30332F] sm:text-xs">
             {title}
           </p>
 
-          <p className="mt-0.5 text-[10px] text-neutral-400">
+          <p className="mt-0.5 hidden truncate text-[10px] text-neutral-400 sm:block">
             {description}
           </p>
         </div>

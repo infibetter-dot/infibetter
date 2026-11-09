@@ -15,7 +15,8 @@ import {
   Circle,
 
   Gift,
-
+  Eye,
+  EyeOff,
   Package,
 
   PackageCheck,
@@ -75,7 +76,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_STYLES: Record<string, string> = {
 
-  pending: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  pending: "border-amber-200 bg-amber-50 text-amber-700",
 
   processing: "border-sky-200 bg-sky-50 text-sky-700",
 
@@ -134,6 +135,8 @@ function OrdersAdminPage() {
   const [search, setSearch] = useState("");
 
   const [statusFilter, setStatusFilter] = useState("all");
+
+  const [showHiddenOrders, setShowHiddenOrders] = useState(false);
 
 
 
@@ -298,6 +301,8 @@ function OrdersAdminPage() {
 
     return (data ?? []).filter((order) => {
 
+      if (Boolean(order.is_hidden) !== showHiddenOrders) return false;
+
       if (!isMatchDate(order.created_at)) return false;
 
       if (statusFilter !== "all" && order.status !== statusFilter) return false;
@@ -320,7 +325,7 @@ function OrdersAdminPage() {
 
     });
 
-  }, [data, dateFilter, search, statusFilter]);
+  }, [data, dateFilter, search, statusFilter, showHiddenOrders]);
 
 
 
@@ -342,7 +347,7 @@ function OrdersAdminPage() {
 
     setCurrentPage(1);
 
-  }, [search, dateFilter, statusFilter]);
+  }, [search, dateFilter, statusFilter, showHiddenOrders]);
 
 
 
@@ -468,6 +473,44 @@ function OrdersAdminPage() {
 
 
 
+  async function toggleOrderVisibility(order: any) {
+    const nextHidden = !Boolean(order.is_hidden);
+    const actionLabel = nextHidden ? "ẩn" : "khôi phục";
+    const confirmed = window.confirm(
+      nextHidden
+        ? `Ẩn đơn hàng #${String(order.id).slice(0, 8)} khỏi danh sách chính? Bạn có thể khôi phục sau.`
+        : `Khôi phục đơn hàng #${String(order.id).slice(0, 8)} vào danh sách chính?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setUpdatingOrderId(order.id);
+
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({ is_hidden: nextHidden })
+        .eq("id", order.id);
+
+      if (updateError) throw updateError;
+
+      if (selectedOrder?.id === order.id) {
+        setSelectedOrder(null);
+      }
+
+      await refetch();
+    } catch (err) {
+      console.error(`Order ${actionLabel} failed:`, err);
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Không thể ${actionLabel} đơn hàng. Vui lòng thử lại.`,
+      );
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  }
+
   function handlePrint() {
 
     window.print();
@@ -514,46 +557,42 @@ function OrdersAdminPage() {
 
   return (
 
-    <div className="min-h-screen overflow-x-hidden bg-[#F6F7F8] font-sans text-neutral-900">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 font-sans text-slate-900">
 
-      <main className="mx-auto w-full max-w-[1320px] px-3 pb-6 pt-3 sm:px-6 sm:pb-12 sm:pt-7 lg:px-8">
+      <main className="mx-auto w-full max-w-[1440px] px-3 pb-8 pt-4 sm:px-6 sm:pb-12 sm:pt-6 lg:px-8">
 
         {/* Page heading */}
-        <section className="mb-3 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_2px_12px_rgba(15,23,42,0.035)] sm:mb-6">
-          <div className="flex flex-col gap-2.5 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-            <div className="min-w-0">
-              <div className="mb-1 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2 py-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-                <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-800">
+        <section className="mb-3 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_2px_10px_rgba(15,23,42,0.045)] sm:mb-6 sm:rounded-2xl">
+          <div className="p-3 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+              <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50/80 px-2 py-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shadow-[0_0_0_2px_rgba(16,185,129,0.12)]" />
+                <span className="text-[8px] font-bold uppercase tracking-[0.14em] text-emerald-800 sm:text-[9px]">
                   INFIBETTER ADMIN
                 </span>
               </div>
-              <h1 className="text-[21px] font-semibold leading-tight tracking-[-0.045em] text-neutral-950 sm:text-[30px]">
+              <h1 className="text-xl font-bold leading-tight tracking-[-0.045em] text-slate-950 sm:text-3xl">
                 Quản lý đơn hàng
               </h1>
-              <p className="mt-1.5 max-w-xl text-[11px] leading-[17px] text-neutral-500 sm:text-sm">
+              <p className="mt-1 max-w-xl text-[10px] leading-[1.45] text-slate-500 sm:mt-2 sm:text-sm sm:leading-6">
                 Theo dõi đơn hàng, trạng thái thanh toán và xử lý đơn từ website INFIBETTER.
               </p>
-            </div>
+              </div>
 
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 sm:min-w-[180px] sm:justify-center sm:px-5">
-              <div>
-                <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
-                  Đơn đang hiển thị
-                </p>
-                <p className="mt-0.5 text-lg font-bold tracking-tight text-neutral-900 sm:text-2xl">
-                  {filteredOrders.length}
-                </p>
-              </div>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-neutral-700 shadow-sm ring-1 ring-neutral-200">
-                <Package className="h-5 w-5" />
-              </div>
+              <a
+                href="/account"
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[10px] font-semibold text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:h-9 sm:gap-2 sm:px-3 sm:text-xs"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span className="hidden min-[360px]:inline">Dashboard</span>
+              </a>
             </div>
           </div>
         </section>
 
         {/* KPI summary */}
-        <section className="mb-3 grid grid-cols-2 gap-2 sm:mb-6 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
+        <section className="mb-3 grid grid-cols-3 gap-1.5 sm:mb-6 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6">
           {[
             ["Tổng đơn hàng", String(filteredOrders.length), Package, "bg-slate-100 text-slate-700"],
             ["Doanh thu", formatUSD(totalRevenue), Gift, "bg-emerald-50 text-emerald-700"],
@@ -566,17 +605,17 @@ function OrdersAdminPage() {
             return (
               <div
                 key={String(label)}
-                className="flex min-h-[82px] min-w-0 flex-col justify-between rounded-lg border border-neutral-200 bg-white p-2.5 shadow-[0_1px_5px_rgba(15,23,42,0.025)] transition hover:-translate-y-0.5 hover:shadow-sm sm:min-h-[116px] sm:rounded-2xl sm:p-4"
+                className="flex min-h-[68px] min-w-0 flex-col justify-between rounded-lg border border-slate-200/80 bg-white p-2 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md sm:min-h-[124px] sm:rounded-2xl sm:p-4"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 text-[9px] font-semibold leading-3.5 text-neutral-500 sm:text-[11px]">
+                <div className="flex items-center justify-between gap-1 sm:items-start sm:gap-2">
+                  <p className="min-w-0 text-[8px] font-semibold leading-3 text-slate-500 sm:text-xs sm:leading-4">
                     {label}
                   </p>
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${iconStyle}`}>
-                    <CardIcon className="h-4 w-4" />
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md sm:h-8 sm:w-8 sm:rounded-xl ${iconStyle}`}>
+                    <CardIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                   </span>
                 </div>
-                <p className="mt-1.5 truncate text-[15px] font-bold leading-tight tracking-[-0.035em] text-neutral-950 sm:text-xl">
+                <p className="mt-1 truncate text-sm font-bold leading-tight tracking-[-0.035em] text-slate-950 sm:mt-2 sm:text-2xl">
                   {value}
                 </p>
               </div>
@@ -585,27 +624,53 @@ function OrdersAdminPage() {
         </section>
 
         {/* Search and filters */}
-        <section className="mb-2 rounded-xl border border-neutral-200 bg-white p-2 shadow-[0_1px_5px_rgba(15,23,42,0.025)] sm:mb-5 sm:p-4">
-          <div className="mb-1.5 flex items-center justify-between gap-2 sm:mb-2">
-            <div>
-              <h2 className="text-[13px] font-semibold text-neutral-900">Danh sách đơn hàng</h2>
-              <p className="mt-0.5 text-[9px] leading-3 text-neutral-500 sm:text-xs">
+        <section className="mb-2 rounded-xl border border-slate-200/80 bg-white p-2 shadow-sm sm:mb-5 sm:rounded-2xl sm:p-5">
+          <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3">
+            <div className="min-w-0">
+              <h2 className="text-xs font-bold leading-4 text-slate-900 sm:text-base">Danh sách đơn hàng</h2>
+              <p className="mt-0.5 text-[9px] leading-3 text-slate-500 sm:mt-1 sm:text-xs sm:leading-4">
                 Tìm kiếm và lọc theo thời gian hoặc trạng thái
               </p>
             </div>
-            <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[9px] font-semibold text-neutral-600 sm:px-2.5 sm:py-1 sm:text-[10px]">
-              {filteredOrders.length} kết quả
-            </span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShowHiddenOrders(false)}
+                  className={`rounded-md px-2 py-1 text-[9px] font-semibold transition sm:text-[11px] ${
+                    !showHiddenOrders
+                      ? "bg-white text-blue-700 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  Đang hoạt động
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowHiddenOrders(true)}
+                  className={`rounded-md px-2 py-1 text-[9px] font-semibold transition sm:text-[11px] ${
+                    showHiddenOrders
+                      ? "bg-white text-blue-700 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  Đã ẩn
+                </button>
+              </div>
+              <span className="hidden shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-[9px] font-semibold text-blue-700 sm:inline-flex sm:text-xs">
+                {filteredOrders.length} kết quả
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-2 sm:gap-2 lg:grid-cols-[minmax(0,1fr)_200px_200px]">
-            <div className="relative col-span-2 min-w-0 lg:col-span-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-[minmax(0,1fr)_190px_190px] sm:gap-2.5">
+            <div className="relative col-span-2 min-w-0 sm:col-span-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400 sm:left-3 sm:h-4 sm:w-4" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm mã đơn, tên khách, SĐT hoặc email..."
-                className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 bg-neutral-50 pl-8 pr-2.5 text-[11px] outline-none transition placeholder:text-neutral-400 focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-50 sm:h-10 sm:pl-9 sm:pr-3 sm:text-sm"
+                className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-2 text-[10px] outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10 sm:h-11 sm:rounded-xl sm:pl-10 sm:pr-3 sm:text-sm sm:focus:ring-4"
               />
             </div>
 
@@ -613,7 +678,7 @@ function OrdersAdminPage() {
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value as DateFilter)}
               aria-label="Lọc theo thời gian"
-              className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 bg-white px-2 text-[10px] text-neutral-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-50 sm:h-10 sm:px-3 sm:text-sm"
+              className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-[10px] text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 sm:h-11 sm:rounded-xl sm:px-3 sm:text-sm sm:focus:ring-4"
             >
               <option value="today">Hôm nay</option>
               <option value="yesterday">Hôm qua</option>
@@ -627,7 +692,7 @@ function OrdersAdminPage() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               aria-label="Lọc theo trạng thái"
-              className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 bg-white px-2 text-[10px] text-neutral-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-50 sm:h-10 sm:px-3 sm:text-sm"
+              className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-[10px] text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 sm:h-11 sm:rounded-xl sm:px-3 sm:text-sm sm:focus:ring-4"
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="pending">Chờ xác nhận</option>
@@ -640,7 +705,7 @@ function OrdersAdminPage() {
         </section>
 
         {/* Mobile order cards */}
-        <div className="space-y-2 lg:hidden">
+        <div className="space-y-1.5 xl:hidden">
           {paginatedOrders.length === 0 ? (
             <div className="rounded-xl border border-neutral-200 bg-white px-4 py-12 text-center text-sm text-neutral-500">
               Không tìm thấy đơn hàng phù hợp.
@@ -651,18 +716,18 @@ function OrdersAdminPage() {
               return (
                 <article
                   key={order.id}
-                  className={`overflow-hidden rounded-2xl border bg-white shadow-[0_2px_10px_rgba(15,23,42,0.045)] ${
+                  className={`overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.035)] ${
                     order.status === "pending"
-                      ? "border-emerald-200"
-                      : "border-neutral-200"
+                      ? "border-amber-200"
+                      : "border-slate-200"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3 border-b border-neutral-100 px-4 py-3">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-2.5 py-2">
                     <div className="min-w-0">
-                      <p className="font-mono text-sm font-bold text-neutral-900">
+                      <p className="font-mono text-[11px] font-bold text-slate-900">
                         #{order.id.slice(0, 8)}
                       </p>
-                      <p className="mt-1 text-[11px] text-neutral-500">
+                      <p className="mt-0.5 text-[9px] text-slate-500">
                         {new Date(order.created_at).toLocaleString("vi-VN", {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -672,30 +737,42 @@ function OrdersAdminPage() {
                         })}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[9px] font-semibold text-neutral-600 sm:px-2.5 sm:py-1 sm:text-[10px]">
-                      {order.payment_method || "Payment"}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[8px] font-semibold uppercase text-blue-700">
+                        {order.payment_method || "Payment"}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={order.is_hidden ? "Khôi phục đơn hàng" : "Ẩn đơn hàng"}
+                        title={order.is_hidden ? "Khôi phục đơn hàng" : "Ẩn đơn hàng"}
+                        disabled={updatingOrderId === order.id}
+                        onClick={() => toggleOrderVisibility(order)}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+                      >
+                        {order.is_hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="space-y-3 px-4 py-3">
+                  <div className="space-y-1.5 px-2.5 py-2">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">
+                      <p className="text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400">
                         Khách hàng
                       </p>
-                      <p className="mt-1 break-words text-sm font-semibold text-neutral-900">
+                      <p className="mt-0.5 break-words text-[11px] font-semibold text-slate-900">
                         {order.full_name || "-"}
                       </p>
-                      <p className="mt-0.5 break-all text-xs text-neutral-500">
+                      <p className="mt-0.5 break-all text-[9px] text-slate-500">
                         {order.phone || order.email || "-"}
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">
+                        <p className="text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400">
                           Thanh toán
                         </p>
-                        <p className={`mt-1 text-xs font-medium ${
+                        <p className={`mt-0.5 text-[10px] font-medium ${
                           order.payment_status === "paid"
                             ? "text-emerald-700"
                             : order.payment_status === "partial" ||
@@ -713,10 +790,10 @@ function OrdersAdminPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                           Tổng tiền
                         </p>
-                        <p className="mt-1 text-base font-bold text-neutral-900">
+                        <p className="mt-0 text-sm font-bold leading-tight text-slate-950">
                           {formatUSD(Number(order.total ?? 0))}
                         </p>
                       </div>
@@ -739,19 +816,24 @@ function OrdersAdminPage() {
                       </div>
                     )}
 
-                    <div>
-                      <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-neutral-400">
-                        Trạng thái đơn hàng
+                    {order.admin_note && (
+                      <p className="line-clamp-1 rounded bg-slate-50 px-2 py-1 text-[8px] leading-3 text-slate-600">
+                        <span className="font-semibold">Ghi chú: </span>
+                        {order.admin_note}
                       </p>
+                    )}
+
+                    <div className="grid grid-cols-3 items-stretch gap-1 pt-0">
                       <Select
                         value={order.status}
                         disabled={updatingOrderId === order.id}
                         onValueChange={(value) => updateOrderStatus(order.id, value)}
                       >
                         <SelectTrigger
-                          className={`h-11 w-full rounded-lg px-3 text-xs font-semibold shadow-none ${STATUS_STYLES[order.status] ?? ""}`}
+                          aria-label="Cập nhật trạng thái đơn hàng"
+                          className={`h-8 min-w-0 w-full rounded-md px-1 text-[8px] font-semibold shadow-none [&>svg:last-child]:h-3 [&>svg:last-child]:w-3 ${STATUS_STYLES[order.status] ?? ""}`}
                         >
-                          <StatusIcon className="h-4 w-4 shrink-0" />
+                          <StatusIcon className="h-3.5 w-3.5 shrink-0" />
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -784,29 +866,20 @@ function OrdersAdminPage() {
                           )}
                         </SelectContent>
                       </Select>
-                    </div>
 
-                    {order.admin_note && (
-                      <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs leading-5 text-neutral-600">
-                        <span className="font-semibold">Ghi chú: </span>
-                        {order.admin_note}
-                      </p>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() => setSelectedOrder(order)}
-                        className="inline-flex h-11 items-center justify-center rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                        className="inline-flex min-w-0 min-h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-1 text-[8px] font-semibold leading-tight text-slate-700 transition hover:bg-slate-50"
                       >
-                        {order.admin_note ? "Xem / sửa ghi chú" : "+ Thêm ghi chú"}
+                        {order.admin_note ? "Sửa ghi chú" : "+ Ghi chú"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setSelectedOrder(order)}
-                        className="inline-flex h-11 items-center justify-center rounded-lg bg-neutral-900 px-3 text-xs font-semibold text-white hover:bg-neutral-800"
+                        className="inline-flex min-w-0 min-h-8 items-center justify-center rounded-md bg-blue-600 px-1 text-[8px] font-semibold leading-tight text-white transition hover:bg-blue-700"
                       >
-                        Chi tiết đơn hàng
+                        Chi tiết
                       </button>
                     </div>
                   </div>
@@ -817,11 +890,11 @@ function OrdersAdminPage() {
         </div>
 
         {/* Desktop table */}
-        <div className="hidden overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_2px_10px_rgba(15,23,42,0.035)] lg:block">
+        <div className="hidden overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm xl:block">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] table-fixed border-collapse">
-              <thead className="border-b border-neutral-200 bg-neutral-50">
-                <tr className="text-left text-[9px] font-bold uppercase tracking-[0.07em] text-neutral-500">
+            <table className="w-full min-w-[1080px] table-fixed border-collapse">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr className="text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
                   <th className="w-[13%] px-3 py-3">Đơn hàng</th>
                   <th className="w-[16%] px-3 py-3">Khách hàng</th>
                   <th className="w-[11%] px-3 py-3">Thanh toán</th>
@@ -836,7 +909,9 @@ function OrdersAdminPage() {
                 {paginatedOrders.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-12 text-center text-sm text-neutral-500">
-                      Không tìm thấy đơn hàng phù hợp.
+                      {showHiddenOrders
+                        ? "Chưa có đơn hàng nào được ẩn."
+                        : "Không tìm thấy đơn hàng phù hợp."}
                     </td>
                   </tr>
                 ) : (
@@ -845,23 +920,23 @@ function OrdersAdminPage() {
                     return (
                       <tr
                         key={order.id}
-                        className={`border-b border-neutral-100 last:border-0 ${
-                          order.status === "pending" ? "bg-emerald-50/45" : "hover:bg-neutral-50"
+                        className={`border-b border-slate-100 last:border-0 ${
+                          order.status === "pending" ? "bg-amber-50/50" : "hover:bg-slate-50"
                         }`}
                       >
-                        <td className="px-3.5 py-3.5 align-middle">
-                          <p className="font-mono text-[10px] font-bold text-neutral-900">#{order.id.slice(0, 8)}</p>
-                          <p className="mt-1 text-[9px] text-neutral-400">
+                        <td className="px-4 py-4 align-middle">
+                          <p className="font-mono text-[11px] font-bold text-slate-900">#{order.id.slice(0, 8)}</p>
+                          <p className="mt-1 text-[10px] text-slate-400">
                             {new Date(order.created_at).toLocaleString("vi-VN", {
                               hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric",
                             })}
                           </p>
                         </td>
-                        <td className="px-3.5 py-3.5 align-middle">
-                          <p className="truncate text-xs font-semibold text-neutral-900">{order.full_name || "-"}</p>
-                          <p className="mt-0.5 truncate text-[10px] text-neutral-500">{order.phone || order.email || "-"}</p>
+                        <td className="px-4 py-4 align-middle">
+                          <p className="truncate text-sm font-semibold text-slate-900">{order.full_name || "-"}</p>
+                          <p className="mt-0.5 truncate text-xs text-slate-500">{order.phone || order.email || "-"}</p>
                         </td>
-                        <td className="px-3.5 py-3.5 align-middle">
+                        <td className="px-4 py-4 align-middle">
                           <div className="flex flex-col items-start gap-1">
                             <span className="inline-flex rounded-md bg-neutral-100 px-2 py-1 text-[9px] font-bold uppercase text-neutral-700">{order.payment_method || "-"}</span>
                             {order.payment_status === "paid" ? (
@@ -875,7 +950,7 @@ function OrdersAdminPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-3.5 py-3.5 align-middle">
+                        <td className="px-4 py-4 align-middle">
                           <div className="flex max-w-[130px] flex-col gap-1">
                             {order.discount_voucher_code && (
                               <span className="inline-flex w-fit max-w-full items-center gap-1 truncate rounded-md bg-emerald-50 px-1.5 py-1 text-[8px] font-semibold text-emerald-700">
@@ -888,20 +963,20 @@ function OrdersAdminPage() {
                               </span>
                             )}
                             {!order.discount_voucher_code && !order.shipping_voucher_code && (
-                              <span className="text-[9px] text-neutral-400">Không có</span>
+                              <span className="text-[10px] text-slate-400">Không có</span>
                             )}
                           </div>
                         </td>
                         <td className="px-3.5 py-3.5 text-right align-middle">
                           <span className="whitespace-nowrap text-xs font-bold">{formatUSD(Number(order.total ?? 0))}</span>
                         </td>
-                        <td className="px-3.5 py-3.5 align-middle">
+                        <td className="px-4 py-4 align-middle">
                           <Select
                             value={order.status}
                             disabled={updatingOrderId === order.id}
                             onValueChange={(value) => updateOrderStatus(order.id, value)}
                           >
-                            <SelectTrigger className={`h-9 w-[150px] rounded-lg px-2 text-[10px] font-semibold shadow-none ${STATUS_STYLES[order.status] ?? ""}`}>
+                            <SelectTrigger className={`h-10 w-[160px] rounded-xl px-2.5 text-xs font-semibold shadow-none ${STATUS_STYLES[order.status] ?? ""}`}>
                               <StatusIcon className="h-3.5 w-3.5 shrink-0" />
                               <SelectValue />
                             </SelectTrigger>
@@ -932,19 +1007,31 @@ function OrdersAdminPage() {
                             </SelectContent>
                           </Select>
                         </td>
-                        <td className="px-3.5 py-3.5 align-middle">
+                        <td className="px-4 py-4 align-middle">
                           {order.admin_note ? (
                             <span title={order.admin_note} className="block max-w-[120px] truncate rounded-md border border-neutral-200 bg-white px-2 py-1 text-[9px] text-neutral-600">{order.admin_note}</span>
                           ) : (
-                            <button type="button" onClick={() => setSelectedOrder(order)} className="rounded-md border border-dashed border-neutral-200 px-2 py-1.5 text-[9px] text-neutral-500 hover:border-neutral-300 hover:bg-neutral-50">
+                            <button type="button" onClick={() => setSelectedOrder(order)} className="rounded-lg border border-dashed border-slate-200 px-2.5 py-2 text-[10px] text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700">
                               + Thêm ghi chú
                             </button>
                           )}
                         </td>
                         <td className="px-3.5 py-3.5 text-right align-middle">
-                          <button type="button" onClick={() => setSelectedOrder(order)} className="inline-flex h-8 items-center rounded-lg border border-neutral-200 bg-white px-3 text-[10px] font-semibold text-neutral-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700">
-                            Xem →
-                          </button>
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              title={order.is_hidden ? "Khôi phục đơn hàng" : "Ẩn đơn hàng"}
+                              aria-label={order.is_hidden ? "Khôi phục đơn hàng" : "Ẩn đơn hàng"}
+                              disabled={updatingOrderId === order.id}
+                              onClick={() => toggleOrderVisibility(order)}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-50"
+                            >
+                              {order.is_hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                            </button>
+                            <button type="button" onClick={() => setSelectedOrder(order)} className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700">
+                              Xem →
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -959,13 +1046,13 @@ function OrdersAdminPage() {
 
         {filteredOrders.length > 0 && (
 
-          <div className="mt-3 flex flex-col gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-slate-200/70 bg-white px-2.5 py-1.5 sm:mt-4 sm:rounded-xl sm:px-3 sm:py-2">
 
-            <p className="text-[11px] text-neutral-500">
+            <p className="min-w-0 text-[9px] leading-3.5 text-slate-500 sm:text-[11px] sm:leading-4">
 
               Hiển thị{" "}
 
-              <span className="font-semibold text-neutral-800">
+              <span className="font-semibold text-slate-800">
 
                 {(currentPage - 1) * ORDERS_PER_PAGE + 1}–
 
@@ -973,29 +1060,33 @@ function OrdersAdminPage() {
 
               </span>{" "}
 
-              trong{" "}
+              /{" "}
 
-              <span className="font-semibold text-neutral-800">{filteredOrders.length}</span> đơn hàng
+              <span className="font-semibold text-slate-800">{filteredOrders.length}</span>
+
+              <span className="hidden sm:inline"> đơn hàng</span>
 
             </p>
 
 
 
-            <div className="flex flex-wrap items-center justify-end gap-1">
+            <div className="flex shrink-0 items-center gap-1">
 
               <button
 
                 type="button"
 
+                aria-label="Trang trước"
+
                 onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
 
                 disabled={currentPage === 1}
 
-                className="h-9 min-w-9 rounded-lg border border-neutral-200 px-2 text-xs disabled:opacity-30"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-[10px] text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35 sm:h-8 sm:w-8 sm:rounded-lg sm:text-xs"
 
               >
 
-                ←
+                ‹
 
               </button>
 
@@ -1009,15 +1100,17 @@ function OrdersAdminPage() {
 
                   type="button"
 
+                  aria-current={currentPage === page ? "page" : undefined}
+
                   onClick={() => setCurrentPage(page)}
 
-                  className={`h-9 min-w-9 rounded-lg px-2 text-xs font-semibold ${
+                  className={`inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-[9px] font-semibold transition sm:h-8 sm:min-w-8 sm:rounded-lg sm:px-2 sm:text-xs ${
 
                     currentPage === page
 
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
 
-                      : "border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+                      : "border border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
 
                   }`}
 
@@ -1035,15 +1128,17 @@ function OrdersAdminPage() {
 
                 type="button"
 
+                aria-label="Trang tiếp theo"
+
                 onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
 
                 disabled={currentPage === totalPages}
 
-                className="h-9 min-w-9 rounded-lg border border-neutral-200 px-2 text-xs disabled:opacity-30"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white text-[10px] text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35 sm:h-8 sm:w-8 sm:rounded-lg sm:text-xs"
 
               >
 
-                →
+                ›
 
               </button>
 
