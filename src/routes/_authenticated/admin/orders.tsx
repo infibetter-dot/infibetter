@@ -824,7 +824,7 @@ function OrdersAdminPage() {
                       </p>
                     )}
 
-                    <div className="grid grid-cols-3 items-stretch gap-1 pt-0">
+                    <div className="grid grid-cols-2 items-stretch gap-1 pt-0">
                       <Select
                         value={order.status}
                         disabled={updatingOrderId === order.id}
@@ -832,7 +832,7 @@ function OrdersAdminPage() {
                       >
                         <SelectTrigger
                           aria-label="Cập nhật trạng thái đơn hàng"
-                          className={`h-8 min-w-0 w-full rounded-md px-1 text-[8px] font-semibold shadow-none [&>svg:last-child]:h-3 [&>svg:last-child]:w-3 ${STATUS_STYLES[order.status] ?? ""}`}
+                          className={`h-8 min-w-0 w-full justify-between rounded-md px-2 text-[9px] font-semibold shadow-none [&>svg:last-child]:h-3 [&>svg:last-child]:w-3 ${STATUS_STYLES[order.status] ?? ""}`}
                         >
                           <StatusIcon className="h-3.5 w-3.5 shrink-0" />
                           <SelectValue />
@@ -868,13 +868,6 @@ function OrdersAdminPage() {
                         </SelectContent>
                       </Select>
 
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOrder(order)}
-                        className="inline-flex min-w-0 min-h-8 items-center justify-center rounded-md border border-slate-200 bg-white px-1 text-[8px] font-semibold leading-tight text-slate-700 transition hover:bg-slate-50"
-                      >
-                        {order.admin_note ? "Sửa ghi chú" : "+ Ghi chú"}
-                      </button>
                       <button
                         type="button"
                         onClick={() => setSelectedOrder(order)}
@@ -977,7 +970,7 @@ function OrdersAdminPage() {
                             disabled={updatingOrderId === order.id}
                             onValueChange={(value) => updateOrderStatus(order.id, value)}
                           >
-                            <SelectTrigger className={`mx-auto flex h-9 w-[150px] justify-center rounded-lg px-2 text-[11px] font-semibold shadow-none [&>span]:flex-1 [&>span]:text-center ${STATUS_STYLES[order.status] ?? ""}`}>
+                            <SelectTrigger className={`mx-auto flex h-9 w-[120px] justify-center rounded-lg px-2 text-[11px] font-semibold shadow-none [&>span]:flex-1 [&>span]:text-center ${STATUS_STYLES[order.status] ?? ""}`}>
                               <StatusIcon className="h-3.5 w-3.5 shrink-0" />
                               <SelectValue />
                             </SelectTrigger>
