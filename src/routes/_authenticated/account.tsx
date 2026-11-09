@@ -1575,53 +1575,23 @@ function AccountPage() {
               QUICK ACCESS
           ================================================= */}
 
-          <section className="mt-2 grid grid-cols-2 gap-1.5 sm:mt-4 sm:grid-cols-3 sm:gap-3 lg:grid-cols-3">
+          <section className="mt-2 grid grid-cols-2 gap-1.5 sm:mt-4 sm:gap-3">
             <QuickAccess
-              icon={Package}
-              title="Quản lý sản phẩm"
-              description="Thêm, sửa và quản lý tồn kho"
-              href="/admin/products"
-            />
-
-            <QuickAccess
-              icon={FolderTree}
-              title="Danh mục"
-              description="Quản lý nhóm sản phẩm"
-              href="/admin/categories"
-            />
-
-            <QuickAccess
-              icon={Menu}
-              title="Mega Menu"
-              description="Chỉnh menu Header"
-              href="/admin/mega-menu"
-            />
-
-            <QuickAccess
-  icon={Star}
-  title="Reviews"
-  description="Quản lý đánh giá sản phẩm"
-  href="/admin/reviews"
-/>
-
-            <QuickAccess
-              icon={TicketPercent}
-              title="Voucher"
-              description="Tạo và quản lý mã giảm giá"
-              href="/admin/vouchers"
-            />
-
-            <QuickAccess
-              icon={Settings}
+              icon={ClipboardList}
               title="Đơn hàng"
               description="Theo dõi và xử lý đơn"
               href="/admin/orders"
             />
+
+            <QuickAccess
+              icon={Headset}
+              title="Support Requests"
+              description="Quản lý yêu cầu hỗ trợ"
+              href="/admin/support"
+            />
           </section>
 
-
-
-                    {/* =================================================
+          {/* =================================================
               RECENT ORDERS
           ================================================= */}
 
