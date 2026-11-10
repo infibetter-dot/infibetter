@@ -1493,7 +1493,7 @@ function ProductPage() {
 
                       alt={product.name}
 
-                      className="h-full w-full object-contain scale-100 md:scale-[0.78] p-0"
+                      className="h-full w-full object-contain scale-100 p-0 transition-transform duration-300"
 
                     />
 
@@ -2439,7 +2439,7 @@ function ProductPage() {
 
           <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
 
-            <div className="mx-auto max-w-[920px]">
+            <div className="mx-auto w-full max-w-full">
 
               <div className="mb-6 text-center">
 
@@ -2461,7 +2461,7 @@ function ProductPage() {
 
                 className={
   lifestyleImages.length === 1
-    ? "mx-auto max-w-[760px]"
+    ? "mx-auto w-full max-w-full"
     : "grid grid-cols-1 gap-6"
 }
 
