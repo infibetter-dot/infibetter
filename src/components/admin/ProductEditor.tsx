@@ -101,6 +101,14 @@ const [topSeller, setTopSeller] = useState(
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
 
+  const [plugTypes, setPlugTypes] = useState<string[]>(
+    Array.isArray(product.plug_type)
+      ? product.plug_type
+      : typeof product.plug_type === "string" && product.plug_type
+        ? product.plug_type.split(",").map((item: string) => item.trim()).filter(Boolean)
+        : []
+  );
+
   const [imageUrl, setImageUrl] = useState(
     product.image_url ?? ""
   );
@@ -436,6 +444,7 @@ async function save() {
 
 
   short_description: shortDescription,
+  plug_type: plugTypes.length ? plugTypes.join(",") : null,
 
   compare_at_price: comparePrice,
 
@@ -797,6 +806,49 @@ if (error) throw error;
     </div>
 
     {/* HIỂN THỊ WEBSITE */}
+    {/* COMPATIBLE PLUG TYPES */}
+    <div className="lg:col-span-2">
+      <div className="mb-2">
+        <label className="text-xs font-semibold text-[#222]">
+          Compatible Plug Types
+        </label>
+        <p className="mt-0.5 text-[10px] text-neutral-400">
+          Select all compatible plug types for this product.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {["US", "EU", "UK", "AU"].map((type) => {
+          const selected = plugTypes.includes(type);
+
+          return (
+            <label
+              key={type}
+              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-3 text-xs font-semibold transition ${
+                selected
+                  ? "border-[#9B7B5A] bg-[#F6EFE8] text-[#795C42]"
+                  : "border-[#D9D4CC] bg-white text-[#444] hover:border-[#9B7B5A]"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={(e) => {
+                  setPlugTypes((prev) =>
+                    e.target.checked
+                      ? [...prev, type]
+                      : prev.filter((item) => item !== type)
+                  );
+                }}
+                className="accent-[#9B7B5A]"
+              />
+              {type} Plug
+            </label>
+          );
+        })}
+      </div>
+    </div>
+
     <div className="lg:col-span-2">
       <div className="mb-1.5 flex items-center justify-between">
         <p className="text-xs font-semibold text-[#222]">

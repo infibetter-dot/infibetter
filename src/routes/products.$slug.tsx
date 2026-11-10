@@ -169,6 +169,8 @@ const productOptions = (slug: string) =>
 
           short_description,
 
+          plug_type,
+
           id,
 
           slug,
@@ -513,6 +515,13 @@ function ProductPage() {
   const { data } = useSuspenseQuery(productOptions(slug));
 
   const { product, related } = data;
+  const compatiblePlugTypes = String(product.plug_type ?? "")
+    .split(",")
+    .map((type: string) => type.trim().toUpperCase())
+    .filter((type: string) => ["US", "EU", "UK", "AU"].includes(type));
+  const [selectedPlugType, setSelectedPlugType] = useState<string>(
+    compatiblePlugTypes[0] ?? "",
+  );
 
   // Keep the rating summary in sync with the visible customer reviews.
   const productReviewSummaryQuery = useQuery({
@@ -694,6 +703,33 @@ function ProductPage() {
 
   );
 
+  // Lifestyle images gently zoom in while entering the viewport,
+  // then return to their original scale when scrolled out.
+  useEffect(() => {
+    const images = document.querySelectorAll<HTMLImageElement>(
+      "img[data-lifestyle-zoom]"
+    );
+
+    if (!images.length || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const image = entry.target as HTMLImageElement;
+          image.classList.toggle("scale-[1.06]", entry.isIntersecting);
+        });
+      },
+      {
+        threshold: 0.4,
+        rootMargin: "0px 0px -8% 0px",
+      }
+    );
+
+    images.forEach((image) => observer.observe(image));
+
+    return () => observer.disconnect();
+  }, [product.id, lifestyleImages.length]);
+
   // Product videos are displayed in their own horizontal carousel below Lifestyle.
 
   const productVideos = useMemo(
@@ -753,6 +789,7 @@ function ProductPage() {
       productImages[0];
 
     setSelectedColor(firstColor);
+    setSelectedPlugType(compatiblePlugTypes[0] ?? "");
 
     const firstVariant = (product.product_variants ?? []).find(
 
@@ -1268,6 +1305,8 @@ function ProductPage() {
 
         deviceModelName: selectedVariant?.device_model_name,
 
+        plugType: selectedPlugType || undefined,
+
       } as any,
 
       quantity,
@@ -1412,7 +1451,7 @@ function ProductPage() {
 
       {/* Product hero */}
 
-      <section className="mx-auto max-w-[1240px] px-5 pb-12 md:px-8 lg:pb-16">
+      <section className="mx-auto max-w-[1240px] px-2 pb-12 md:px-8 lg:pb-16">
 
         <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)] lg:gap-12 xl:gap-16">
 
@@ -1454,7 +1493,7 @@ function ProductPage() {
 
                       alt={product.name}
 
-                      className="h-full w-full object-contain scale-[0.78] p-0"
+                      className="h-full w-full object-contain scale-100 md:scale-[0.78] p-0"
 
                     />
 
@@ -1664,23 +1703,23 @@ function ProductPage() {
 
               {productReviewSummary && (
                 <a
-                  href="#product-reviews"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    document.getElementById("product-reviews")?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
-                  }}
-                  className="mt-1.5 inline-flex items-center gap-2 text-[12px] text-[#6E6E73] transition hover:text-[#1D1D1F]"
-                  aria-label={`Rated ${productReviewSummary.average.toFixed(1)} out of 5 from ${productReviewSummary.total} reviews. View reviews.`}
-                >
-                  <span className="tracking-[1px] text-[#00B67A]" aria-hidden="true">★★★★★</span>
-                  <span className="font-semibold text-[#1D1D1F]">
-                    {productReviewSummary.average.toFixed(1)}
-                  </span>
-                  <span>({productReviewSummary.total} reviews)</span>
-                </a>
+  href="#product-reviews"
+  onClick={(event) => {
+    event.preventDefault();
+    document.getElementById("product-reviews")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }}
+  className="mt-1.5 inline-flex min-h-5 items-center gap-1.5 whitespace-nowrap text-[12px] leading-5 text-[#6E6E73] transition hover:text-[#1D1D1F]"
+  aria-label={`Rated ${productReviewSummary.average.toFixed(1)} out of 5 from ${productReviewSummary.total} reviews. View reviews.`}
+>
+  <span className="tracking-[1px] text-[#00B67A]" aria-hidden="true">★★★★★</span>
+  <span className="font-semibold text-[#1D1D1F]">
+    {productReviewSummary.average.toFixed(1)}
+  </span>
+  <span>({productReviewSummary.total} reviews)</span>
+</a>
               )}
 
               {product.short_description && (
@@ -1784,6 +1823,40 @@ function ProductPage() {
                             }`}
                             style={{ backgroundColor: color.hex || "#D2D2D7" }}
                           />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Selectable plug type - displayed directly below Color */}
+              {compatiblePlugTypes.length > 0 && (
+                <div className="mt-3 min-w-0">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-[12px] font-semibold tracking-[-0.01em] text-[#303036]">
+                      Plug type
+                    </p>
+                    <span className="text-[11px] font-medium text-[#6E6E73]">
+                      {selectedPlugType ? `${selectedPlugType} Plug` : "Choose a plug"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {compatiblePlugTypes.map((type: string) => {
+                      const isSelected = selectedPlugType === type;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setSelectedPlugType(type)}
+                          aria-pressed={isSelected}
+                          className={`inline-flex min-h-[36px] min-w-[64px] items-center justify-center rounded-full border px-4 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 ${
+                            isSelected
+                              ? "border-[#1D1D1F] bg-[#1D1D1F] text-white"
+                              : "border-[#E5E5E7] bg-white text-[#45454B] hover:border-[#99999F]"
+                          }`}
+                        >
+                          {type}
                         </button>
                       );
                     })}
@@ -2073,7 +2146,7 @@ function ProductPage() {
 
               </div>
 
-              {/* Benefits / Trust Features — aligned with INFIBETTER policies */}
+              {/* Benefits / Trust Features Ã¢â‚¬â€ aligned with INFIBETTER policies */}
               <section className="mt-3 w-full min-w-0" aria-label="Shopping benefits">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#777F89]">
@@ -2082,14 +2155,14 @@ function ProductPage() {
                   <span className="h-px flex-1 bg-[#ECEEF1]" aria-hidden="true" />
                 </div>
 
-                <div className="grid w-full min-w-0 grid-cols-2 gap-2.5">
+                <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:gap-2.5">
                   {[
                     {
                       icon: Truck,
                       text: "Tracked delivery",
                       hint: "Tracking after dispatch",
                       description:
-                        "Orders are generally processed within 1–2 business days before dispatch. After dispatch, tracking details are sent so you can follow your delivery. Estimated transit times are 5–9 business days for the US, Canada, Europe, and Australia/New Zealand; 5–8 business days for the UK; and 5–12 business days for other destinations. Battery products may take approximately 4–10 business days after dispatch, depending on destination and carrier. These are estimates, not guarantees. Customs, weather, carrier delays, and other local disruptions may affect delivery. For help, email infibetter@gmail.com.",
+                        "Orders are generally processed within 1Ã¢â‚¬â€œ2 business days before dispatch. After dispatch, tracking details are sent so you can follow your delivery. Estimated transit times are 5Ã¢â‚¬â€œ9 business days for the US, Canada, Europe, and Australia/New Zealand; 5Ã¢â‚¬â€œ8 business days for the UK; and 5Ã¢â‚¬â€œ12 business days for other destinations. Battery products may take approximately 4Ã¢â‚¬â€œ10 business days after dispatch, depending on destination and carrier. These are estimates, not guarantees. Customs, weather, carrier delays, and other local disruptions may affect delivery. For help, email infibetter@gmail.com.",
                     },
                     {
                       icon: RotateCcw,
@@ -2118,25 +2191,27 @@ function ProductPage() {
                       type="button"
                       onClick={() => setActiveTrustInfo({ title: text, description, icon: Icon })}
                       aria-haspopup="dialog"
-                      className="group flex min-h-[94px] min-w-0 flex-col rounded-[13px] border border-[#E9EBEF] bg-[#F7F8FA] p-3 text-left outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-[#D8DDE5] hover:bg-[#F2F4F7] hover:shadow-[0_5px_16px_rgba(20,30,45,0.07)] focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 active:translate-y-0 sm:min-h-[100px] sm:p-3.5"
+                      className="group flex min-h-[76px] min-w-0 items-center gap-2 rounded-[12px] border border-[#E9EBEF] bg-[#F7F8FA] p-2 text-left outline-none transition-all duration-200 hover:border-[#D8DDE5] hover:bg-[#F2F4F7] hover:shadow-[0_5px_16px_rgba(20,30,45,0.07)] focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 active:translate-y-0 sm:gap-3 sm:rounded-[13px] sm:p-3"
                     >
-                      <span className="flex w-full min-w-0 items-center justify-between gap-2">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-white bg-white text-[#34465D] shadow-[0_1px_3px_rgba(20,30,45,0.06)]">
-                          <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-white bg-white text-[#34465D] shadow-[0_1px_3px_rgba(20,30,45,0.06)] sm:h-9 sm:w-9">
+                        <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
+                      </span>
+
+                      <span className="min-w-0 flex-1">
+                        <span className="block whitespace-normal break-words text-[12px] font-semibold leading-5 text-[#303640]">
+                          {text}
                         </span>
-                        <ArrowUpRight
-                          size={15}
-                          strokeWidth={1.8}
-                          aria-hidden="true"
-                          className="shrink-0 text-[#9299A3] transition duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#34465D]"
-                        />
+                        <span className="mt-0.5 block whitespace-normal break-words text-[10px] leading-4 text-[#858C96] sm:text-[11px]">
+                          {hint}
+                        </span>
                       </span>
-                      <span className="mt-2 block min-w-0 truncate text-[11px] font-semibold leading-4 text-[#303640] sm:text-[12px]">
-                        {text}
-                      </span>
-                      <span className="mt-0.5 block min-w-0 truncate text-[10px] leading-4 text-[#858C96] sm:text-[11px]">
-                        {hint}
-                      </span>
+
+                      <ArrowUpRight
+                        size={15}
+                        strokeWidth={1.8}
+                        aria-hidden="true"
+                        className="shrink-0 text-[#9299A3] transition duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#34465D]"
+                      />
                     </button>
                   ))}
                 </div>
@@ -2248,7 +2323,7 @@ function ProductPage() {
 
       )}
 
-            {/* Product video carousel — displayed above Lifestyle */}
+            {/* Product video carousel Ã¢â‚¬â€ displayed above Lifestyle */}
 
       {productVideos.length > 0 && (
 
@@ -2336,7 +2411,7 @@ function ProductPage() {
 
                   <div className="p-4 sm:p-5">
 
-                    <h3 className="text-[14px] font-semibold leading-5 text-[#1D1D1F]">{video.title || `${product.name} — Video ${index + 1}`}</h3>
+                    <h3 className="text-[14px] font-semibold leading-5 text-[#1D1D1F]">{video.title || `${product.name} Ã¢â‚¬â€ Video ${index + 1}`}</h3>
 
                     <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">Discover the product from every angle.</p>
 
@@ -2348,7 +2423,7 @@ function ProductPage() {
 
             </div>
 
-            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos →</p>}
+            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos Ã¢â€ â€™</p>}
 
           </div>
 
@@ -2356,7 +2431,7 @@ function ProductPage() {
 
       )}
 
-{/* Lifestyle gallery — only Lifestyle images */}
+{/* Lifestyle gallery Ã¢â‚¬â€ only Lifestyle images */}
 
       {lifestyleImages.length > 0 && (
 
@@ -2385,14 +2460,10 @@ function ProductPage() {
               <div
 
                 className={
-
-                  lifestyleImages.length === 1
-
-                    ? "mx-auto max-w-[760px]"
-
-                    : "grid grid-cols-1 gap-5 md:grid-cols-2"
-
-                }
+  lifestyleImages.length === 1
+    ? "mx-auto max-w-[760px]"
+    : "grid grid-cols-1 gap-6"
+}
 
               >
 
@@ -2412,7 +2483,9 @@ function ProductPage() {
 
                       alt={`${product.name} lifestyle ${index + 1}`}
 
-                      className="block h-auto w-full object-contain"
+                      data-lifestyle-zoom
+
+                      className="block h-auto w-full origin-center scale-100 object-contain transform-gpu transition-transform duration-700 ease-out will-change-transform"
 
                       loading="lazy"
 
@@ -2438,7 +2511,7 @@ function ProductPage() {
 
         <div className="mx-auto max-w-[1240px] px-5 py-10 md:px-8 md:py-14 lg:py-16">
 
-          <div className="mx-auto max-w-[760px]">
+          <div className="mx-auto w-full max-w-[920px]">
 
             <div className="mb-5 text-left sm:mb-6">
 
@@ -2857,7 +2930,7 @@ function ProductPage() {
 
               >
 
-                View all →
+                View all Ã¢â€ â€™
 
               </Link>
 
@@ -3027,7 +3100,7 @@ function ProductPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[9px] font-bold uppercase tracking-[0.19em] text-[#A0A5AD]">
-                      INFIBETTER · SHOP WITH CONFIDENCE
+                      INFIBETTER Ã‚Â· SHOP WITH CONFIDENCE
                     </p>
                     <h2
                       id="trust-info-title"
@@ -3063,7 +3136,7 @@ function ProductPage() {
                   <div className="rounded-[14px] border border-[#ECEEF1] bg-white px-4 py-3.5">
                     <p className="text-[13px] leading-[1.85] text-[#626873]">
                       Orders are generally processed within{" "}
-                      <strong className="font-semibold text-[#252A32]">1–2 business days</strong>{" "}
+                      <strong className="font-semibold text-[#252A32]">1Ã¢â‚¬â€œ2 business days</strong>{" "}
                       before dispatch. Once your order is on its way, tracking details are sent so you can follow its journey.
                     </p>
                   </div>
@@ -3071,7 +3144,7 @@ function ProductPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex min-h-[112px] flex-col rounded-[14px] border border-[#E5EAF0] bg-[#F7F8FA] p-4">
                       <p className="text-[9px] font-bold uppercase leading-4 tracking-[0.16em] text-[#9299A3]">Processing time</p>
-                      <p className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.025em] text-[#252A32]">1–2 days</p>
+                      <p className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.025em] text-[#252A32]">1Ã¢â‚¬â€œ2 days</p>
                       <p className="mt-2 text-[11px] leading-[1.5] text-[#858C96]">Before dispatch</p>
                     </div>
                     <div className="flex min-h-[112px] flex-col rounded-[14px] border border-[#E5EAF0] bg-[#F7F8FA] p-4">
@@ -3088,10 +3161,10 @@ function ProductPage() {
                     </div>
                     <div className="overflow-hidden rounded-[13px] border border-[#E9EDF2]">
                       {[
-                        ["US, Canada, Europe, Australia & New Zealand", "5–9 business days"],
-                        ["United Kingdom", "5–8 business days"],
-                        ["Other destinations", "5–12 business days"],
-                        ["Battery products", "4–10 business days"],
+                        ["US, Canada, Europe, Australia & New Zealand", "5Ã¢â‚¬â€œ9 business days"],
+                        ["United Kingdom", "5Ã¢â‚¬â€œ8 business days"],
+                        ["Other destinations", "5Ã¢â‚¬â€œ12 business days"],
+                        ["Battery products", "4Ã¢â‚¬â€œ10 business days"],
                       ].map(([region, timing], index) => (
                         <div key={region} className={`flex items-center justify-between gap-3 px-3.5 py-3.5 ${index ? "border-t border-[#ECEEF1]" : ""}`}>
                           <span className="min-w-0 flex-1 text-[11px] leading-[1.65] text-[#626873]">{region}</span>
@@ -3254,3 +3327,4 @@ function ProductPage() {
   );
 
 }
+

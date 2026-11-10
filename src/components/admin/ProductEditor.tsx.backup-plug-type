@@ -1,0 +1,1337 @@
+import { useEffect, useMemo, useState } from "react";
+import { ChevronUp, Eye, ExternalLink, Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import ProductEditorRichText from "./ProductEditorRichText";
+import ProductSeo from "./ProductSeo";
+import ProductGallery from "./ProductGallery";
+import ProductSpecification from "./ProductSpecification";
+import ProductUSP from "./ProductUSP";
+import ProductColors from "./ProductColors";
+import ProductFAQs from "./ProductFAQs";
+import ProductCompatibility from "./ProductCompatibility";
+
+// INFIBETTER: giÃƒÂ¡ gÃ¡Â»â€˜c trong database luÃƒÂ´n lÃƒÂ  USD.
+// VND chÃ¡Â»â€° dÃƒÂ¹ng Ã„â€˜Ã¡Â»Æ’ hiÃ¡Â»Æ’n thÃ¡Â»â€¹ tham khÃ¡ÂºÂ£o cho admin.
+const USD_TO_VND = 25500;
+
+function formatUSD(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
+}
+
+function formatVND(value: number) {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format((Number(value) || 0) * USD_TO_VND);
+}
+
+interface Props {
+  product: any;
+  onSaved: () => void;
+  collapse?: () => void;
+}
+
+export default function ProductEditor({
+  product,
+  onSaved,
+  collapse,
+}: Props) {
+  const [loading, setLoading] = useState(false);
+  const [colorVersion, setColorVersion] = useState(0);
+  const [name, setName] = useState(product.name ?? "");
+  const [shortDescription, setShortDescription] = useState(
+  product.short_description ?? ""
+);
+
+const [description, setDescription] = useState(
+  product.description ?? ""
+);
+
+  const [seoTitle, setSeoTitle] = useState(
+    product.seo_title ?? ""
+  );
+
+  const [seoDescription, setSeoDescription] = useState(
+    product.seo_description ?? ""
+  );
+
+  const [seoKeywords, setSeoKeywords] = useState(
+    product.seo_keywords ?? ""
+  );
+
+  const [price, setPrice] = useState(product.price ?? 0);
+
+  const [comparePrice, setComparePrice] = useState(
+    product.compare_at_price ?? 0
+  );
+
+  const [stock, setStock] = useState(product.stock ?? 0);
+  const [featured, setFeatured] = useState(
+  product.featured ?? false
+);
+
+const [bestSeller, setBestSeller] = useState(
+  product.best_seller ?? false
+);
+
+const [topSeller, setTopSeller] = useState(
+  product.top_seller ?? false
+);
+  const [categoryId, setCategoryId] = useState(
+    product.category_id ?? ""
+  );
+
+  const [parentCategoryId, setParentCategoryId] = useState("");
+
+  const [categories, setCategories] = useState<any[]>([]);
+
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categoryModalMode, setCategoryModalMode] = useState<
+    "parent" | "child"
+  >("child");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+
+  const [plugTypes, setPlugTypes] = useState<string[]>(
+    Array.isArray(product.plug_type)
+      ? product.plug_type
+      : typeof product.plug_type === "string" && product.plug_type
+        ? product.plug_type.split(",").map((item: string) => item.trim()).filter(Boolean)
+        : []
+  );
+  const [imageUrl, setImageUrl] = useState(
+    product.image_url ?? ""
+  );
+
+useEffect(() => {
+  
+  loadCategories();
+}, []);
+
+async function uploadThumbnail(
+  e: React.ChangeEvent<HTMLInputElement>
+) {
+  const input = e.currentTarget;
+  const file = input.files?.[0];
+
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    toast.error("Vui lÃƒÂ²ng chÃ¡Â»Ân file hÃƒÂ¬nh Ã¡ÂºÂ£nh.");
+    input.value = "";
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    toast.error("Ã¡ÂºÂ¢nh khÃƒÂ´ng Ã„â€˜Ã†Â°Ã¡Â»Â£c vÃ†Â°Ã¡Â»Â£t quÃƒÂ¡ 10MB.");
+    input.value = "";
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("productId", product.id);
+
+    const response = await fetch("/api/upload-r2", {
+      method: "POST",
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success || !result.url) {
+      throw new Error(
+        result.error ||
+          result.detail ||
+          "Upload Ã¡ÂºÂ£nh lÃƒÂªn Cloudflare R2 thÃ¡ÂºÂ¥t bÃ¡ÂºÂ¡i."
+      );
+    }
+
+    setImageUrl(result.url);
+    toast.success("Ã„ÂÃƒÂ£ tÃ¡ÂºÂ£i Ã¡ÂºÂ£nh lÃƒÂªn Cloudflare R2.");
+  } catch (error: any) {
+    toast.error(
+      error?.message || "Upload Ã¡ÂºÂ£nh thÃ¡ÂºÂ¥t bÃ¡ÂºÂ¡i."
+    );
+  } finally {
+    input.value = "";
+  }
+}
+
+async function loadCategories() {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    toast.error(error.message);
+    return;
+  }
+
+  setCategories(data ?? []);
+}
+
+useEffect(() => {
+  if (!categories.length) return;
+
+  const selected = categories.find(
+    (item) => item.id === categoryId
+  );
+
+  if (!selected) {
+    setParentCategoryId("");
+    return;
+  }
+
+  setParentCategoryId(
+    selected.parent_id || selected.id
+  );
+}, [categories, categoryId]);
+
+const parentCategories = useMemo(
+  () =>
+    [...categories].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    ),
+  [categories]
+);
+
+const childCategories = useMemo(
+  () =>
+    categories
+      .filter((item) => item.parent_id === parentCategoryId)
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  [categories, parentCategoryId]
+);
+
+function openCreateCategory(mode: "parent" | "child") {
+  setCategoryModalMode(mode);
+  setNewCategoryName("");
+  setCategoryModalOpen(true);
+}
+
+async function createCategory() {
+  const name = newCategoryName.trim();
+
+  if (!name) {
+    toast.error("Vui lÃƒÂ²ng nhÃ¡ÂºÂ­p tÃƒÂªn danh mÃ¡Â»Â¥c.");
+    return;
+  }
+
+  if (categoryModalMode === "child" && !parentCategoryId) {
+    toast.error("HÃƒÂ£y chÃ¡Â»Ân danh mÃ¡Â»Â¥c cha trÃ†Â°Ã¡Â»â€ºc.");
+    return;
+  }
+
+  try {
+    setCreatingCategory(true);
+
+    let duplicateQuery = supabase
+      .from("categories")
+      .select("id,name,parent_id")
+      .eq("name", name);
+
+    duplicateQuery =
+      categoryModalMode === "child"
+        ? duplicateQuery.eq("parent_id", parentCategoryId)
+        : duplicateQuery.is("parent_id", null);
+
+    const { data: duplicate, error: duplicateError } =
+      await duplicateQuery.maybeSingle();
+
+    if (duplicateError) throw duplicateError;
+
+    if (duplicate) {
+      toast.error("Danh mÃ¡Â»Â¥c nÃƒÂ y Ã„â€˜ÃƒÂ£ tÃ¡Â»â€œn tÃ¡ÂºÂ¡i.");
+      return;
+    }
+
+    const slug = createSlug(name);
+
+    const { data: sameSlug, error: slugError } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (slugError) throw slugError;
+
+    if (sameSlug) {
+      toast.error("Slug Ã„â€˜ÃƒÂ£ tÃ¡Â»â€œn tÃ¡ÂºÂ¡i. HÃƒÂ£y dÃƒÂ¹ng tÃƒÂªn khÃƒÂ¡c.");
+      return;
+    }
+
+    const { data: created, error } = await supabase
+      .from("categories")
+      .insert({
+        name,
+        slug,
+        parent_id:
+          categoryModalMode === "child"
+            ? parentCategoryId
+            : null,
+      })
+      .select("*")
+      .single();
+
+    if (error) throw error;
+
+    setCategories((current) =>
+      [...current, created].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      )
+    );
+
+    if (categoryModalMode === "child") {
+      setCategoryId(created.id);
+    } else {
+      setParentCategoryId(created.id);
+      setCategoryId("");
+    }
+
+    setCategoryModalOpen(false);
+    setNewCategoryName("");
+
+    toast.success(
+      categoryModalMode === "child"
+        ? `Ã„ÂÃƒÂ£ tÃ¡ÂºÂ¡o danh mÃ¡Â»Â¥c con "${name}".`
+        : `Ã„ÂÃƒÂ£ tÃ¡ÂºÂ¡o danh mÃ¡Â»Â¥c chÃƒÂ­nh "${name}".`
+    );
+  } catch (error: any) {
+    toast.error(
+      error?.message || "KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ¡o danh mÃ¡Â»Â¥c."
+    );
+  } finally {
+    setCreatingCategory(false);
+  }
+}
+
+async function deleteCategory(categoryIdToDelete: string) {
+  const category = categories.find(
+    (item) => item.id === categoryIdToDelete
+  );
+
+  if (!category) return;
+
+  const confirmed = window.confirm(
+    `BÃ¡ÂºÂ¡n cÃƒÂ³ chÃ¡ÂºÂ¯c muÃ¡Â»â€˜n xÃƒÂ³a danh mÃ¡Â»Â¥c "${category.name}"?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    setDeletingCategoryId(categoryIdToDelete);
+
+    const { count: childCount, error: childError } = await supabase
+      .from("categories")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_id", categoryIdToDelete);
+
+    if (childError) throw childError;
+
+    if ((childCount ?? 0) > 0) {
+      toast.error(
+        `KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a "${category.name}" vÃƒÂ¬ danh mÃ¡Â»Â¥c nÃƒÂ y vÃ¡ÂºÂ«n cÃƒÂ²n danh mÃ¡Â»Â¥c con.`
+      );
+      return;
+    }
+
+    const { count: productCount, error: productError } = await supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("category_id", categoryIdToDelete);
+
+    if (productError) throw productError;
+
+    if ((productCount ?? 0) > 0) {
+      toast.error(
+        `KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a "${category.name}" vÃƒÂ¬ Ã„â€˜ang cÃƒÂ³ ${productCount} sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m sÃ¡Â»Â­ dÃ¡Â»Â¥ng danh mÃ¡Â»Â¥c nÃƒÂ y. HÃƒÂ£y chuyÃ¡Â»Æ’n sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m sang danh mÃ¡Â»Â¥c khÃƒÂ¡c trÃ†Â°Ã¡Â»â€ºc.`
+      );
+      return;
+    }
+
+    const { error: deleteError } = await supabase
+      .from("categories")
+      .delete()
+      .eq("id", categoryIdToDelete);
+
+    if (deleteError) throw deleteError;
+
+    setCategories((current) =>
+      current.filter((item) => item.id !== categoryIdToDelete)
+    );
+
+    if (parentCategoryId === categoryIdToDelete) {
+      setParentCategoryId("");
+      setCategoryId("");
+    }
+
+    if (categoryId === categoryIdToDelete) {
+      setCategoryId("");
+    }
+
+    toast.success(`Ã„ÂÃƒÂ£ xÃƒÂ³a danh mÃ¡Â»Â¥c "${category.name}".`);
+  } catch (error: any) {
+    toast.error(error?.message || "KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a danh mÃ¡Â»Â¥c.");
+  } finally {
+    setDeletingCategoryId(null);
+  }
+}
+
+function createSlug(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/Ã„â€˜/g, "d")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function previewProduct() {
+  window.open(
+    `/products/${product.slug}`,
+    "_blank"
+  );
+}
+  
+async function save() {
+  try {
+    if (!product?.id) {
+      toast.error("KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y ID sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m.");
+      return;
+    }
+
+    if (!categoryId) {
+      toast.error("Vui lÃƒÂ²ng chÃ¡Â»Ân danh mÃ¡Â»Â¥c con cho sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m.");
+      return;
+    }
+
+    const selectedCategory = categories.find(
+      (item) => item.id === categoryId
+    );
+
+    if (!selectedCategory?.parent_id) {
+      toast.error("SÃ¡ÂºÂ£n phÃ¡ÂºÂ©m phÃ¡ÂºÂ£i Ã„â€˜Ã†Â°Ã¡Â»Â£c gÃƒÂ¡n vÃƒÂ o danh mÃ¡Â»Â¥c con.");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase
+      .from("products")
+      .update({
+  featured,
+  best_seller: bestSeller,
+  top_seller: topSeller,
+  name,
+  slug: createSlug(name),
+
+  image_url: imageUrl,
+
+
+
+  short_description: shortDescription,
+  plug_type: plugTypes.length ? plugTypes.join(",") : null,
+
+  compare_at_price: comparePrice,
+
+  description,
+
+  seo_title: seoTitle,
+  seo_description: seoDescription,
+  seo_keywords: seoKeywords,
+
+  category_id:
+  categoryId === ""
+    ? null
+    : categoryId,
+
+  price,
+  stock,
+})
+
+      .eq("id", product.id);
+
+if (error) throw error;
+    toast.success("Ã„ÂÃƒÂ£ lÃ†Â°u sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m");
+
+    onSaved();
+
+  } catch (err: any) {
+
+    toast.error(err.message);
+
+  } finally {
+
+    setLoading(false);
+
+  }
+}
+
+  
+  return (
+    <div className="space-y-5">
+      {/* PRODUCT EDITOR Ã¢â‚¬â€ compact premium sticky toolbar */}
+      <div className="sticky top-3 z-20 flex flex-col gap-4 rounded-2xl border border-slate-200/90 bg-white px-4 py-4 shadow-[0_8px_28px_rgba(15,23,42,0.06)] sm:px-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <img
+              src={imageUrl || "/placeholder.svg"}
+              className="h-full w-full rounded-lg object-cover"
+              alt={name || "SÃ¡ÂºÂ£n phÃ¡ÂºÂ©m"}
+            />
+          </div>
+          <div className="min-w-0">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+              INFIBETTER / PRODUCT
+            </p>
+            <h1 className="truncate text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+              {name || "SÃ¡ÂºÂ£n phÃ¡ÂºÂ©m mÃ¡Â»â€ºi"}
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span className="font-medium text-slate-700">{formatUSD(price)}</span>
+              <span aria-hidden="true" className="text-slate-300">Ã¢â‚¬Â¢</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                TÃ¡Â»â€œn kho: {stock}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex w-full items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 p-1.5 md:w-auto md:shrink-0">
+          <button
+            type="button"
+            onClick={previewProduct}
+            title="Xem sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m"
+            aria-label="Xem sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-0 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+          >
+            <ExternalLink size={16} strokeWidth={1.8} />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              collapse?.();
+            }}
+            title="Thu gÃ¡Â»Ân"
+            aria-label="Thu gÃ¡Â»Ân"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-0 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+          >
+            <ChevronUp size={16} strokeWidth={1.8} />
+          </button>
+
+          <button
+            type="button"
+            onClick={save}
+            disabled={loading}
+            title={loading ? "Ã„Âang lÃ†Â°u..." : "LÃ†Â°u thay Ã„â€˜Ã¡Â»â€¢i"}
+            aria-label={loading ? "Ã„Âang lÃ†Â°u..." : "LÃ†Â°u thay Ã„â€˜Ã¡Â»â€¢i"}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-800 p-0 text-white shadow-sm transition hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Save size={16} strokeWidth={1.9} />
+          </button>
+        </div>
+      </div>
+
+      {/* THÃƒâ€NG TIN CÃ†Â  BÃ¡ÂºÂ¢N */}
+      
+      <section className="rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm">
+  {/* HEADER */}
+  <div className="mb-3 flex items-center justify-between border-b border-[#ECE7DF] pb-3">
+    <div>
+      <h2 className="text-base font-bold tracking-tight text-[#222]">
+        ThÃƒÂ´ng tin sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m
+      </h2>
+
+      <p className="mt-0.5 text-[11px] text-neutral-500">
+        TÃƒÂªn, slug, Ã¡ÂºÂ£nh Ã„â€˜Ã¡ÂºÂ¡i diÃ¡Â»â€¡n, danh mÃ¡Â»Â¥c vÃƒÂ  nÃ¡Â»â„¢i dung hiÃ¡Â»Æ’n thÃ¡Â»â€¹.
+      </p>
+    </div>
+  </div>
+
+  <div className="grid gap-3 lg:grid-cols-2">
+
+    {/* TÃƒÅ N */}
+    <div className="lg:col-span-2">
+      <label className="mb-1 block text-xs font-semibold text-[#222]">
+        TÃƒÂªn sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m <span className="text-red-500">*</span>
+      </label>
+
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="VÃƒÂ­ dÃ¡Â»Â¥: Ã„ÂÃƒÂ¨n bÃƒÂ n Flowerpot VP9"
+        className="
+          h-9
+          w-full
+          rounded-lg
+          border border-[#D9D4CC]
+          px-3
+          text-xs
+          outline-none
+          transition
+          focus:border-[#9B7B5A]
+          focus:ring-2
+          focus:ring-[#F6EFE8]
+        "
+      />
+    </div>
+
+    {/* SLUG */}
+    <div>
+      <label className="mb-1 block text-xs font-semibold text-[#222]">
+        Slug
+      </label>
+
+      <div className="
+        flex
+        h-9
+        items-center
+        rounded-lg
+        border
+        border-[#E2DDD5]
+        bg-[#FAF8F5]
+        px-3
+        text-[10px]
+        text-neutral-500
+      ">
+        {createSlug(name)}
+      </div>
+    </div>
+
+    {/* DANH MÃ¡Â»Â¤C */}
+    <div className="lg:col-span-2">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-[#222]">
+            Danh mÃ¡Â»Â¥c sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m
+          </label>
+          <p className="mt-0.5 text-[10px] text-neutral-500">
+            SÃ¡ÂºÂ£n phÃ¡ÂºÂ©m Ã„â€˜Ã†Â°Ã¡Â»Â£c lÃ†Â°u vÃƒÂ o danh mÃ¡Â»Â¥c con; danh mÃ¡Â»Â¥c chÃƒÂ­nh chÃ¡Â»â€° dÃƒÂ¹ng Ã„â€˜Ã¡Â»Æ’ phÃƒÂ¢n nhÃƒÂ³m.
+          </p>
+        </div>
+
+        <span className="shrink-0 text-[10px] font-medium text-emerald-700">
+          {categoryId ? "Category Ã„â€˜ÃƒÂ£ chÃ¡Â»Ân" : "ChÃ†Â°a chÃ¡Â»Ân"}
+        </span>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-2">
+        <div>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-[11px] font-semibold text-neutral-700">
+              Danh mÃ¡Â»Â¥c cha
+            </label>
+
+            <div className="flex items-center gap-2">
+              {parentCategoryId && (
+                <button
+                  type="button"
+                  disabled={deletingCategoryId === parentCategoryId}
+                  onClick={() => deleteCategory(parentCategoryId)}
+                  className="text-[10px] font-semibold text-red-600 hover:underline disabled:opacity-50"
+                >
+                  {deletingCategoryId === parentCategoryId ? "Ã„Âang xÃƒÂ³a..." : "XÃƒÂ³a"}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => openCreateCategory("parent")}
+                className="text-[10px] font-semibold text-[#2D6A4F] hover:underline"
+              >
+                + ThÃƒÂªm danh mÃ¡Â»Â¥c
+              </button>
+            </div>
+          </div>
+
+          <select
+            value={parentCategoryId}
+            onChange={(e) => {
+              setParentCategoryId(e.target.value);
+              setCategoryId("");
+            }}
+            className="h-9 w-full rounded-lg border border-[#D9D4CC] bg-white px-3 text-xs outline-none focus:border-[#9B7B5A] focus:ring-2 focus:ring-[#F6EFE8]"
+          >
+            <option value="">ChÃ¡Â»Ân danh mÃ¡Â»Â¥c cha</option>
+            {parentCategories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-[11px] font-semibold text-neutral-700">
+              Danh mÃ¡Â»Â¥c con <span className="text-red-500">*</span>
+            </label>
+
+            <div className="flex items-center gap-2">
+              {categoryId && (
+                <button
+                  type="button"
+                  disabled={deletingCategoryId === categoryId}
+                  onClick={() => deleteCategory(categoryId)}
+                  className="text-[10px] font-semibold text-red-600 hover:underline disabled:opacity-50"
+                >
+                  {deletingCategoryId === categoryId ? "Ã„Âang xÃƒÂ³a..." : "XÃƒÂ³a"}
+                </button>
+              )}
+
+              <button
+                type="button"
+                disabled={!parentCategoryId}
+                onClick={() => openCreateCategory("child")}
+                className="text-[10px] font-semibold text-[#2D6A4F] hover:underline disabled:cursor-not-allowed disabled:text-neutral-300"
+              >
+                + ThÃƒÂªm danh mÃ¡Â»Â¥c con
+              </button>
+            </div>
+          </div>
+
+          <select
+            value={
+              childCategories.some(
+                (item) => item.id === categoryId
+              )
+                ? categoryId
+                : ""
+            }
+            onChange={(e) => setCategoryId(e.target.value)}
+            disabled={!parentCategoryId}
+            className="h-9 w-full rounded-lg border border-[#D9D4CC] bg-white px-3 text-xs outline-none disabled:cursor-not-allowed disabled:bg-[#F7F5F2] focus:border-[#9B7B5A] focus:ring-2 focus:ring-[#F6EFE8]"
+          >
+            <option value="">
+              {parentCategoryId
+                ? "ChÃ¡Â»Ân danh mÃ¡Â»Â¥c con"
+                : "ChÃ¡Â»Ân danh mÃ¡Â»Â¥c cha trÃ†Â°Ã¡Â»â€ºc"}
+            </option>
+
+            {childCategories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-2 rounded-lg border border-[#E4DED6] bg-[#FAF8F5] px-3 py-2">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
+          Product category path
+        </p>
+
+        <p className="mt-1 text-[11px] text-neutral-700">
+          {parentCategoryId
+            ? parentCategories.find(
+                (item) => item.id === parentCategoryId
+              )?.name
+            : "ChÃ†Â°a chÃ¡Â»Ân danh mÃ¡Â»Â¥c cha"}
+
+          <span className="mx-1.5 text-neutral-300">/</span>
+
+          <span
+            className={
+              categoryId
+                ? "font-semibold text-neutral-900"
+                : "text-neutral-400"
+            }
+          >
+            {categoryId
+              ? childCategories.find(
+                  (item) => item.id === categoryId
+                )?.name
+              : "ChÃ†Â°a chÃ¡Â»Ân danh mÃ¡Â»Â¥c con"}
+          </span>
+        </p>
+      </div>
+    </div>
+
+    {/* Ã¡ÂºÂ¢NH Ã„ÂÃ¡ÂºÂ I DIÃ¡Â»â€ N */}
+    <div className="lg:col-span-2">
+      <div className="
+        flex
+        items-center
+        gap-3
+        rounded-lg
+        border border-dashed
+        border-[#DDD5CC]
+        bg-[#FCFAF8]
+        px-3
+        py-2
+      ">
+        <img
+          src={imageUrl || "/placeholder.svg"}
+          className="
+            h-12
+            w-12
+            shrink-0
+            rounded-lg
+            border
+            object-cover
+          "
+          alt={name || "Ã¡ÂºÂ¢nh Ã„â€˜Ã¡ÂºÂ¡i diÃ¡Â»â€¡n"}
+        />
+
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-[#2D2D2D]">
+            Ã¡ÂºÂ¢nh Ã„â€˜Ã¡ÂºÂ¡i diÃ¡Â»â€¡n
+          </p>
+
+          <p className="mt-0.5 text-[10px] text-neutral-400">
+            ChÃ¡Â»Ân Ã¡ÂºÂ£nh tÃ¡Â»Â« <strong>ThÃ†Â° viÃ¡Â»â€¡n Ã¡ÂºÂ£nh</strong> Ã¢â€ â€™{" "}
+            <strong>Ã„ÂÃ¡ÂºÂ·t lÃƒÂ m Ã¡ÂºÂ£nh Ã„â€˜Ã¡ÂºÂ¡i diÃ¡Â»â€¡n</strong>.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* HIÃ¡Â»â€šN THÃ¡Â»Å  WEBSITE */}
+    <div className="lg:col-span-2">
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="text-xs font-semibold text-[#222]">
+          HiÃ¡Â»Æ’n thÃ¡Â»â€¹ Website
+        </p>
+
+        <span className="text-[10px] text-neutral-400">
+          TrÃ¡ÂºÂ¡ng thÃƒÂ¡i hiÃ¡Â»Æ’n thÃ¡Â»â€¹
+        </span>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-3">
+
+        {/* NEW */}
+        <label className="
+          flex
+          h-12
+          cursor-pointer
+          items-center
+          justify-between
+          rounded-lg
+          border
+          border-neutral-200
+          bg-white
+          px-3
+          transition
+          hover:bg-neutral-50
+        ">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-neutral-800">
+              SÃ¡ÂºÂ£n phÃ¡ÂºÂ©m mÃ¡Â»â€ºi
+            </p>
+
+            <p className="text-[9px] text-neutral-400">
+              New Arrival
+            </p>
+          </div>
+
+          <input
+            type="checkbox"
+            checked={featured}
+            onChange={(e) => setFeatured(e.target.checked)}
+            className="h-4 w-4 shrink-0 rounded accent-[#8C6B4D]"
+          />
+        </label>
+
+        {/* BEST SELLER */}
+        <label className="
+          flex
+          h-12
+          cursor-pointer
+          items-center
+          justify-between
+          rounded-lg
+          border
+          border-neutral-200
+          bg-white
+          px-3
+          transition
+          hover:bg-neutral-50
+        ">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-neutral-800">
+              Ã„ÂÃ†Â°Ã¡Â»Â£c yÃƒÂªu thÃƒÂ­ch
+            </p>
+
+            <p className="text-[9px] text-neutral-400">
+              Best Seller
+            </p>
+          </div>
+
+          <input
+            type="checkbox"
+            checked={bestSeller}
+            onChange={(e) => setBestSeller(e.target.checked)}
+            className="h-4 w-4 shrink-0 rounded accent-[#8C6B4D]"
+          />
+        </label>
+
+        {/* TOP SELLER */}
+        <label className="
+          flex
+          h-12
+          cursor-pointer
+          items-center
+          justify-between
+          rounded-lg
+          border
+          border-neutral-200
+          bg-white
+          px-3
+          transition
+          hover:bg-neutral-50
+        ">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-neutral-800">
+              Top bÃƒÂ¡n chÃ¡ÂºÂ¡y
+            </p>
+
+            <p className="text-[9px] text-neutral-400">
+              Top Seller
+            </p>
+          </div>
+
+          <input
+            type="checkbox"
+            checked={topSeller}
+            onChange={(e) => setTopSeller(e.target.checked)}
+            className="h-4 w-4 shrink-0 rounded accent-[#8C6B4D]"
+          />
+        </label>
+
+      </div>
+    </div>
+
+    {/* MÃƒâ€ TÃ¡ÂºÂ¢ NGÃ¡ÂºÂ®N */}
+    <div className="lg:col-span-2">
+      <div className="mb-1 flex items-center justify-between">
+        <label className="text-xs font-semibold text-[#222]">
+          MÃƒÂ´ tÃ¡ÂºÂ£ ngÃ¡ÂºÂ¯n
+        </label>
+
+        <span className="text-[10px] text-neutral-400">
+          {Math.min(shortDescription.length, 180)}/180
+        </span>
+      </div>
+
+      <textarea
+        rows={2}
+        value={shortDescription.slice(0, 180)}
+        onChange={(e) =>
+          setShortDescription(e.target.value.slice(0, 180))
+        }
+        maxLength={180}
+        placeholder="HiÃ¡Â»Æ’n thÃ¡Â»â€¹ dÃ†Â°Ã¡Â»â€ºi giÃƒÂ¡ sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m..."
+        className="
+          h-16
+          w-full
+          resize-none
+          rounded-lg
+          border border-[#D9D4CC]
+          px-3
+          py-2
+          text-xs
+          outline-none
+          transition
+          focus:border-[#9B7B5A]
+          focus:ring-2
+          focus:ring-[#F6EFE8]
+        "
+      />
+
+      <p className="mt-0.5 text-[10px] text-neutral-400">
+        HiÃ¡Â»Æ’n thÃ¡Â»â€¹ dÃ†Â°Ã¡Â»â€ºi tÃƒÂªn sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m.
+      </p>
+    </div>
+
+        {/* COMPATIBLE PLUG TYPES */}
+    <div className="lg:col-span-2">
+      <div className="mb-2">
+        <label className="text-xs font-semibold text-[#222]">
+          Compatible Plug Types
+        </label>
+        <p className="mt-0.5 text-[10px] text-neutral-400">
+          Select all compatible plug types for this product.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {["US", "EU", "UK", "AU"].map((type) => {
+          const selected = plugTypes.includes(type);
+
+          return (
+            <label
+              key={type}
+              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-3 text-xs font-semibold transition ${
+                selected
+                  ? "border-[#9B7B5A] bg-[#F6EFE8] text-[#795C42]"
+                  : "border-[#D9D4CC] bg-white text-[#444] hover:border-[#9B7B5A]"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={(e) => {
+                  setPlugTypes((prev) =>
+                    e.target.checked
+                      ? [...prev, type]
+                      : prev.filter((item) => item !== type)
+                  );
+                }}
+                className="accent-[#9B7B5A]"
+              />
+              {type} Plug
+            </label>
+          );
+        })}
+      </div>
+    </div>
+{/* NÃ¡Â»ËœI DUNG SÃ¡ÂºÂ¢N PHÃ¡ÂºÂ¨M */}
+    <div className="lg:col-span-2">
+      <div className="mb-1.5 flex items-center justify-between">
+        <label className="text-xs font-semibold text-[#222]">
+          NÃ¡Â»â„¢i dung sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m
+        </label>
+
+        <span className="text-[10px] text-neutral-400">
+          MÃƒÂ´ tÃ¡ÂºÂ£ chi tiÃ¡ÂºÂ¿t
+        </span>
+      </div>
+
+      <div className="w-full min-w-0 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <ProductEditorRichText
+          value={description}
+          onChange={setDescription}
+        />
+      </div>
+    </div>
+
+  </div>
+</section>
+
+      {/* GALLERY + MÃƒâ‚¬U SÃ¡ÂºÂ®C / BIÃ¡ÂºÂ¾N THÃ¡Â»â€š */}
+      {product.id && (
+        <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-2">
+          <div className="min-w-0 h-full">
+            <ProductGallery
+              key={imageUrl}
+              productId={product.id}
+              refresh={colorVersion}
+              onFeaturedChanged={setImageUrl}
+              onSaved={onSaved}
+            />
+          </div>
+
+          <div className="min-w-0 h-full">
+            <ProductColors
+              productId={product.id}
+              onSaved={() => setColorVersion((v) => v + 1)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* DÃƒâ€™NG MÃƒÂY / COMPATIBILITY */}
+      {product.id && (
+        <ProductCompatibility
+          productId={product.id}
+          onSaved={() => setColorVersion((v) => v + 1)}
+        />
+      )}
+
+ {/* SPECIFICATION + USP */}
+{product.id && (
+  <div className="grid min-w-0 items-stretch gap-5 lg:grid-cols-2">
+    <div className="min-w-0 h-full">
+      <ProductSpecification productId={product.id} />
+    </div>
+
+    <div className="min-w-0 h-full">
+      <ProductUSP productId={product.id} />
+    </div>
+  </div>
+)}
+
+{/* PRODUCT FAQ */}
+{product.id && (
+  <ProductFAQs productId={product.id} />
+)}
+
+{/* SEO */}
+<section className="rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm md:p-5">
+  <ProductSeo
+    name={name}
+    seoTitle={seoTitle}
+    setSeoTitle={setSeoTitle}
+    seoDescription={seoDescription}
+    setSeoDescription={setSeoDescription}
+    seoKeywords={seoKeywords}
+    setSeoKeywords={setSeoKeywords}
+    createSlug={createSlug}
+  />
+</section>
+
+      {/* GIÃƒÂ Ã¢â‚¬â€ 3 cÃ¡Â»â„¢t thay vÃƒÂ¬ xÃ¡ÂºÂ¿p dÃ¡Â»Âc */}
+      <section className="rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm md:p-5">
+        <div className="mb-4 flex items-center justify-between border-b border-[#E8E4DE] pb-3">
+          <div>
+            <h3 className="text-xl font-bold text-[#2D2D2D]">GiÃƒÂ¡ & tÃ¡Â»â€œn kho</h3>
+            <p className="mt-0.5 text-xs text-neutral-500">
+              GiÃƒÂ¡ bÃƒÂ¡n, giÃƒÂ¡ gÃ¡Â»â€˜c vÃƒÂ  sÃ¡Â»â€˜ lÃ†Â°Ã¡Â»Â£ng sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m. GiÃƒÂ¡ gÃ¡Â»â€˜c hÃ¡Â»â€¡ thÃ¡Â»â€˜ng: USD.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          
+          {/* GIÃƒÂ BÃƒÂN */}
+          <div className="rounded-xl border border-[#DDD] bg-[#FAFAFA] p-4">
+            <label className="mb-1.5 block text-sm font-semibold">
+               GiÃƒÂ¡ bÃƒÂ¡n (USD)
+            </label>
+
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-neutral-500">
+                $
+              </span>
+
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={price}
+                onChange={(e) => setPrice(Number(e.target.value))}
+                className="h-11 w-full rounded-xl border border-stone-200 bg-white pl-8 pr-3 text-base font-bold focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#EAF3EE]"
+              />
+            </div>
+
+            <p className="mt-2 text-[11px] font-medium text-neutral-700">
+              GiÃƒÂ¡ khÃƒÂ¡ch thanh toÃƒÂ¡n Ã‚Â· USD
+            </p>
+            <p className="mt-0.5 text-[10px] text-neutral-400">
+              Tham khÃ¡ÂºÂ£o: {formatVND(price)}
+            </p>
+          </div>
+
+          {/* GIÃƒÂ GÃ¡Â»ÂC */}
+          <div className="rounded-xl border border-[#DDD] bg-[#FAFAFA] p-4">
+            <label className="mb-1.5 block text-sm font-semibold">
+               GiÃƒÂ¡ gÃ¡Â»â€˜c
+            </label>
+
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-neutral-500">
+                $
+              </span>
+
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={comparePrice}
+                onChange={(e) => setComparePrice(Number(e.target.value))}
+                className="h-11 w-full rounded-xl border border-stone-200 bg-white pl-8 pr-3 text-base font-bold focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#EAF3EE]"
+              />
+            </div>
+
+            <p className="mt-2 text-[11px] font-medium text-neutral-700">
+              GiÃƒÂ¡ gÃ¡Â»â€˜c Ã‚Â· USD
+            </p>
+            <p className="mt-0.5 text-[10px] text-neutral-400">
+              Tham khÃ¡ÂºÂ£o: {formatVND(comparePrice)}
+            </p>
+          </div>
+
+          {/* TÃ¡Â»â€™N KHO */}
+          <div className="rounded-xl border border-[#DDD] bg-[#FAFAFA] p-4">
+            <label className="mb-1.5 block text-sm font-semibold">
+               TÃ¡Â»â€œn kho
+            </label>
+
+            <input
+              type="number"
+              value={stock}
+              onChange={(e) => setStock(Number(e.target.value))}
+              className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-base font-semibold focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#EAF3EE]"
+            />
+
+            <p className="mt-2 text-[11px] text-neutral-500">
+              SÃ¡Â»â€˜ lÃ†Â°Ã¡Â»Â£ng cÃƒÂ²n trong kho.
+            </p>
+          </div>
+        </div>
+
+        {/* GIÃ¡ÂºÂ¢M GIÃƒÂ Ã¢â‚¬â€ giÃ¡Â»Â¯ nguyÃƒÂªn logic */}
+        {comparePrice > price && (
+          <div className="mt-3 flex flex-col gap-3 rounded-xl border border-[#CFE7D6] bg-[#F2FBF6] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <span></span>
+              <span className="text-sm font-semibold text-[#2D6A4F]">
+                KhÃƒÂ¡ch Ã„â€˜ang tiÃ¡ÂºÂ¿t kiÃ¡Â»â€¡m
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="text-lg font-bold text-[#2D6A4F]">
+                {formatUSD(comparePrice - price)}
+              </div>
+
+              <div className="rounded-full bg-[#2D6A4F] px-3 py-1 text-xs font-semibold text-white">
+                GiÃ¡ÂºÂ£m {Math.round(((comparePrice - price) / comparePrice) * 100)}%
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* CATEGORY CREATE MODAL */}
+      {categoryModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 px-4"
+          onMouseDown={() => {
+            if (!creatingCategory) setCategoryModalOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                Category manager
+              </p>
+
+              <h3 className="mt-1 text-lg font-semibold text-neutral-900">
+                {categoryModalMode === "child"
+                  ? "ThÃƒÂªm danh mÃ¡Â»Â¥c con"
+                  : "ThÃƒÂªm danh mÃ¡Â»Â¥c chÃƒÂ­nh"}
+              </h3>
+
+              {categoryModalMode === "child" && (
+                <p className="mt-1 text-[11px] text-neutral-500">
+                  Parent:{" "}
+                  <span className="font-semibold text-neutral-700">
+                    {
+                      parentCategories.find(
+                        (item) => item.id === parentCategoryId
+                      )?.name
+                    }
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <label className="mb-1 block text-[11px] font-semibold text-neutral-700">
+              TÃƒÂªn danh mÃ¡Â»Â¥c <span className="text-red-500">*</span>
+            </label>
+
+            <input
+              autoFocus
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !creatingCategory) {
+                  e.preventDefault();
+                  createCategory();
+                }
+              }}
+              placeholder={
+                categoryModalMode === "child"
+                  ? "VÃƒÂ­ dÃ¡Â»Â¥: MagBank Slim"
+                  : "VÃƒÂ­ dÃ¡Â»Â¥: Power Banks"
+              }
+              className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:border-[#9B7B5A] focus:ring-2 focus:ring-[#F6EFE8]"
+            />
+
+            <div className="mt-2 rounded-lg bg-[#FAF8F5] px-3 py-2">
+              <p className="text-[9px] text-neutral-400">
+                Slug sÃ¡ÂºÂ½ Ã„â€˜Ã†Â°Ã¡Â»Â£c tÃ¡ÂºÂ¡o tÃ¡Â»Â± Ã„â€˜Ã¡Â»â„¢ng.
+              </p>
+              <p className="mt-0.5 text-[11px] font-medium text-neutral-700">
+                {newCategoryName
+                  ? createSlug(newCategoryName)
+                  : "category-slug"}
+              </p>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={creatingCategory}
+                onClick={() => setCategoryModalOpen(false)}
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-4 text-xs font-medium text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+              >
+                HÃ¡Â»Â§y
+              </button>
+
+              <button
+                type="button"
+                disabled={creatingCategory || !newCategoryName.trim()}
+                onClick={createCategory}
+                className="h-9 rounded-lg bg-[#2D6A4F] px-4 text-xs font-semibold text-white hover:bg-[#245640] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {creatingCategory ? "Ã„Âang tÃ¡ÂºÂ¡o..." : "TÃ¡ÂºÂ¡o danh mÃ¡Â»Â¥c"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ACTIONS Ã¢â‚¬â€ Ã„â€˜Ã¡Â»â€œng bÃ¡Â»â„¢ vÃ¡Â»â€ºi toolbar phÃƒÂ­a trÃƒÂªn, chÃ¡Â»â€° dÃƒÂ¹ng icon */}
+      <div className="flex items-center justify-end gap-2 border-t border-slate-200 pt-4">
+        <button
+          type="button"
+          onClick={previewProduct}
+          title="Xem sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m"
+          aria-label="Xem sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-0 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+        >
+          <ExternalLink size={16} strokeWidth={1.8} />
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            collapse?.();
+          }}
+          title="Thu gÃ¡Â»Ân"
+          aria-label="Thu gÃ¡Â»Ân"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-0 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+        >
+          <ChevronUp size={16} strokeWidth={1.8} />
+        </button>
+
+        <button
+          type="button"
+          onClick={save}
+          disabled={loading}
+          title={loading ? "Ã„Âang lÃ†Â°u..." : "LÃ†Â°u sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m"}
+          aria-label={loading ? "Ã„Âang lÃ†Â°u..." : "LÃ†Â°u sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m"}
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-800 p-0 text-white shadow-sm transition hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Save size={16} strokeWidth={1.9} />
+        </button>
+      </div>
+    </div>
+  );
+}

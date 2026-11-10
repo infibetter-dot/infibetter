@@ -35,6 +35,7 @@ interface CollectionProduct {
   id: string;
   slug: string;
   name: string;
+  description?: string | null;
   price: number | string;
   compare_at_price?: number | string | null;
   image_url?: string | null;
@@ -99,7 +100,8 @@ function ProductMiniCard({
 }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
     getCurrency(),
-  );
+  );
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const cart = useCart();
   const isOutOfStock = product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0;
 
@@ -175,7 +177,7 @@ function ProductMiniCard({
     const cleaned = value
       .trim()
       .replace(/USD/gi, "")
-      .replace(/[$â‚¬Â£â‚«]/g, "")
+      .replace(/[$ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â«]/g, "")
       .replace(/\s/g, "");
 
     if (!cleaned) return null;
@@ -199,7 +201,7 @@ function ProductMiniCard({
     const usd = toNumber(value);
 
     if (usd === null) {
-      return "â€”";
+      return "ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â";
     }
 
     // Always fall back to USD if the saved currency is invalid.
@@ -241,6 +243,13 @@ function ProductMiniCard({
 
   const price = toNumber(product.price);
   const comparePrice = toNumber(product.compare_at_price);
+  const savingsPercent =
+    price !== null &&
+    comparePrice !== null &&
+    comparePrice > price &&
+    comparePrice > 0
+      ? Math.round(((comparePrice - price) / comparePrice) * 100)
+      : 0;
 
   const displayPrice = formatProductPrice(product.price);
   const displayComparePrice = formatProductPrice(product.compare_at_price);
@@ -250,7 +259,7 @@ function ProductMiniCard({
       to="/products/$slug"
       params={{ slug: product.slug }}
       className={`
-        group relative flex ${fluid ? "w-full min-w-0" : "w-[210px] flex-none snap-start"} flex-col
+        group relative flex ${fluid ? "w-full min-w-0" : "w-full min-w-0 snap-start"} flex-col
         overflow-hidden rounded-[20px] border border-[#E8E3DD]
         bg-white shadow-[0_3px_12px_rgba(24,24,27,0.045)]
         transition-all duration-300
@@ -259,7 +268,7 @@ function ProductMiniCard({
       `}
     >
       {/* PRODUCT IMAGE */}
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-white">
+      <div className="relative aspect-square sm:aspect-[4/5] w-full overflow-hidden bg-white">
         <img
           src={product.image_url || fallbackImage}
           alt={product.name}
@@ -272,24 +281,19 @@ function ProductMiniCard({
           "
         />
 
-        {/* PRODUCT BADGE */}
-        <div className="absolute left-2.5 top-2.5 z-10">
-          <span
-            className="
-              inline-flex items-center rounded-full
-              border border-[#E8E8E8] bg-white
-              px-2.5 py-1
-              text-[8px] font-semibold uppercase
-              tracking-[0.12em] text-[#8A5A3B]
-              shadow-[0_2px_7px_rgba(0,0,0,0.06)]
-              sm:text-[8px]
-            "
-          >
+        {/* PRODUCT BADGES */}
+        <div className="absolute left-2.5 top-2.5 z-10 flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center rounded-full border border-[#BBF7D0] bg-[#ECFDF3] px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.09em] text-[#15803D] shadow-[0_2px_7px_rgba(0,0,0,0.05)]">
             {badgeLabel}
           </span>
-        </div>
 
-        {/* QUICK VIEW / OPEN PRODUCT */}
+          {savingsPercent > 0 && (
+            <span className="inline-flex items-center rounded-[5px] border border-[#FF4D00] bg-[#FF4D00] px-2 py-1 text-[8px] font-bold uppercase tracking-[0.04em] text-white shadow-[0_2px_7px_rgba(0,0,0,0.08)]">
+              Save {savingsPercent}%
+            </span>
+          )}
+        </div>
+{/* QUICK VIEW / OPEN PRODUCT */}
         <span
           aria-hidden="true"
           className="
@@ -306,66 +310,31 @@ function ProductMiniCard({
           <ExternalLink size={14} strokeWidth={1.8} />
         </span>
       </div>
-
-      {/* PRODUCT DETAILS */}
-      <div className="flex min-h-[108px] flex-1 flex-col px-3.5 pb-3.5 pt-3">
+      {/* PRODUCT DETAILS - HORIZONTAL LAYOUT */}
+      <div className="flex min-h-[88px] items-center justify-between gap-3 px-3.5 py-3 sm:px-4">
         <h3
           className="
-            line-clamp-2 min-h-[2.8em]
+            min-w-0 flex-1 line-clamp-2
             text-[12px] font-medium leading-[1.4]
             tracking-[-0.015em] text-[#262626]
-            sm:text-[12px] lg:text-[13px]
+            sm:text-[13px]
           "
         >
           {product.name}
         </h3>
 
-        <p className="mt-1 line-clamp-1 text-[9px] leading-4 text-neutral-400 sm:text-[10px]">
-          Modern design Â· everyday practical
-        </p>
+        <div className="flex flex-none flex-col items-end justify-center gap-1 text-right">
+          <span className="whitespace-nowrap text-[13px] font-medium leading-tight text-[#E11D48] sm:text-[14px]">
+            {displayPrice}
+          </span>
 
-        <div className="mt-auto flex min-w-0 items-center justify-between gap-2 pt-3">
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="text-[15px] font-bold leading-none tracking-[-0.025em] text-[#0066E6] sm:text-[16px]">
-              {displayPrice}
-            </span>
-
-            {price !== null &&
-              comparePrice !== null &&
-              comparePrice > price && (
-                <span className="text-[10px] font-normal text-neutral-400 line-through sm:text-[11px]">
-                  {displayComparePrice}
-                </span>
-              )}
-          </div>
-
-          <button
-            type="button"
-            aria-label={`Add ${product.name} to cart`}
-            title="Add to cart"
-            disabled={isOutOfStock}
-            onClick={handleQuickAdd}
-            className="
-              group/cart relative flex h-7 w-7 shrink-0 items-center justify-center
-              overflow-hidden rounded-full border border-white/80
-              bg-gradient-to-br from-white/75 via-white/60 to-[#E8EDF3]/65
-              text-[#343A44]/80
-              shadow-[0_2px_7px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.95)]
-              backdrop-blur-xl transition-all duration-200
-              hover:scale-[1.03] hover:shadow-[0_3px_9px_rgba(15,23,42,0.12)]
-              active:scale-95 disabled:cursor-not-allowed disabled:opacity-40
-            "
-          >
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-1 top-px h-1/2 rounded-full bg-gradient-to-b from-white/90 to-transparent"
-            />
-            <ShoppingCart
-              aria-hidden="true"
-              className="relative z-10 h-3.5 w-3.5"
-              strokeWidth={1.8}
-            />
-          </button>
+          {price !== null &&
+            comparePrice !== null &&
+            comparePrice > price && (
+              <span className="whitespace-nowrap text-[10px] font-normal leading-tight text-neutral-400 line-through sm:text-[11px]">
+                {displayComparePrice}
+              </span>
+            )}
         </div>
       </div>
     </Link>
@@ -619,7 +588,7 @@ export default function Collections({
         </div>
       </div>
 
-      {/* SHOP BY CATEGORY â€” three balanced feature cards */}
+      {/* SHOP BY CATEGORY ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â three balanced feature cards */}
       <div
         ref={categoryScrollRef}
         className="
@@ -711,7 +680,7 @@ export default function Collections({
         ))}
       </div>
 
-      {/* VOUCHER SLIDER â€” BELOW SHOP BY CATEGORY */}
+      {/* VOUCHER SLIDER ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â BELOW SHOP BY CATEGORY */}
       <VoucherSlider />
 
       {/* =====================================================
@@ -819,7 +788,7 @@ export default function Collections({
                     <div
                       key={product.id}
                       data-product-card
-                      className="w-[min(210px,68vw)] flex-none snap-start"
+                      className="w-[min(280px,80vw)] flex-none snap-start"
                     >
                       <ProductMiniCard
                         product={product}
@@ -874,7 +843,7 @@ export default function Collections({
                 {activeProducts.length > 5 && (
                   <div className="mt-3 flex items-center justify-end gap-1">
                     <span className="mr-2 text-[9px] text-neutral-400">
-                      {desktopStartIndex + 1}â€“
+                      {desktopStartIndex + 1}ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“
                       {Math.min(
                         desktopStartIndex + 5,
                         activeProducts.length,
@@ -931,7 +900,7 @@ export default function Collections({
 
 
       {/* =====================================================
-          FEATURED CASE â€” ABOVE BEST CHOICE
+          FEATURED CASE ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ABOVE BEST CHOICE
       ====================================================== */}
       <FeaturedCaseSection />
 
@@ -939,7 +908,7 @@ export default function Collections({
       <PowerStationSection />
 
       {/* =====================================================
-          FEATURED PRODUCT â€” ABOVE EVERYDAY PLUS
+          FEATURED PRODUCT ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ABOVE EVERYDAY PLUS
       ====================================================== */}
       {everydayPlusProducts.length > 0 && (
         <FeaturedProductSection
@@ -954,7 +923,7 @@ export default function Collections({
       {/* TRAVELMAG HYBRID 10K BANNER */}
       <TravelMagBanner />
       {/* =====================================================
-          EVERYDAY PLUS â€” EVERYDAY ACCESSORIES
+          EVERYDAY PLUS ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â EVERYDAY ACCESSORIES
       ====================================================== */}
       <div className="mt-9 border-t border-[#ECECEC] pt-7 sm:mt-11 sm:pt-9">
         <div className="flex items-end justify-between gap-3">
@@ -981,10 +950,10 @@ export default function Collections({
 
         {everydayPlusProducts.length > 0 ? (
           <>
-            {/* MOBILE â€” HORIZONTAL SLIDER */}
+            {/* MOBILE ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â HORIZONTAL SLIDER */}
             <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden">
               {everydayPlusProducts.map((product, index) => (
-                <div key={`everyday-plus-mobile-${product.id}`} className="w-[min(210px,68vw)] flex-none snap-start">
+                <div key={`everyday-plus-mobile-${product.id}`} className="w-[min(280px,80vw)] flex-none snap-start">
                   <ProductMiniCard
                     product={product}
                     floatDelay={(index % 4) * 0.35}
@@ -995,7 +964,7 @@ export default function Collections({
               ))}
             </div>
 
-            {/* DESKTOP â€” PRODUCT GRID */}
+            {/* DESKTOP ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â PRODUCT GRID */}
             <div className="mt-4 hidden w-full min-w-0 grid-cols-4 gap-3 sm:grid sm:gap-4">
               {everydayPlusProducts.map((product, index) => (
                 <ProductMiniCard
@@ -1105,6 +1074,12 @@ export default function Collections({
     </section>
   );
 }
+
+
+
+
+
+
 
 
 

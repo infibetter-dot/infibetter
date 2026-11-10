@@ -25,6 +25,7 @@ const homeData = queryOptions({
         id,
         slug,
         name,
+        description,
         price,
         compare_at_price,
         stock,
@@ -255,5 +256,6 @@ function HomePage() {
     </main>
   );
 }
+
 
 
