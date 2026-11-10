@@ -200,15 +200,15 @@ export default function Hero() {
             </div>
 
             <h1 className="max-w-[410px] text-[48px] font-semibold leading-[1.02] tracking-[-0.045em] text-[#111827]">
-              Your Apple
+              Power Up.
               <br />
-              <span className="text-[#007AFF]">setup.</span>
+              <span className="text-[#007AFF]">Stay Connected.</span>
             </h1>
 
             <p className="mt-3 max-w-[350px] text-[12px] leading-5 text-[#667085]">
-              Cases, charging and everyday gear —
+              Smart charging solutions designed to keep your devices powered,wherever life takes you.
               <br />
-              designed to work beautifully together.
+              
             </p>
 
             <div className="mt-5 flex items-center gap-3">
@@ -246,7 +246,7 @@ export default function Hero() {
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              {["For travel", "At home", "On the go"].map((label) => (
+              {["Fast Charging", "Wireless Charging", "On the go"].map((label) => (
                 <span
                   key={label}
                   className="
