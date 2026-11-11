@@ -2411,7 +2411,7 @@ function ProductPage() {
 
                   <div className="p-4 sm:p-5">
 
-                    <h3 className="text-[14px] font-semibold leading-5 text-[#1D1D1F]">{video.title || `${product.name} Ã¢â‚¬â€ Video ${index + 1}`}</h3>
+                    <h3 className="text-[14px] font-semibold leading-5 text-[#1D1D1F]">{video.title || `${product.name} - Video ${index + 1}`}</h3>
 
                     <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">Discover the product from every angle.</p>
 
@@ -2423,7 +2423,7 @@ function ProductPage() {
 
             </div>
 
-            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos Ã¢â€ â€™</p>}
+            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos </p>}
 
           </div>
 
