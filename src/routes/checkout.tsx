@@ -349,7 +349,17 @@ function CheckoutPage() {
           item_brand: "INFIBETTER",
           price: Number(Number(item.price).toFixed(2)),
           quantity: Number(item.quantity),
-          ...(item.colorName ? { item_variant: item.colorName } : {}),
+          ...(
+            item.colorName || item.plugType || item.deviceModelName
+              ? {
+                  item_variant: [
+                    item.colorName,
+                    item.plugType ? `Plug ${item.plugType}` : null,
+                    item.deviceModelName,
+                  ].filter(Boolean).join(" / "),
+                }
+              : {}
+          ),
         })),
       });
     }
@@ -474,9 +484,17 @@ function CheckoutPage() {
       total: Number(totalUsd.toFixed(2)),
       items: items.map((item) => ({
         product_id: String(item.id),
+        product_name: item.name,
         quantity: Number(item.quantity),
         unit_price: Number(Number(item.price).toFixed(2)),
         product_image: item.image || null,
+        product_color_id: item.productColorId ?? null,
+        color_name: item.colorName ?? null,
+        color_hex: item.colorHex ?? null,
+        variant_id: item.variantId ?? null,
+        device_model_id: item.deviceModelId ?? null,
+        device_model_name: item.deviceModelName ?? null,
+        plug_type: item.plugType ?? null,
       })),
     };
 
@@ -522,7 +540,17 @@ function CheckoutPage() {
         item_brand: "INFIBETTER",
         price: Number(Number(item.price).toFixed(2)),
         quantity: Number(item.quantity),
-        ...(item.colorName ? { item_variant: item.colorName } : {}),
+        ...(
+          item.colorName || item.plugType || item.deviceModelName
+            ? {
+                item_variant: [
+                  item.colorName,
+                  item.plugType ? `Plug ${item.plugType}` : null,
+                  item.deviceModelName,
+                ].filter(Boolean).join(" / "),
+              }
+            : {}
+        ),
       }));
 
       pushGa4Event("add_shipping_info", {
@@ -572,12 +600,16 @@ function CheckoutPage() {
         shipping_fee: Number(shippingFeeUsd.toFixed(2)),
         total: Number(totalUsd.toFixed(2)),
         items: items.map((item) => ({
-          product_id: item.id,
+          product_id: String(item.id),
           product_name: item.name,
-          product_image: item.image,
-          product_color_id: item.productColorId,
-          color_name: item.colorName,
-          color_hex: item.colorHex,
+          product_image: item.image || null,
+          product_color_id: item.productColorId ?? null,
+          color_name: item.colorName ?? null,
+          color_hex: item.colorHex ?? null,
+          variant_id: item.variantId ?? null,
+          device_model_id: item.deviceModelId ?? null,
+          device_model_name: item.deviceModelName ?? null,
+          plug_type: item.plugType ?? null,
           unit_price: Number(item.price),
           quantity: Number(item.quantity),
         })),
@@ -638,7 +670,17 @@ function CheckoutPage() {
               item_brand: "INFIBETTER",
               price: Number(Number(item.price).toFixed(2)),
               quantity: Number(item.quantity),
-              ...(item.colorName ? { item_variant: item.colorName } : {}),
+              ...(
+                item.colorName || item.plugType || item.deviceModelName
+                  ? {
+                      item_variant: [
+                        item.colorName,
+                        item.plugType ? `Plug ${item.plugType}` : null,
+                        item.deviceModelName,
+                      ].filter(Boolean).join(" / "),
+                    }
+                  : {}
+              ),
             })),
           });
           localStorage.setItem(ga4PurchaseEventKey, "1");
@@ -1030,7 +1072,13 @@ function CheckoutPage() {
               <div className="mt-5 space-y-4 border-b border-[#e8e8e8] pb-5">
                 {items.map((item) => (
                   <div
-                    key={`${item.id}-${item.productColorId ?? "default"}`}
+                    key={[
+                      item.id,
+                      item.productColorId ?? "default-color",
+                      item.variantId ?? "default-variant",
+                      item.deviceModelId ?? "default-device",
+                      item.plugType ?? "default-plug",
+                    ].join("-")}
                     className="flex min-w-0 gap-3"
                   >
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#f5f5f5] sm:h-[72px] sm:w-[72px]">
@@ -1068,6 +1116,14 @@ function CheckoutPage() {
                             <span className="font-medium text-neutral-700">{item.deviceModelName}</span>
                           </p>
                         ) : null}
+                        {item.plugType ? (
+                          <p className="mt-1 text-xs leading-4 text-neutral-500">
+                            Plug type:{" "}
+                            <span className="font-medium text-neutral-700">
+                              {item.plugType}
+                            </span>
+                          </p>
+                        ) : null}
                         <p className="mt-1.5 text-sm font-semibold tabular-nums text-[#171717]">
                           {usd(Number(item.price) * Number(item.quantity))}
                         </p>
@@ -1076,7 +1132,12 @@ function CheckoutPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          remove(item.id);
+                          remove(item.id, {
+                            productColorId: item.productColorId,
+                            variantId: item.variantId,
+                            deviceModelId: item.deviceModelId,
+                            plugType: item.plugType,
+                          });
                           toast.success(`${item.name} removed from your order.`);
                         }}
                         aria-label={`Remove ${item.name} from order`}

@@ -1555,9 +1555,9 @@ function ProductPage() {
 
             {productImages.length > 1 && (
 
-              <div className="mt-3 flex flex-wrap items-end gap-2 pb-1">
+              <div className="mt-3 w-full min-w-0 overflow-x-auto overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
-                {productImages.map((image: any, index: number) => {
+                <div className="flex w-max min-w-full items-end gap-2">{productImages.map((image: any, index: number) => {
 
                   const isActive = activeImage === image.image_url;
 
@@ -1585,7 +1585,7 @@ function ProductPage() {
 
                       aria-current={isActive ? "true" : undefined}
 
-                      className={`group relative h-[56px] w-[56px] shrink-0 overflow-visible bg-transparent p-0 transition-all duration-200 ease-out focus-visible:outline-none ${
+                      className={`group relative h-[44px] w-[44px] shrink-0 overflow-visible bg-transparent p-0 transition-all duration-200 ease-out focus-visible:outline-none sm:h-[52px] sm:w-[52px] ${
 
                         isActive
 
@@ -1665,7 +1665,7 @@ function ProductPage() {
 
                   );
 
-                })}
+                })}</div>
 
               </div>
 
@@ -2146,7 +2146,7 @@ function ProductPage() {
 
               </div>
 
-              {/* Benefits / Trust Features Ã¢â‚¬â€ aligned with INFIBETTER policies */}
+              {/* Benefits / Trust Features — aligned with INFIBETTER policies */}
               <section className="mt-3 w-full min-w-0" aria-label="Shopping benefits">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#777F89]">
@@ -2162,7 +2162,7 @@ function ProductPage() {
                       text: "Tracked delivery",
                       hint: "Tracking after dispatch",
                       description:
-                        "Orders are generally processed within 1Ã¢â‚¬â€œ2 business days before dispatch. After dispatch, tracking details are sent so you can follow your delivery. Estimated transit times are 5Ã¢â‚¬â€œ9 business days for the US, Canada, Europe, and Australia/New Zealand; 5Ã¢â‚¬â€œ8 business days for the UK; and 5Ã¢â‚¬â€œ12 business days for other destinations. Battery products may take approximately 4Ã¢â‚¬â€œ10 business days after dispatch, depending on destination and carrier. These are estimates, not guarantees. Customs, weather, carrier delays, and other local disruptions may affect delivery. For help, email infibetter@gmail.com.",
+                        "Orders are generally processed within 1–2 business days before dispatch. After dispatch, tracking details are sent so you can follow your delivery. Estimated transit times are 5–9 business days for the US, Canada, Europe, and Australia/New Zealand; 5–8 business days for the UK; and 5–12 business days for other destinations. Battery products may take approximately 4–10 business days after dispatch, depending on destination and carrier. These are estimates, not guarantees. Customs, weather, carrier delays, and other local disruptions may affect delivery. For help, email infibetter@gmail.com.",
                     },
                     {
                       icon: RotateCcw,
@@ -2323,7 +2323,7 @@ function ProductPage() {
 
       )}
 
-            {/* Product video carousel Ã¢â‚¬â€ displayed above Lifestyle */}
+            {/* Product video carousel — displayed above Lifestyle */}
 
       {productVideos.length > 0 && (
 
@@ -2423,7 +2423,7 @@ function ProductPage() {
 
             </div>
 
-            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos </p>}
+            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos →</p>}
 
           </div>
 
@@ -2431,7 +2431,7 @@ function ProductPage() {
 
       )}
 
-{/* Lifestyle gallery Ã¢â‚¬â€ only Lifestyle images */}
+{/* Lifestyle gallery — only Lifestyle images */}
 
       {lifestyleImages.length > 0 && (
 
@@ -2930,7 +2930,7 @@ function ProductPage() {
 
               >
 
-                View all Ã¢â€ â€™
+                View all →
 
               </Link>
 
@@ -3100,7 +3100,7 @@ function ProductPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[9px] font-bold uppercase tracking-[0.19em] text-[#A0A5AD]">
-                      INFIBETTER Ã‚Â· SHOP WITH CONFIDENCE
+                      INFIBETTER · SHOP WITH CONFIDENCE
                     </p>
                     <h2
                       id="trust-info-title"
@@ -3136,7 +3136,7 @@ function ProductPage() {
                   <div className="rounded-[14px] border border-[#ECEEF1] bg-white px-4 py-3.5">
                     <p className="text-[13px] leading-[1.85] text-[#626873]">
                       Orders are generally processed within{" "}
-                      <strong className="font-semibold text-[#252A32]">1Ã¢â‚¬â€œ2 business days</strong>{" "}
+                      <strong className="font-semibold text-[#252A32]">1–2 business days</strong>{" "}
                       before dispatch. Once your order is on its way, tracking details are sent so you can follow its journey.
                     </p>
                   </div>
@@ -3144,7 +3144,7 @@ function ProductPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex min-h-[112px] flex-col rounded-[14px] border border-[#E5EAF0] bg-[#F7F8FA] p-4">
                       <p className="text-[9px] font-bold uppercase leading-4 tracking-[0.16em] text-[#9299A3]">Processing time</p>
-                      <p className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.025em] text-[#252A32]">1Ã¢â‚¬â€œ2 days</p>
+                      <p className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.025em] text-[#252A32]">1–2 days</p>
                       <p className="mt-2 text-[11px] leading-[1.5] text-[#858C96]">Before dispatch</p>
                     </div>
                     <div className="flex min-h-[112px] flex-col rounded-[14px] border border-[#E5EAF0] bg-[#F7F8FA] p-4">
@@ -3161,10 +3161,10 @@ function ProductPage() {
                     </div>
                     <div className="overflow-hidden rounded-[13px] border border-[#E9EDF2]">
                       {[
-                        ["US, Canada, Europe, Australia & New Zealand", "5Ã¢â‚¬â€œ9 business days"],
-                        ["United Kingdom", "5Ã¢â‚¬â€œ8 business days"],
-                        ["Other destinations", "5Ã¢â‚¬â€œ12 business days"],
-                        ["Battery products", "4Ã¢â‚¬â€œ10 business days"],
+                        ["US, Canada, Europe, Australia & New Zealand", "5–9 business days"],
+                        ["United Kingdom", "5–8 business days"],
+                        ["Other destinations", "5–12 business days"],
+                        ["Battery products", "4–10 business days"],
                       ].map(([region, timing], index) => (
                         <div key={region} className={`flex items-center justify-between gap-3 px-3.5 py-3.5 ${index ? "border-t border-[#ECEEF1]" : ""}`}>
                           <span className="min-w-0 flex-1 text-[11px] leading-[1.65] text-[#626873]">{region}</span>
