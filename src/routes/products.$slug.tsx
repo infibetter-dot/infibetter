@@ -2243,69 +2243,7 @@ function ProductPage() {
 
               </div>
 
-              {/* Description */}
 
-              {product.description && (
-
-                <div className="mt-5 mb-4 rounded-xl border border-[#E5E8ED] bg-[#F8FAFC] px-4 py-3.5 shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
-
-                  <button
-
-                    type="button"
-
-                    onClick={() => {
-                      const nextOpen = !openSpecs;
-                      setOpenSpecs(nextOpen);
-
-                      if (nextOpen) {
-                        trackProductInteraction("product_description_click", {
-                          product_id: String(product.id),
-                          product_name: product.name,
-                          interaction_type: "description_open",
-                          content_section: "product_description",
-                        });
-                      }
-                    }}
-
-                    className="flex min-h-8 w-full items-center justify-between gap-3 text-left"
-
-                  >
-
-                    <span className="text-[14px] font-bold tracking-[-0.01em] text-[#202833]">
-
-                      Product description
-
-                    </span>
-
-                    <ChevronDown
-
-                      size={17}
-
-                      className={`transition-transform ${
-
-                        openSpecs ? "rotate-180" : ""
-
-                      }`}
-
-                    />
-
-                  </button>
-
-                  {openSpecs && (
-
-                    <div
-
-                      className="prose prose-sm mt-4 max-w-none whitespace-pre-line break-words text-[13px] leading-6 text-[#6E6E73] [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-
-                      dangerouslySetInnerHTML={{ __html: product.description }}
-
-                    />
-
-                  )}
-
-                </div>
-
-              )}
 
               {/* Benefits / Trust Features — aligned with INFIBETTER policies */}
               <section className="mt-4 w-full min-w-0" aria-label="Shopping benefits">
@@ -2377,6 +2315,70 @@ function ProductPage() {
                   ))}
                 </div>
               </section>
+
+              {/* Description */}
+              {product.description && (
+
+                <div className="mt-5 mb-4 rounded-xl border border-[#E5E8ED] bg-[#F8FAFC] px-4 py-3.5 shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
+
+                  <button
+
+                    type="button"
+
+                    onClick={() => {
+                      const nextOpen = !openSpecs;
+                      setOpenSpecs(nextOpen);
+
+                      if (nextOpen) {
+                        trackProductInteraction("product_description_click", {
+                          product_id: String(product.id),
+                          product_name: product.name,
+                          interaction_type: "description_open",
+                          content_section: "product_description",
+                        });
+                      }
+                    }}
+
+                    className="flex min-h-8 w-full items-center justify-between gap-3 text-left"
+
+                  >
+
+                    <span className="text-[14px] font-bold tracking-[-0.01em] text-[#202833]">
+
+                      Product description
+
+                    </span>
+
+                    <ChevronDown
+
+                      size={17}
+
+                      className={`transition-transform ${
+
+                        openSpecs ? "rotate-180" : ""
+
+                      }`}
+
+                    />
+
+                  </button>
+
+                  {openSpecs && (
+
+                    <div
+
+                      className="prose prose-sm mt-4 max-w-none whitespace-pre-line break-words text-[13px] leading-6 text-[#6E6E73] [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+
+                    />
+
+                  )}
+
+                </div>
+
+              )}
+
 
 
 
