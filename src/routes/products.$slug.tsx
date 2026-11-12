@@ -38,6 +38,22 @@ import {
 
   ArrowUpRight,
 
+  Sparkles,
+  Lightbulb,
+  BatteryCharging,
+  Usb,
+  Hand,
+  Clock3,
+  Leaf,
+  Star,
+  Palette,
+  Award,
+  Heart,
+  Gift,
+  House,
+  LampDesk,
+  Sofa,
+
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -62,6 +78,28 @@ import { getImageUrl } from "@/lib/storage";
 import ProductReviews from "@/components/ProductReviews";
 
 import { trackViewContent } from "@/lib/meta-pixel";
+
+// Keep this mapping in sync with the icon keys in admin ProductUSP.tsx.
+// Retail renders the exact icon key saved in public.product_usps.icon.
+const PRODUCT_USP_ICON_MAP = {
+  sparkles: Sparkles,
+  lightbulb: Lightbulb,
+  shield: ShieldCheck,
+  truck: Truck,
+  battery: BatteryCharging,
+  usb: Usb,
+  touch: Hand,
+  clock: Clock3,
+  leaf: Leaf,
+  star: Star,
+  palette: Palette,
+  award: Award,
+  heart: Heart,
+  gift: Gift,
+  home: House,
+  lamp: LampDesk,
+  sofa: Sofa,
+};
 
 // Product prices in Supabase are USD. This page formats them locally so the
 
@@ -1259,7 +1297,7 @@ function ProductPage() {
 
     );
 
-  function addToCart() {
+  function addToCart(options: { openCart?: boolean; showToast?: boolean } = {}) {
 
     if (!inStock) {
 
@@ -1365,9 +1403,24 @@ function ProductPage() {
 
     });
 
-    toast.success("Added to cart");
-    window.dispatchEvent(new Event("infibetter:open-cart"));
+    if (options.showToast !== false) {
+      toast.success("Added to cart");
+    }
+    if (options.openCart !== false) {
+      window.dispatchEvent(new Event("infibetter:open-cart"));
+    }
 
+  }
+
+  function expressCheckout() {
+    if (!inStock) {
+      toast.error("This product is currently out of stock");
+      return;
+    }
+
+    // Add the selected product configuration, then proceed directly to checkout.
+    addToCart({ openCart: false, showToast: false });
+    navigate({ to: "/checkout" });
   }
 
   function buyNow() {
@@ -1769,7 +1822,7 @@ function ProductPage() {
 
                       </span>
 
-                      <span className="text-[12px] font-medium text-[#6E6E73]">
+                      <span className="inline-flex h-[22px] items-center rounded-full bg-[#E8F8EE] px-2 text-[11px] font-bold leading-none text-[#168447]">
 
                         -{discountPercent}%
 
@@ -1786,6 +1839,39 @@ function ProductPage() {
                   Price includes VAT where applicable.
 
                 </p>
+
+                {usps.length > 0 && (
+                  <ul className="mt-3 grid gap-2" aria-label="Key product benefits">
+                    {usps.slice(0, 3).map((item: any) => {
+                      const UspIcon =
+                        PRODUCT_USP_ICON_MAP[
+                          String(item.icon ?? "").trim().toLowerCase() as keyof typeof PRODUCT_USP_ICON_MAP
+                        ];
+
+                      return (
+                        <li
+                          key={item.id}
+                          className="flex min-w-0 items-center gap-2 text-[13px] font-semibold leading-5 text-[#303036]"
+                        >
+                          {UspIcon ? (
+                            <UspIcon
+                              size={15}
+                              strokeWidth={2.2}
+                              className="shrink-0 text-[#16A36A]"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <span
+                              className="h-[15px] w-[15px] shrink-0"
+                              aria-hidden="true"
+                            />
+                          )}
+                          <span className="min-w-0">{item.title}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
 
               </div>
 
@@ -1841,7 +1927,7 @@ function ProductPage() {
                       {selectedPlugType ? `${selectedPlugType} Plug` : "Choose a plug"}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid w-full grid-cols-4 gap-2">
                     {compatiblePlugTypes.map((type: string) => {
                       const isSelected = selectedPlugType === type;
                       return (
@@ -1850,7 +1936,7 @@ function ProductPage() {
                           type="button"
                           onClick={() => setSelectedPlugType(type)}
                           aria-pressed={isSelected}
-                          className={`inline-flex min-h-[36px] min-w-[64px] items-center justify-center rounded-full border px-4 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 ${
+                          className={`inline-flex min-h-[38px] w-full min-w-0 items-center justify-center rounded-full border px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 ${
                             isSelected
                               ? "border-[#1D1D1F] bg-[#1D1D1F] text-white"
                               : "border-[#E5E5E7] bg-white text-[#45454B] hover:border-[#99999F]"
@@ -2144,10 +2230,85 @@ function ProductPage() {
 
                 </button>
 
+                <button
+                  type="button"
+                  onClick={expressCheckout}
+                  disabled={!inStock}
+                  className="mt-3 inline-flex min-h-8 w-full items-center justify-center gap-1.5 bg-transparent p-0 text-[12px] font-medium text-[#5F6875] underline decoration-[#B8C0CA] underline-offset-4 transition-colors hover:text-[#17212F] disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Express checkout"
+                >
+                  <span>Express Checkout</span>
+                  <ArrowUpRight size={13} strokeWidth={1.8} aria-hidden="true" />
+                </button>
+
               </div>
 
+              {/* Description */}
+
+              {product.description && (
+
+                <div className="mt-5 mb-4 rounded-xl border border-[#E5E8ED] bg-[#F8FAFC] px-4 py-3.5 shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
+
+                  <button
+
+                    type="button"
+
+                    onClick={() => {
+                      const nextOpen = !openSpecs;
+                      setOpenSpecs(nextOpen);
+
+                      if (nextOpen) {
+                        trackProductInteraction("product_description_click", {
+                          product_id: String(product.id),
+                          product_name: product.name,
+                          interaction_type: "description_open",
+                          content_section: "product_description",
+                        });
+                      }
+                    }}
+
+                    className="flex min-h-8 w-full items-center justify-between gap-3 text-left"
+
+                  >
+
+                    <span className="text-[14px] font-bold tracking-[-0.01em] text-[#202833]">
+
+                      Product description
+
+                    </span>
+
+                    <ChevronDown
+
+                      size={17}
+
+                      className={`transition-transform ${
+
+                        openSpecs ? "rotate-180" : ""
+
+                      }`}
+
+                    />
+
+                  </button>
+
+                  {openSpecs && (
+
+                    <div
+
+                      className="prose prose-sm mt-4 max-w-none whitespace-pre-line break-words text-[13px] leading-6 text-[#6E6E73] [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+
+                    />
+
+                  )}
+
+                </div>
+
+              )}
+
               {/* Benefits / Trust Features — aligned with INFIBETTER policies */}
-              <section className="mt-3 w-full min-w-0" aria-label="Shopping benefits">
+              <section className="mt-4 w-full min-w-0" aria-label="Shopping benefits">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#777F89]">
                     Shop with confidence
@@ -2191,17 +2352,17 @@ function ProductPage() {
                       type="button"
                       onClick={() => setActiveTrustInfo({ title: text, description, icon: Icon })}
                       aria-haspopup="dialog"
-                      className="group flex min-h-[76px] min-w-0 items-center gap-2 rounded-[12px] border border-[#E9EBEF] bg-[#F7F8FA] p-2 text-left outline-none transition-all duration-200 hover:border-[#D8DDE5] hover:bg-[#F2F4F7] hover:shadow-[0_5px_16px_rgba(20,30,45,0.07)] focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 active:translate-y-0 sm:gap-3 sm:rounded-[13px] sm:p-3"
+                      className="group flex min-h-[60px] min-w-0 items-center gap-2 rounded-[10px] border border-[#E9EBEF] bg-[#F7F8FA] p-2 text-left outline-none transition-all duration-200 hover:border-[#D8DDE5] hover:bg-[#F2F4F7] hover:shadow-[0_4px_12px_rgba(20,30,45,0.06)] focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 active:translate-y-0 sm:min-h-[64px] sm:gap-2.5 sm:rounded-[11px] sm:p-2.5"
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-white bg-white text-[#34465D] shadow-[0_1px_3px_rgba(20,30,45,0.06)] sm:h-9 sm:w-9">
-                        <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border border-white bg-white text-[#34465D] shadow-[0_1px_3px_rgba(20,30,45,0.05)] sm:h-8 sm:w-8">
+                        <Icon size={15} strokeWidth={1.8} aria-hidden="true" />
                       </span>
 
                       <span className="min-w-0 flex-1">
-                        <span className="block whitespace-normal break-words text-[12px] font-semibold leading-5 text-[#303640]">
+                        <span className="block whitespace-normal break-words text-[11px] font-semibold leading-4 text-[#303640] sm:text-[12px]">
                           {text}
                         </span>
-                        <span className="mt-0.5 block whitespace-normal break-words text-[10px] leading-4 text-[#858C96] sm:text-[11px]">
+                        <span className="mt-0.5 block whitespace-normal break-words text-[9px] leading-3.5 text-[#858C96] sm:text-[10px]">
                           {hint}
                         </span>
                       </span>
@@ -2217,69 +2378,7 @@ function ProductPage() {
                 </div>
               </section>
 
-              {/* Description */}
 
-              {product.description && (
-
-                <div className="mt-7 border-b border-[#D2D2D7] pb-5">
-
-                  <button
-
-                    type="button"
-
-                    onClick={() => {
-                      const nextOpen = !openSpecs;
-                      setOpenSpecs(nextOpen);
-
-                      if (nextOpen) {
-                        trackProductInteraction("product_description_click", {
-                          product_id: String(product.id),
-                          product_name: product.name,
-                          interaction_type: "description_open",
-                          content_section: "product_description",
-                        });
-                      }
-                    }}
-
-                    className="flex w-full items-center justify-between text-left"
-
-                  >
-
-                    <span className="text-[14px] font-semibold">
-
-                      Product description
-
-                    </span>
-
-                    <ChevronDown
-
-                      size={17}
-
-                      className={`transition-transform ${
-
-                        openSpecs ? "rotate-180" : ""
-
-                      }`}
-
-                    />
-
-                  </button>
-
-                  {openSpecs && (
-
-                    <div
-
-                      className="prose prose-sm mt-4 max-w-none text-[13px] leading-6 text-[#6E6E73]"
-
-                      dangerouslySetInnerHTML={{ __html: product.description }}
-
-                    />
-
-                  )}
-
-                </div>
-
-              )}
 
             </div>
 
@@ -2288,40 +2387,6 @@ function ProductPage() {
         </div>
 
       </section>
-
-      {/* Product USPs */}
-
-      {usps.length > 0 && (
-
-        <section className="border-y border-[#D2D2D7] bg-[#F5F5F7]">
-
-          <div className="mx-auto grid max-w-[1240px] grid-cols-2 px-5 md:grid-cols-4 md:px-8">
-
-            {usps.map((item: any) => (
-
-              <div
-
-                key={item.id}
-
-                className="border-b border-[#D2D2D7] px-4 py-6 text-center md:border-b-0 md:border-r md:last:border-r-0"
-
-              >
-
-                <p className="text-[13px] font-semibold text-[#1D1D1F]">
-
-                  {item.title}
-
-                </p>
-
-              </div>
-
-            ))}
-
-          </div>
-
-        </section>
-
-      )}
 
             {/* Product video carousel — displayed above Lifestyle */}
 
@@ -3017,22 +3082,22 @@ function ProductPage() {
       )}
 
       {showStickyAddToCart && inStock && (
-        <div className="fixed bottom-0 left-4 right-20 z-[90] pb-[calc(env(safe-area-inset-bottom)+12px)] md:hidden">
-          <div className="flex w-full items-center gap-2 rounded-2xl border border-white/90 bg-white/95 px-2.5 py-2 shadow-[0_8px_28px_rgba(0,0,0,0.12)] backdrop-blur-xl">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5px)] left-3 right-[76px] z-[90] md:hidden">
+          <div className="flex min-h-[80px] w-full min-w-0 items-center gap-2 rounded-[18px] border border-[#E9EBEF] bg-white/95 px-3 py-2 shadow-[0_6px_24px_rgba(16,24,40,0.13)] backdrop-blur-xl">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[10px] font-medium text-[#6E6E73]">
+              <p className="truncate text-[10px] font-medium leading-4 text-[#737780]">
                 {product.name}
               </p>
-              <div className="flex min-w-0 items-baseline gap-2 whitespace-nowrap">
-                <p className={`text-[16px] font-bold tracking-[-0.02em] ${hasDiscount ? "text-[#00B67A]" : "text-[#1D1D1F]"}`}>
+              <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                <p className={`text-[16px] font-bold leading-5 tracking-[-0.035em] ${hasDiscount ? "text-[#00A878]" : "text-[#1D1D1F]"}`}>
                   {formatProductPrice(price, safeCurrency)}
                 </p>
                 {hasDiscount && (
                   <>
-                    <p className="text-[11px] font-medium text-[#8E8E93] line-through">
+                    <p className="text-[10px] font-medium leading-4 text-[#969BA3] line-through">
                       {formatProductPrice(comparePrice, safeCurrency)}
                     </p>
-                    <span className="text-[10px] font-semibold text-[#6E6E73]">
+                    <span className="inline-flex h-[18px] items-center rounded-full bg-[#E8F7EF] px-1.5 text-[9px] font-bold leading-none text-[#138653]">
                       -{discountPercent}%
                     </span>
                   </>
@@ -3045,18 +3110,18 @@ function ProductPage() {
               onClick={addToCart}
               aria-label="Add to cart"
               title="Add to cart"
-              className="group relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white bg-gradient-to-br from-white via-[#F3F6FA] to-[#DCE4EE] text-[#263445] shadow-[0_3px_10px_rgba(15,23,42,0.12),inset_0_1px_1px_rgba(255,255,255,0.95)] transition duration-300 active:scale-95 before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:rotate-12 before:bg-gradient-to-r before:from-transparent before:via-white/90 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-[450%]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-[#E7E9ED] bg-[#F7F8FA] text-[#303640] transition-colors hover:bg-[#EEF0F3] active:scale-[0.97]"
             >
-              <ShoppingBag size={17} className="relative z-10" />
+              <ShoppingBag size={17} strokeWidth={1.9} />
             </button>
 
             <button
               type="button"
               onClick={buyNow}
               aria-label="Buy now"
-              className="group relative flex h-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/90 bg-gradient-to-br from-white via-[#EAF1FA] to-[#C9D8EA] px-3.5 text-[12px] font-bold text-[#172B46] shadow-[0_3px_12px_rgba(15,23,42,0.16),inset_0_1px_1px_rgba(255,255,255,0.95)] transition duration-300 active:scale-95 before:absolute before:inset-y-0 before:-left-1/2 before:w-1/3 before:rotate-12 before:bg-gradient-to-r before:from-transparent before:via-white/95 before:to-transparent before:transition-transform before:duration-700 hover:before:translate-x-[450%]"
+              className="flex h-10 shrink-0 items-center justify-center rounded-[12px] bg-[#17212F] px-3.5 text-[12px] font-semibold text-white shadow-[0_2px_5px_rgba(16,24,40,0.12)] transition-colors hover:bg-[#26364A] active:scale-[0.97]"
             >
-              <span className="relative z-10">Buy now</span>
+              Buy now
             </button>
           </div>
         </div>
