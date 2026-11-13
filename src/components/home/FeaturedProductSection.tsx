@@ -1,4 +1,5 @@
-﻿import React, { useState } from "react";
+﻿
+import React, { useState } from "react";
 
 import chargerImage1 from "@/assets/hero/25w_fast.png";
 import chargerImage2 from "@/assets/hero/25w_fast1.png";
@@ -14,6 +15,64 @@ interface FeaturedProductSectionProps {
 }
 
 const chargerImages = [chargerImage1, chargerImage2, chargerImage3];
+
+// PRODUCT USP
+const productUsps = [
+  { label: "25W Fast Charging", icon: "bolt" },
+  { label: "TEC Cooling", icon: "cooling" },
+  { label: "7-in-1 Wireless", icon: "wireless" },
+];
+
+// USP ICONS
+const UspIcon = ({ type }: { type: string }) => {
+  if (type === "cooling") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className="h-3 w-3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 2v20M4.93 4.93l14.14 14.14M2 12h20M4.93 19.07 19.07 4.93" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    );
+  }
+
+  if (type === "wireless") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className="h-3 w-3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M5 9a11 11 0 0 1 14 0M8 12a6.5 6.5 0 0 1 8 0M11 15a2 2 0 0 1 2 0" />
+        <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3 w-3"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z" />
+    </svg>
+  );
+};
 
 const FeaturedProductSection: React.FC<FeaturedProductSectionProps> = ({
   name,
@@ -49,6 +108,7 @@ const FeaturedProductSection: React.FC<FeaturedProductSectionProps> = ({
     if (touchStart === null) return;
 
     const difference = touchStart - event.changedTouches[0].clientX;
+
     if (Math.abs(difference) > 45) {
       difference > 0 ? nextImage() : prevImage();
     }
@@ -90,12 +150,41 @@ const FeaturedProductSection: React.FC<FeaturedProductSectionProps> = ({
             {description}
           </p>
 
+          {/* PRODUCT USP PILLS */}
+          <div className="mt-5 flex max-w-full flex-wrap items-center justify-center gap-2 sm:mt-6">
+            {productUsps.map((usp) => (
+              <div
+                key={usp.label}
+                className="
+                  inline-flex min-h-[32px] items-center justify-center
+                  gap-1.5 whitespace-nowrap rounded-full
+                  border border-[#EEEEEE] bg-white
+                  px-3 py-1.5
+                  text-[9px] font-medium tracking-[-0.01em]
+                  text-[#333333]
+                  shadow-[0_2px_8px_rgba(0,0,0,0.06)]
+                  transition-all duration-200
+                  hover:-translate-y-0.5
+                  hover:shadow-[0_4px_12px_rgba(0,0,0,0.10)]
+                  sm:min-h-[34px] sm:px-3.5 sm:text-[10px]
+                "
+              >
+                <span className="text-[#1683FF]">
+                  <UspIcon type={usp.icon} />
+                </span>
+                {usp.label}
+              </div>
+            ))}
+          </div>
+
+          {/* PRODUCT PRICE */}
           {typeof price === "number" && price > 0 && (
             <p className="mt-3 text-lg font-semibold text-[#171717] sm:mt-5 sm:text-xl">
               ${price.toFixed(2)}
             </p>
           )}
 
+          {/* SHOP NOW BUTTON */}
           <a
             href={`/products/${slug}`}
             className="
@@ -116,7 +205,9 @@ const FeaturedProductSection: React.FC<FeaturedProductSectionProps> = ({
             "
           >
             <span className="pointer-events-none absolute left-[15%] top-0 h-full w-[35%] -skew-x-12 bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-70 blur-[2px]" />
+
             <span className="relative z-10">Shop Now</span>
+
             <span className="relative z-10 text-sm transition-transform duration-300 group-hover:translate-x-1">
               →
             </span>
@@ -155,7 +246,7 @@ const FeaturedProductSection: React.FC<FeaturedProductSectionProps> = ({
             />
           ))}
 
-          {/* PROMOTIONAL COPY — placed in the open left area of the gallery */}
+          {/* PROMOTIONAL COPY */}
           <div
             className="
               pointer-events-none absolute left-[6%] top-[20%] z-20
@@ -189,32 +280,48 @@ const FeaturedProductSection: React.FC<FeaturedProductSectionProps> = ({
             <span className="mt-3 block h-[3px] w-12 rounded-full bg-[#FF4D00] sm:mt-4 sm:h-1 sm:w-16" />
           </div>
 
+          {/* PREVIOUS IMAGE */}
           <button
             type="button"
             onClick={prevImage}
             aria-label="Previous image"
             className="absolute left-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/80 text-[#171717] shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-95 sm:left-4 sm:h-9 sm:w-9"
           >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
               <path d="m15 18-6-6 6-6" />
             </svg>
           </button>
 
+          {/* NEXT IMAGE */}
           <button
             type="button"
             onClick={nextImage}
             aria-label="Next image"
             className="absolute right-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/80 text-[#171717] shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-95 sm:right-4 sm:h-9 sm:w-9"
           >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
               <path d="m9 18 6-6-6-6" />
             </svg>
           </button>
 
+          {/* IMAGE COUNTER */}
           <div className="absolute right-3 top-3 z-20 rounded-full bg-black/45 px-3 py-1.5 text-[10px] font-medium tracking-wider text-white backdrop-blur-md sm:right-4 sm:top-4">
             {activeIndex + 1} / {galleryImages.length}
           </div>
 
+          {/* IMAGE DOTS */}
           <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/30 px-3 py-2 backdrop-blur-md sm:bottom-4">
             {galleryImages.map((_, index) => (
               <button

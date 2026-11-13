@@ -1,4 +1,5 @@
-﻿import { useState } from "react";
+﻿
+import { useState } from "react";
 import "./TravelMagBanner.css";
 
 import powerbanks from "../assets/hero/powerbanks.png";
@@ -18,7 +19,63 @@ const slides = [
   },
 ];
 
-function Chevron({ direction }: { direction: "left" | "right" }) {
+const productUsps = [
+  { label: "10,000mAh Capacity", icon: "battery" },
+  { label: "Magnetic Charging", icon: "magnetic" },
+  { label: "Built-in Kickstand", icon: "stand" },
+];
+
+function UspIcon({ type }: { type: string }) {
+  const iconProps = {
+    viewBox: "0 0 24 24",
+    className: "travelmag-usp-svg",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true as const,
+  };
+
+  if (type === "battery") {
+    return (
+      <svg {...iconProps}>
+        <rect x="3" y="7" width="17" height="10" rx="2" />
+        <path d="M20 10h1v4h-1" />
+        <path d="m13 8-4 5h3l-1 3 5-6h-3l1-2Z" />
+      </svg>
+    );
+  }
+
+  if (type === "magnetic") {
+    return (
+      <svg {...iconProps}>
+        <path d="M7 3v7a5 5 0 0 0 10 0V3" />
+        <path d="M7 3H4v7a8 8 0 0 0 16 0V3h-3" />
+        <path d="M4 6h3M17 6h3" />
+      </svg>
+    );
+  }
+
+  if (type === "stand") {
+    return (
+      <svg {...iconProps}>
+        <rect x="5" y="3" width="14" height="11" rx="2" />
+        <path d="M12 14v2" />
+        <path d="m8 21 4-5 4 5" />
+        <path d="M7 21h10" />
+      </svg>
+    );
+  }
+
+  return null;
+}
+
+function Chevron({
+  direction,
+}: {
+  direction: "left" | "right";
+}) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -75,6 +132,8 @@ export default function TravelMagBanner() {
   return (
     <section className="travelmag-section">
       <div className="travelmag-banner">
+
+        {/* LEFT — PRODUCT GALLERY */}
         <div className="travelmag-visual">
           <a
             href={PRODUCT_URL}
@@ -89,7 +148,7 @@ export default function TravelMagBanner() {
                 className={`travelmag-image ${
                   activeSlide === index ? "active" : ""
                 }`}
-                loading="lazy"
+                loading={index === 0 ? "eager" : "lazy"}
               />
             ))}
           </a>
@@ -126,11 +185,15 @@ export default function TravelMagBanner() {
                 }`}
                 onClick={() => setActiveSlide(index)}
                 aria-label={`Go to slide ${index + 1}`}
+                aria-current={
+                  activeSlide === index ? "true" : undefined
+                }
               />
             ))}
           </div>
         </div>
 
+        {/* RIGHT — PRODUCT INFORMATION */}
         <div className="travelmag-content">
           <span className="travelmag-eyebrow">
             INFIBETTER POWER SERIES
@@ -144,11 +207,34 @@ export default function TravelMagBanner() {
             Charge anywhere, work and stream hands-free.
           </p>
 
-          <a href={PRODUCT_URL} className="travelmag-cta group">
+          {/* THREE PRODUCT USP PILLS */}
+          <div className="travelmag-usps">
+            {productUsps.map((usp) => (
+              <div
+                className="travelmag-usp"
+                key={usp.label}
+              >
+                <span className="travelmag-usp-icon">
+                  <UspIcon type={usp.icon} />
+                </span>
+
+                <span className="travelmag-usp-label">
+                  {usp.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* SHOP NOW */}
+          <a
+            href={PRODUCT_URL}
+            className="travelmag-cta group"
+          >
             SHOP NOW
             <ArrowRight />
           </a>
         </div>
+
       </div>
     </section>
   );

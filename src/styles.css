@@ -595,3 +595,195 @@ border-top:1px solid #E5E5E5;
   object-fit: contain;
   object-position: center;
 }
+
+
+/* ========================================
+   TRAVELMAG — FORCE PREMIUM USP PILLS
+======================================== */
+
+.travelmag-content .travelmag-usps {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  width: 100% !important;
+  max-width: 100% !important;
+  gap: 8px !important;
+
+  margin: 28px auto 0 !important;
+  padding: 0 !important;
+}
+
+/* EACH PILL */
+.travelmag-content .travelmag-usp {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: unset !important;
+  min-height: 34px !important;
+
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 7px 12px !important;
+
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+
+  border: 1px solid #eeeeee !important;
+  border-radius: 999px !important;
+
+  background: #ffffff !important;
+
+  color: #333333 !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+
+  transition: transform 0.25s ease, box-shadow 0.25s ease !important;
+}
+
+.travelmag-content .travelmag-usp:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 13px rgba(0, 0, 0, 0.09) !important;
+}
+
+/* BLUE ICON */
+.travelmag-content .travelmag-usp-icon {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  flex: 0 0 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+
+  color: #1683FF !important;
+}
+
+.travelmag-content .travelmag-usp-icon svg {
+  display: block !important;
+  width: 14px !important;
+  height: 14px !important;
+
+  fill: none !important;
+  stroke: #1683FF !important;
+  stroke-width: 1.8 !important;
+}
+
+/* LABEL */
+.travelmag-content .travelmag-usp-label {
+  display: inline-block !important;
+  white-space: nowrap !important;
+  color: #333333 !important;
+  line-height: 1 !important;
+}
+
+/* MOBILE */
+@media (max-width: 480px) {
+  .travelmag-content .travelmag-usps {
+    gap: 5px !important;
+    margin-top: 20px !important;
+  }
+
+  .travelmag-content .travelmag-usp {
+    min-height: 31px !important;
+    padding: 6px 8px !important;
+    gap: 4px !important;
+    font-size: 9px !important;
+  }
+
+  .travelmag-content .travelmag-usp-icon {
+    flex-basis: 12px !important;
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .travelmag-content .travelmag-usp-icon svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+}
+
+
+/* ========================================
+   TRAVELMAG — SPACING ONLY
+   Keep existing UI unchanged
+======================================== */
+
+/* Eyebrow to title */
+.travelmag-content .travelmag-eyebrow {
+  margin-bottom: 16px !important;
+}
+
+/* Title */
+.travelmag-content h2 {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Title to description */
+.travelmag-content .travelmag-description {
+  margin-top: 16px !important;
+  margin-bottom: 0 !important;
+}
+
+/* Description to USP pills */
+.travelmag-content .travelmag-usps {
+  margin-top: 22px !important;
+  margin-bottom: 0 !important;
+}
+
+/* USP pills to Shop Now */
+.travelmag-content .travelmag-cta {
+  margin-top: 10px !important;
+}
+
+/* Desktop spacing */
+@media (min-width: 768px) {
+  .travelmag-content .travelmag-eyebrow {
+    margin-bottom: 16px !important;
+  }
+
+  .travelmag-content .travelmag-description {
+    margin-top: 16px !important;
+  }
+
+  .travelmag-content .travelmag-usps {
+    margin-top: 22px !important;
+  }
+
+  .travelmag-content .travelmag-cta {
+    margin-top: 10px !important;
+  }
+}
+
+/* Mobile spacing */
+@media (max-width: 767px) {
+  .travelmag-content .travelmag-eyebrow {
+    margin-bottom: 12px !important;
+  }
+
+  .travelmag-content .travelmag-description {
+    margin-top: 12px !important;
+  }
+
+  .travelmag-content .travelmag-usps {
+    margin-top: 18px !important;
+  }
+
+  .travelmag-content .travelmag-cta {
+    margin-top: 10px !important;
+  }
+}
+
