@@ -100,7 +100,8 @@ function ProductMiniCard({
 }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
     getCurrency(),
-  );
+  );
+
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const cart = useCart();
   const isOutOfStock = product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0;
@@ -843,7 +844,7 @@ export default function Collections({
                 {activeProducts.length > 5 && (
                   <div className="mt-3 flex items-center justify-end gap-1">
                     <span className="mr-2 text-[9px] text-neutral-400">
-                      {desktopStartIndex + 1}ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“
+                       {desktopStartIndex + 1}{"–"}
                       {Math.min(
                         desktopStartIndex + 5,
                         activeProducts.length,
