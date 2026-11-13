@@ -1353,6 +1353,33 @@ function ProductPage() {
 
     );
 
+    // Meta Pixel: send a valid AddToCart event with the USD value.
+    // Product prices are stored in USD in Supabase; do not use the display currency.
+    const metaWindow = window as Window & {
+      fbq?: (
+        action: "track",
+        eventName: "AddToCart",
+        parameters: Record<string, unknown>,
+      ) => void;
+    };
+
+    if (typeof metaWindow.fbq === "function") {
+      metaWindow.fbq("track", "AddToCart", {
+        content_name: product.name,
+        content_ids: [String(product.id)],
+        content_type: "product",
+        value: Number((price * quantity).toFixed(2)),
+        currency: "USD",
+        contents: [
+          {
+            id: String(product.id),
+            quantity,
+            item_price: Number(price.toFixed(2)),
+          },
+        ],
+      });
+    }
+
     // GA4: track a successful add-to-cart action through GTM.
 
     const win = window as Window & {
