@@ -25,17 +25,20 @@ const productUsps = [
 
 // USP ICONS
 const UspIcon = ({ type }: { type: string }) => {
+  const iconProps = {
+    viewBox: "0 0 24 24",
+    className: "h-[13px] w-[13px]",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true as const,
+  };
+
   if (type === "cooling") {
     return (
-      <svg
-        viewBox="0 0 24 24"
-        className="h-3 w-3"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      <svg {...iconProps}>
         <path d="M12 2v20M4.93 4.93l14.14 14.14M2 12h20M4.93 19.07 19.07 4.93" />
         <circle cx="12" cy="12" r="3" />
       </svg>
@@ -44,37 +47,29 @@ const UspIcon = ({ type }: { type: string }) => {
 
   if (type === "wireless") {
     return (
-      <svg
-        viewBox="0 0 24 24"
-        className="h-3 w-3"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      <svg {...iconProps}>
         <path d="M5 9a11 11 0 0 1 14 0M8 12a6.5 6.5 0 0 1 8 0M11 15a2 2 0 0 1 2 0" />
-        <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none" />
+        <circle
+          cx="12"
+          cy="19"
+          r="1"
+          fill="currentColor"
+          stroke="none"
+        />
       </svg>
     );
   }
 
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-3 w-3"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg {...iconProps}>
       <path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z" />
     </svg>
   );
 };
 
-const FeaturedProductSection: React.FC<FeaturedProductSectionProps> = ({
+const FeaturedProductSection: React.FC<
+  FeaturedProductSectionProps
+> = ({
   name,
   description,
   image,
@@ -85,8 +80,8 @@ const FeaturedProductSection: React.FC<FeaturedProductSectionProps> = ({
   const [activeIndex, setActiveIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
-  // Use the supplied product image if the fixed gallery assets are unavailable.
-  const galleryImages = chargerImages.length > 0 ? chargerImages : [image];
+  const galleryImages =
+    chargerImages.length > 0 ? chargerImages : [image];
 
   const prevImage = () => {
     setActiveIndex((prev) =>
@@ -100,14 +95,19 @@ const FeaturedProductSection: React.FC<FeaturedProductSectionProps> = ({
     );
   };
 
-  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+  const handleTouchStart = (
+    event: React.TouchEvent<HTMLDivElement>
+  ) => {
     setTouchStart(event.touches[0].clientX);
   };
 
-  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+  const handleTouchEnd = (
+    event: React.TouchEvent<HTMLDivElement>
+  ) => {
     if (touchStart === null) return;
 
-    const difference = touchStart - event.changedTouches[0].clientX;
+    const difference =
+      touchStart - event.changedTouches[0].clientX;
 
     if (Math.abs(difference) > 45) {
       difference > 0 ? nextImage() : prevImage();
@@ -150,29 +150,40 @@ const FeaturedProductSection: React.FC<FeaturedProductSectionProps> = ({
             {description}
           </p>
 
-          {/* PRODUCT USP PILLS */}
-          <div className="mt-5 flex max-w-full flex-wrap items-center justify-center gap-2 sm:mt-6">
+          {/* THREE USP PILLS — ALWAYS ONE ROW */}
+          <div
+            className="
+              mt-5 flex w-full max-w-full
+              flex-nowrap items-center justify-center
+              gap-1.5 sm:mt-6 sm:gap-2
+            "
+          >
             {productUsps.map((usp) => (
               <div
                 key={usp.label}
                 className="
-                  inline-flex min-h-[32px] items-center justify-center
-                  gap-1.5 whitespace-nowrap rounded-full
+                  inline-flex min-w-0 flex-shrink
+                  min-h-[32px] items-center justify-center
+                  gap-1 whitespace-nowrap rounded-full
                   border border-[#EEEEEE] bg-white
-                  px-3 py-1.5
-                  text-[9px] font-medium tracking-[-0.01em]
+                  px-2 py-1.5
+                  text-[8px] font-medium tracking-[-0.02em]
                   text-[#333333]
                   shadow-[0_2px_8px_rgba(0,0,0,0.06)]
                   transition-all duration-200
                   hover:-translate-y-0.5
                   hover:shadow-[0_4px_12px_rgba(0,0,0,0.10)]
-                  sm:min-h-[34px] sm:px-3.5 sm:text-[10px]
+                  sm:min-h-[34px] sm:flex-none
+                  sm:gap-1.5 sm:px-3.5 sm:text-[10px]
                 "
               >
-                <span className="text-[#1683FF]">
+                <span className="flex h-3 w-3 flex-shrink-0 items-center justify-center text-[#1683FF]">
                   <UspIcon type={usp.icon} />
                 </span>
-                {usp.label}
+
+                <span className="whitespace-nowrap">
+                  {usp.label}
+                </span>
               </div>
             ))}
           </div>
