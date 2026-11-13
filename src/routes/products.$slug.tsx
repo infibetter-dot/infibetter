@@ -2230,6 +2230,75 @@ function ProductPage() {
 
                 </button>
 
+                {/* Accepted payment methods — compact brand row */}
+                <div
+                  className="mt-3 flex w-full items-center justify-center gap-2.5"
+                  aria-label="Accepted payment methods: PayPal, Visa, Mastercard and more"
+                >
+                  {/* PayPal mark */}
+                  <span
+                    className="inline-flex h-6 w-[24px] items-center justify-center"
+                    aria-label="PayPal"
+                    title="PayPal"
+                  >
+                    <svg viewBox="0 0 32 24" className="h-[19px] w-[23px]" aria-hidden="true">
+                      <path
+                        d="M11.2 3.1h9.1c4.1 0 6.1 2.1 5.4 5.9-.8 4.3-3.5 6.3-7.6 6.3h-3.2l-1.1 5.1H8.5L11.2 3.1Z"
+                        fill="#003087"
+                      />
+                      <path
+                        d="M7.8 5.2h9.1c4.1 0 6.1 2.1 5.4 5.9-.8 4.3-3.5 6.3-7.6 6.3h-3.2l-1.1 5.1H5.1L7.8 5.2Z"
+                        fill="#009CDE"
+                      />
+                      <path
+                        d="M11.4 5.2h5.5c2.1 0 3.5.7 4.2 2-.1 4-2.8 6-6.5 6h-3.2l-1.1 5.1H8.1l1.6-7.5 1.7-5.6Z"
+                        fill="#012169"
+                        opacity=".18"
+                      />
+                    </svg>
+                  </span>
+
+                  {/* Visa */}
+                  <span
+                    className="inline-flex h-6 min-w-[36px] items-center justify-center rounded-[6px] bg-[#1434CB] px-1.5"
+                    aria-label="Visa"
+                    title="Visa"
+                  >
+                    <svg viewBox="0 0 38 16" className="h-[13px] w-[31px]" aria-hidden="true">
+                      <text
+                        x="19"
+                        y="12.2"
+                        textAnchor="middle"
+                        fill="#FFFFFF"
+                        fontFamily="Arial, Helvetica, sans-serif"
+                        fontSize="12"
+                        fontWeight="800"
+                        fontStyle="italic"
+                        letterSpacing="-0.6"
+                      >
+                        VISA
+                      </text>
+                    </svg>
+                  </span>
+
+                  {/* Mastercard */}
+                  <span
+                    className="inline-flex h-6 min-w-[34px] items-center justify-center rounded-[6px] bg-[#F1F2F4] px-1"
+                    aria-label="Mastercard"
+                    title="Mastercard"
+                  >
+                    <svg viewBox="0 0 32 20" className="h-[17px] w-[28px]" aria-hidden="true">
+                      <circle cx="12" cy="10" r="7" fill="#EB001B" />
+                      <circle cx="20" cy="10" r="7" fill="#F79E1B" />
+                      <path d="M16 4.1a7 7 0 0 1 0 11.8 7 7 0 0 1 0-11.8Z" fill="#FF5F00" />
+                    </svg>
+                  </span>
+
+                  <span className="ml-0.5 text-[11px] font-medium leading-none text-[#64748B]">
+                    +more
+                  </span>
+                </div>
+
                 <button
                   type="button"
                   onClick={expressCheckout}
