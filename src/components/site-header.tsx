@@ -1,23 +1,21 @@
-﻿import { Link } from "@tanstack/react-router";
+﻿import {
+  Link } from "@tanstack/react-router";
 
 import CartDrawer from "@/components/cart/CartDrawer";
 
 import {
 
   ArrowRight,
-
   ChevronDown,
-
   Menu,
-
+  PartyPopper,
   Search,
-
   ShoppingBag,
-
   User,
-
   X,
-
+  PackageCheck,
+  Truck,
+  ShieldCheck
 } from "lucide-react";
 
 import { useEffect, useRef, useState } from "react";
@@ -569,73 +567,69 @@ export function SiteHeader() {
         w-full
 
         bg-[#F7F8FA]/95
-
-        py-2
-
         backdrop-blur-xl
-
-        sm:py-2.5
 
       "
 
     >
 
-      {/* TOP ANNOUNCEMENT */}
+      {/* TOP ANNOUNCEMENT — PREMIUM TECH */}
+      <div className="w-full overflow-hidden border-b border-white/10 bg-[#17191D] text-white">
+        <style>{`
+          @keyframes infibetter-announcement-marquee {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .infibetter-announcement-track {
+              animation: none !important;
+              transform: none !important;
+            }
+          }
+        `}</style>
 
+        <div className="flex h-[40px] items-center overflow-hidden sm:h-[42px]">
+          <div className="infibetter-announcement-track flex w-max shrink-0 items-center animate-[infibetter-announcement-marquee_32s_linear_infinite]">
+            {[0, 1].map((copy) => (
+              <div
+                key={copy}
+                aria-hidden={copy === 1 ? true : undefined}
+                className="flex shrink-0 items-center"
+              >
+                <div className="flex items-center gap-2.5 px-6 sm:px-9">
+                  <PackageCheck size={14} strokeWidth={1.8} className="shrink-0 text-[#D6E5FF]" />
+                  <span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.13em] text-white/95 sm:text-[10px]">
+                    Free 30-Day Returns
+                  </span>
+                </div>
 
+                <span className="h-3.5 w-px bg-white/20" aria-hidden="true" />
 
-      <div
+                <div className="flex items-center gap-2.5 px-6 sm:px-9">
+                  <Truck size={14} strokeWidth={1.8} className="shrink-0 text-[#D6E5FF]" />
+                  <span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.13em] text-white/95 sm:text-[10px]">
+                    Free Tracking
+                  </span>
+                </div>
 
-        className="
+                <span className="h-3.5 w-px bg-white/20" aria-hidden="true" />
 
-          mb-1.5
+                <div className="flex items-center gap-2.5 px-6 sm:px-9">
+                  <ShieldCheck size={14} strokeWidth={1.8} className="shrink-0 text-[#D6E5FF]" />
+                  <span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.13em] text-white/95 sm:text-[10px]">
+                    1-Year Warranty
+                  </span>
+                </div>
 
-          flex
-
-          h-4
-
-          items-center
-
-          justify-center
-
-          gap-2
-
-          text-[7px]
-
-          font-semibold
-
-          uppercase
-
-          tracking-[0.08em]
-
-          text-[#334155]
-
-        "
-
-      >
-
-        <span>Free tracked shipping</span>
-
-
-
-        <span className="text-[#94A3B8]">
-
-          ·
-
-        </span>
-
-
-
-        <span>30-day returns</span>
-
+                <span className="mx-2 h-1 w-1 rounded-full bg-white/35" aria-hidden="true" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-
-
       {/* HEADER CAPSULE */}
-
-
-
+      <div className="py-2 sm:py-2.5">
       <div className="relative mx-auto w-[calc(100%-24px)] max-w-[1320px]">
 
         <div
@@ -2195,8 +2189,7 @@ export function SiteHeader() {
         )}
 
       </div>
-
-
+      </div>
 
       {/* ========================================================
 

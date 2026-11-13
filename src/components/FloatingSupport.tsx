@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Check,
@@ -33,33 +33,35 @@ export default function FloatingSupport() {
   const [email, setEmail] = useState("");
   const [issueType, setIssueType] = useState(ISSUE_TYPES[0]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [orderNumber, setOrderNumber] = useState("");
   const [message, setMessage] = useState("");
-
-  const needsOrderNumber = [
-    "Shipping & Delivery",
-    "Returns & Refunds",
-    "Warranty",
-  ].includes(issueType);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+
+  // Allow support links across the site to open this one shared support panel.
+  useEffect(() => {
+    const openSupportPanel = () => {
+      setOpen(true);
+      setSubmitted(false);
+      setDropdownOpen(false);
+      setError("");
+    };
+
+    window.addEventListener("infibetter:open-support", openSupportPanel);
+    return () => {
+      window.removeEventListener("infibetter:open-support", openSupportPanel);
+    };
+  }, []);
 
   async function submitRequest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
     const normalizedEmail = email.trim().toLowerCase();
-    const normalizedOrderNumber = orderNumber.trim();
     const normalizedMessage = message.trim();
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       setError("Please enter a valid email address.");
-      return;
-    }
-
-    if (needsOrderNumber && !normalizedOrderNumber) {
-      setError("Please enter your order number.");
       return;
     }
 
@@ -76,11 +78,7 @@ export default function FloatingSupport() {
         .insert({
           customer_email: normalizedEmail,
           issue_type: issueType,
-          // Keep the order number in the existing message field;
-          // this avoids requiring a database schema change.
-          message: needsOrderNumber
-            ? `Order number: ${normalizedOrderNumber}\\n\\n${normalizedMessage}`
-            : normalizedMessage,
+          message: normalizedMessage,
           page_url: window.location.href,
           status: "new",
         });
@@ -98,7 +96,6 @@ export default function FloatingSupport() {
 
       setSubmitted(true);
       setEmail("");
-      setOrderNumber("");
       setMessage("");
       setDropdownOpen(false);
     } catch (err) {
@@ -165,15 +162,10 @@ export default function FloatingSupport() {
               </div>
             ) : (
               <form onSubmit={submitRequest} className="space-y-3.5">
-                <div className="space-y-1">
-                  <p className="text-xs leading-5 text-slate-500">
-                    Send us your question. Our team will review your request and
-                    reply by email.
-                  </p>
-                  <p className="text-xs font-semibold text-blue-600">
-                    We’ll handle your request within 2 hours.
-                  </p>
-                </div>
+                <p className="text-xs leading-5 text-slate-500">
+                  Send us your question. Our team will review your request and
+                  reply by email.
+                </p>
 
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -250,27 +242,6 @@ export default function FloatingSupport() {
                     </div>
                   )}
                 </div>
-
-                {needsOrderNumber && (
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-700">
-                      Order number
-                    </span>
-                    <input
-                      type="text"
-                      required
-                      maxLength={80}
-                      value={orderNumber}
-                      onChange={(event) => setOrderNumber(event.target.value)}
-                      placeholder="e.g. INFI-123456"
-                      autoComplete="off"
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                    />
-                    <p className="mt-1.5 text-[11px] leading-4 text-slate-400">
-                      Please provide your order number so we can assist you faster.
-                    </p>
-                  </label>
-                )}
 
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-semibold text-slate-700">

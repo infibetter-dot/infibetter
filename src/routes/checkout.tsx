@@ -736,16 +736,26 @@ function CheckoutPage() {
           >
             INFIBETTER
           </Link>
-          <div className="flex items-center gap-2 text-xs text-neutral-500">
-            <ShieldCheck className="h-4 w-4" />
-            Secure checkout
+          <div className="flex items-center gap-2 text-xs font-semibold text-[#174EA6]">
+            <ShieldCheck className="h-4 w-4 text-[#174EA6]" strokeWidth={2.2} />
+            <span>Secure checkout</span>
           </div>
         </div>
       </header>
 
-      <div className="border-b border-[#ededed] bg-[#fafafa]">
-        <div className="mx-auto flex max-w-[1180px] items-center justify-center px-5 py-2.5 text-xs font-medium text-neutral-600">
-          Trusted by 230,000+ customers worldwide
+      <div className="border-b border-emerald-100/80 bg-white px-4 py-1.5">
+        <div className="mx-auto flex max-w-[1180px] items-center justify-center">
+          <div
+            className="inline-flex min-h-[34px] items-center justify-center gap-2 rounded-full border border-emerald-100 bg-[#F1FBF6] px-3.5 py-1.5 text-center"
+            aria-label="Loved by customers, with over 1,000 customer reviews"
+          >
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#D9F5E7] text-[#07864B]">
+              <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2.3} />
+            </span>
+            <span className="text-[11px] font-semibold tracking-[-0.01em] text-[#087044] sm:text-xs">
+              Loved by 1,000+ customers
+            </span>
+          </div>
         </div>
       </div>
 

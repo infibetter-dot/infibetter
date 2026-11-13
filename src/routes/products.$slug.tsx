@@ -1,43 +1,45 @@
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  useNavigate } from "@tanstack/react-router";
 
-import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions,
+  useQuery,
+  useSuspenseQuery } from "@tanstack/react-query";
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent } from "react";
 
 import {
 
   ChevronDown,
-
   CircleHelp,
-
   BookOpen,
-
   SlidersHorizontal,
-
   Smartphone,
-
   ChevronLeft,
-
   ChevronRight,
-
   Minus,
-
   Plus,
-
   ShoppingBag,
-
   Truck,
-
   ShieldCheck,
-
   RotateCcw,
-
   Check,
-
   X,
-
   ArrowUpRight,
-
+  PackageCheck,
+  BadgeCheck,
+  Mail,
+  Package,
+  CreditCard,
+  LockKeyhole,
+  Headphones,
+  RefreshCw,
   Sparkles,
   Lightbulb,
   BatteryCharging,
@@ -52,9 +54,31 @@ import {
   Gift,
   House,
   LampDesk,
-  Sofa,
-
+  Sofa
 } from "lucide-react";
+
+// Keep this mapping in sync with the icon keys in admin ProductUSP.tsx.
+// Retail renders the exact icon key saved in public.product_usps.icon.
+const PRODUCT_USP_ICON_MAP = {
+  sparkles: Sparkles,
+  lightbulb: Lightbulb,
+  shield: ShieldCheck,
+  truck: Truck,
+  battery: BatteryCharging,
+  usb: Usb,
+  touch: Hand,
+  clock: Clock3,
+  leaf: Leaf,
+  star: Star,
+  palette: Palette,
+  award: Award,
+  heart: Heart,
+  gift: Gift,
+  home: House,
+  lamp: LampDesk,
+  sofa: Sofa,
+};
+
 
 import { toast } from "sonner";
 import { trackProductInteraction } from "@/lib/analytics";
@@ -78,28 +102,6 @@ import { getImageUrl } from "@/lib/storage";
 import ProductReviews from "@/components/ProductReviews";
 
 import { trackViewContent } from "@/lib/meta-pixel";
-
-// Keep this mapping in sync with the icon keys in admin ProductUSP.tsx.
-// Retail renders the exact icon key saved in public.product_usps.icon.
-const PRODUCT_USP_ICON_MAP = {
-  sparkles: Sparkles,
-  lightbulb: Lightbulb,
-  shield: ShieldCheck,
-  truck: Truck,
-  battery: BatteryCharging,
-  usb: Usb,
-  touch: Hand,
-  clock: Clock3,
-  leaf: Leaf,
-  star: Star,
-  palette: Palette,
-  award: Award,
-  heart: Heart,
-  gift: Gift,
-  home: House,
-  lamp: LampDesk,
-  sofa: Sofa,
-};
 
 // Product prices in Supabase are USD. This page formats them locally so the
 
@@ -1297,7 +1299,7 @@ function ProductPage() {
 
     );
 
-  function addToCart(options: { openCart?: boolean; showToast?: boolean } = {}) {
+  function addToCart() {
 
     if (!inStock) {
 
@@ -1403,24 +1405,9 @@ function ProductPage() {
 
     });
 
-    if (options.showToast !== false) {
-      toast.success("Added to cart");
-    }
-    if (options.openCart !== false) {
-      window.dispatchEvent(new Event("infibetter:open-cart"));
-    }
+    toast.success("Added to cart");
+    window.dispatchEvent(new Event("infibetter:open-cart"));
 
-  }
-
-  function expressCheckout() {
-    if (!inStock) {
-      toast.error("This product is currently out of stock");
-      return;
-    }
-
-    // Add the selected product configuration, then proceed directly to checkout.
-    addToCart({ openCart: false, showToast: false });
-    navigate({ to: "/checkout" });
   }
 
   function buyNow() {
@@ -1822,7 +1809,7 @@ function ProductPage() {
 
                       </span>
 
-                      <span className="inline-flex h-[22px] items-center rounded-full bg-[#E8F8EE] px-2 text-[11px] font-bold leading-none text-[#168447]">
+                      <span className="text-[12px] font-medium text-[#6E6E73]">
 
                         -{discountPercent}%
 
@@ -1861,10 +1848,7 @@ function ProductPage() {
                               aria-hidden="true"
                             />
                           ) : (
-                            <span
-                              className="h-[15px] w-[15px] shrink-0"
-                              aria-hidden="true"
-                            />
+                            <span className="h-[15px] w-[15px] shrink-0" aria-hidden="true" />
                           )}
                           <span className="min-w-0">{item.title}</span>
                         </li>
@@ -1927,7 +1911,7 @@ function ProductPage() {
                       {selectedPlugType ? `${selectedPlugType} Plug` : "Choose a plug"}
                     </span>
                   </div>
-                  <div className="grid w-full grid-cols-4 gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {compatiblePlugTypes.map((type: string) => {
                       const isSelected = selectedPlugType === type;
                       return (
@@ -1936,10 +1920,10 @@ function ProductPage() {
                           type="button"
                           onClick={() => setSelectedPlugType(type)}
                           aria-pressed={isSelected}
-                          className={`inline-flex min-h-[38px] w-full min-w-0 items-center justify-center rounded-full border px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 ${
+                          className={`inline-flex min-h-[36px] min-w-[64px] items-center justify-center rounded-full border px-4 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 ${
                             isSelected
-                              ? "border-[#1D1D1F] bg-[#1D1D1F] text-white"
-                              : "border-[#E5E5E7] bg-white text-[#45454B] hover:border-[#99999F]"
+                              ? "border-[#B9DEC7] bg-[#EAF6EE] text-[#287A45] shadow-[inset_0_0_0_1px_rgba(40,122,69,0.04)]"
+                              : "border-[#E5E5E7] bg-white text-[#45454B] hover:border-[#B9DEC7] hover:bg-[#F7FBF8]"
                           }`}
                         >
                           {type}
@@ -2230,146 +2214,132 @@ function ProductPage() {
 
                 </button>
 
-                {/* Accepted payment methods — compact brand row */}
-                <div
-                  className="mt-3 flex w-full items-center justify-center gap-2.5"
-                  aria-label="Accepted payment methods: PayPal, Visa, Mastercard and more"
-                >
-                  {/* PayPal mark */}
-                  <span
-                    className="inline-flex h-6 w-[24px] items-center justify-center"
-                    aria-label="PayPal"
-                    title="PayPal"
+                {/* Express checkout and accepted payment marks */}
+                <div className="mt-3 flex flex-col items-center gap-2.5">
+                  <div
+                    className="flex min-h-[24px] items-center justify-center gap-3"
+                    aria-label="PayPal, Visa, Mastercard and more payment options at checkout"
                   >
-                    <svg viewBox="0 0 32 24" className="h-[19px] w-[23px]" aria-hidden="true">
-                      <path
-                        d="M11.2 3.1h9.1c4.1 0 6.1 2.1 5.4 5.9-.8 4.3-3.5 6.3-7.6 6.3h-3.2l-1.1 5.1H8.5L11.2 3.1Z"
-                        fill="#003087"
-                      />
-                      <path
-                        d="M7.8 5.2h9.1c4.1 0 6.1 2.1 5.4 5.9-.8 4.3-3.5 6.3-7.6 6.3h-3.2l-1.1 5.1H5.1L7.8 5.2Z"
-                        fill="#009CDE"
-                      />
-                      <path
-                        d="M11.4 5.2h5.5c2.1 0 3.5.7 4.2 2-.1 4-2.8 6-6.5 6h-3.2l-1.1 5.1H8.1l1.6-7.5 1.7-5.6Z"
-                        fill="#012169"
-                        opacity=".18"
-                      />
+                    <svg viewBox="0 0 32 24" className="h-[19px] w-7" role="img" aria-label="PayPal">
+                      <path d="M13 2h9c4 0 6 2.2 5.2 6-.7 3.8-3.2 5.6-7 5.6h-3l-1 4.5h-5L13 2Z" fill="#003087" />
+                      <path d="M8.5 5h9c4 0 6 2.2 5.2 6-.7 3.8-3.2 5.6-7 5.6h-3l-1 4.5h-5L8.5 5Z" fill="#009CDE" />
                     </svg>
-                  </span>
+                    <span className="flex h-[21px] min-w-[39px] items-center justify-center rounded-[5px] bg-[#1434CB] px-1.5 text-[10px] font-extrabold italic tracking-[-0.04em] text-white">
+                      VISA
+                    </span>
+                    <svg viewBox="0 0 38 24" className="h-[21px] w-[34px]" role="img" aria-label="Mastercard">
+                      <circle cx="14" cy="12" r="9" fill="#EB001B" />
+                      <circle cx="24" cy="12" r="9" fill="#F79E1B" />
+                      <path d="M19 4.43a9 9 0 0 1 0 15.14 9 9 0 0 1 0-15.14Z" fill="#FF5F00" />
+                    </svg>
+                    <span className="text-[11px] font-medium text-[#7B8491]">+more</span>
+                  </div>
 
-                  {/* Visa */}
-                  <span
-                    className="inline-flex h-6 min-w-[36px] items-center justify-center rounded-[6px] bg-[#1434CB] px-1.5"
-                    aria-label="Visa"
-                    title="Visa"
+                  <button
+                    type="button"
+                    onClick={buyNow}
+                    disabled={!inStock}
+                    className="inline-flex min-h-[24px] items-center justify-center gap-1.5 text-[12px] font-medium text-[#687386] underline decoration-[#AAB3C0] underline-offset-4 transition hover:text-[#1D1D1F] disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Express checkout with PayPal"
                   >
-                    <svg viewBox="0 0 38 16" className="h-[13px] w-[31px]" aria-hidden="true">
-                      <text
-                        x="19"
-                        y="12.2"
-                        textAnchor="middle"
-                        fill="#FFFFFF"
-                        fontFamily="Arial, Helvetica, sans-serif"
-                        fontSize="12"
-                        fontWeight="800"
-                        fontStyle="italic"
-                        letterSpacing="-0.6"
-                      >
-                        VISA
-                      </text>
-                    </svg>
-                  </span>
-
-                  {/* Mastercard */}
-                  <span
-                    className="inline-flex h-6 min-w-[34px] items-center justify-center rounded-[6px] bg-[#F1F2F4] px-1"
-                    aria-label="Mastercard"
-                    title="Mastercard"
-                  >
-                    <svg viewBox="0 0 32 20" className="h-[17px] w-[28px]" aria-hidden="true">
-                      <circle cx="12" cy="10" r="7" fill="#EB001B" />
-                      <circle cx="20" cy="10" r="7" fill="#F79E1B" />
-                      <path d="M16 4.1a7 7 0 0 1 0 11.8 7 7 0 0 1 0-11.8Z" fill="#FF5F00" />
-                    </svg>
-                  </span>
-
-                  <span className="ml-0.5 text-[11px] font-medium leading-none text-[#64748B]">
-                    +more
-                  </span>
+                    Express Checkout
+                    <ArrowUpRight size={13} strokeWidth={1.8} />
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={expressCheckout}
-                  disabled={!inStock}
-                  className="mt-3 inline-flex min-h-8 w-full items-center justify-center gap-1.5 bg-transparent p-0 text-[12px] font-medium text-[#5F6875] underline decoration-[#B8C0CA] underline-offset-4 transition-colors hover:text-[#17212F] disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Express checkout"
-                >
-                  <span>Express Checkout</span>
-                  <ArrowUpRight size={13} strokeWidth={1.8} aria-hidden="true" />
-                </button>
 
               </div>
 
-
-
               {/* Benefits / Trust Features — aligned with INFIBETTER policies */}
-              <section className="mt-4 w-full min-w-0" aria-label="Shopping benefits">
-                <div className="mb-3 flex items-center justify-between gap-3">
+              <section className="mt-3 w-full min-w-0" aria-label="Shopping benefits">
+                <div className="mb-2.5 flex items-center justify-between gap-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#777F89]">
                     Shop with confidence
                   </p>
                   <span className="h-px flex-1 bg-[#ECEEF1]" aria-hidden="true" />
                 </div>
 
-                <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:gap-2.5">
+                <div className="grid w-full min-w-0 grid-cols-2 gap-1.5 sm:gap-2">
                   {[
                     {
                       icon: Truck,
+                      iconColor: "text-[#2878D0]",
+                      iconBg: "bg-[#EAF3FF]",
+                      iconBorder: "border-[#D8E9FF]",
+                      trackingItem: "tracked_delivery",
                       text: "Tracked delivery",
-                      hint: "Tracking after dispatch",
+                      label: "Tracked Delivery",
+                      hint: "Track your order",
                       description:
                         "Orders are generally processed within 1–2 business days before dispatch. After dispatch, tracking details are sent so you can follow your delivery. Estimated transit times are 5–9 business days for the US, Canada, Europe, and Australia/New Zealand; 5–8 business days for the UK; and 5–12 business days for other destinations. Battery products may take approximately 4–10 business days after dispatch, depending on destination and carrier. These are estimates, not guarantees. Customs, weather, carrier delays, and other local disruptions may affect delivery. For help, email infibetter@gmail.com.",
                     },
                     {
                       icon: RotateCcw,
+                      iconColor: "text-[#8058C9]",
+                      iconBg: "bg-[#F2EDFF]",
+                      iconBorder: "border-[#E7DCFF]",
+                      trackingItem: "30_day_guarantee",
                       text: "30-day returns",
-                      hint: "Clear return policy",
+                      label: "30-Day Guarantee",
+                      hint: "Free replacement",
                       description:
                         "You may request a standard return within 30 days of delivery. Items must be unused, unopened, complete, and in their original packaging. For standard non-defective returns, customers are responsible for tracked return shipping unless applicable law says otherwise. We charge no restocking fee (0%). Please contact infibetter@gmail.com and receive return approval and instructions before sending anything back. Defective, damaged, or incorrect items are handled under the Refund Policy, and mandatory consumer rights remain unaffected.",
                     },
                     {
                       icon: ShieldCheck,
+                      iconColor: "text-[#15966B]",
+                      iconBg: "bg-[#E8F7F1]",
+                      iconBorder: "border-[#D1EFE2]",
+                      trackingItem: "secure_payment",
                       text: "Secure checkout",
-                      hint: "Payment options at checkout",
+                      label: "Secure Payment",
+                      hint: "PayPal protected",
                       description:
                         "Available payment methods are shown at checkout. Your payment is processed through the method you select during checkout. Please enter payment information only through the checkout payment form. For questions about a payment or transaction, contact infibetter@gmail.com.",
                     },
                     {
                       icon: Check,
+                      iconColor: "text-[#C17A25]",
+                      iconBg: "bg-[#FFF3E3]",
+                      iconBorder: "border-[#F8E5C9]",
+                      trackingItem: "customer_support",
                       text: "Customer support",
+                      label: "Customer Support",
                       hint: "We're here to help",
                       description:
                         "Need help with an order, delivery, return, refund, or product? Contact INFIBETTER at infibetter@gmail.com. For order-related requests, include your order number and a clear description of the issue. For damaged, defective, or incorrect items, please contact us as soon as possible and include photos or video of the item and its packaging.",
                     },
-                  ].map(({ icon: Icon, text, hint, description }) => (
+                  ].map(({ icon: Icon, iconColor, iconBg, iconBorder, trackingItem, text, label, hint, description }) => (
                     <button
                       key={text}
                       type="button"
-                      onClick={() => setActiveTrustInfo({ title: text, description, icon: Icon })}
+                      onClick={() => {
+                        const win = window as Window & {
+                          dataLayer?: Array<Record<string, unknown>>;
+                        };
+                        win.dataLayer = win.dataLayer || [];
+                        win.dataLayer.push({
+                          event: "shop_confidence_click",
+                          confidence_item: trackingItem,
+                          confidence_label: label,
+                          page_type: "product",
+                          product_name: product.name,
+                          product_id: String(product.id),
+                        });
+
+                        setActiveTrustInfo({ title: text, description, icon: Icon });
+                      }}
                       aria-haspopup="dialog"
-                      className="group flex min-h-[60px] min-w-0 items-center gap-2 rounded-[10px] border border-[#E9EBEF] bg-[#F7F8FA] p-2 text-left outline-none transition-all duration-200 hover:border-[#D8DDE5] hover:bg-[#F2F4F7] hover:shadow-[0_4px_12px_rgba(20,30,45,0.06)] focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 active:translate-y-0 sm:min-h-[64px] sm:gap-2.5 sm:rounded-[11px] sm:p-2.5"
+                      className="group relative flex min-h-[50px] min-w-0 items-center gap-2 overflow-hidden rounded-[11px] border border-[#E7EAF0] bg-white px-2 py-1.5 text-left outline-none transition-all duration-200 hover:border-[#D7DDE7] hover:bg-[#FAFBFC] focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 sm:gap-2.5 sm:px-2.5"
                     >
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border border-white bg-white text-[#34465D] shadow-[0_1px_3px_rgba(20,30,45,0.05)] sm:h-8 sm:w-8">
-                        <Icon size={15} strokeWidth={1.8} aria-hidden="true" />
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] border ${iconBorder} ${iconBg} ${iconColor} shadow-[0_1px_2px_rgba(20,30,45,0.03)] transition-transform duration-200 group-hover:scale-[1.04] sm:h-10 sm:w-10`}>
+                        <Icon size={18} strokeWidth={1.9} aria-hidden="true" />
                       </span>
 
                       <span className="min-w-0 flex-1">
-                        <span className="block whitespace-normal break-words text-[11px] font-semibold leading-4 text-[#303640] sm:text-[12px]">
-                          {text}
+                        <span className="block whitespace-normal break-words text-[11px] font-semibold leading-[1.25] text-[#293342]">
+                          {label}
                         </span>
-                        <span className="mt-0.5 block whitespace-normal break-words text-[9px] leading-3.5 text-[#858C96] sm:text-[10px]">
+                        <span className="mt-0.5 block whitespace-normal break-words text-[10px] leading-4 text-[#7C8796] sm:text-[11px]">
                           {hint}
                         </span>
                       </span>
@@ -2386,9 +2356,10 @@ function ProductPage() {
               </section>
 
               {/* Description */}
+
               {product.description && (
 
-                <div className="mt-5 mb-4 rounded-xl border border-[#E5E8ED] bg-[#F8FAFC] px-4 py-3.5 shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
+                <div className="mt-7 border-b border-[#D2D2D7] pb-5">
 
                   <button
 
@@ -2408,11 +2379,11 @@ function ProductPage() {
                       }
                     }}
 
-                    className="flex min-h-8 w-full items-center justify-between gap-3 text-left"
+                    className="flex w-full items-center justify-between text-left"
 
                   >
 
-                    <span className="text-[14px] font-bold tracking-[-0.01em] text-[#202833]">
+                    <span className="text-[14px] font-semibold">
 
                       Product description
 
@@ -2436,7 +2407,7 @@ function ProductPage() {
 
                     <div
 
-                      className="prose prose-sm mt-4 max-w-none whitespace-pre-line break-words text-[13px] leading-6 text-[#6E6E73] [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                      className="prose prose-sm mt-4 max-w-none text-[13px] leading-6 text-[#6E6E73]"
 
                       dangerouslySetInnerHTML={{ __html: product.description }}
 
@@ -2447,9 +2418,6 @@ function ProductPage() {
                 </div>
 
               )}
-
-
-
 
             </div>
 
@@ -3153,22 +3121,28 @@ function ProductPage() {
       )}
 
       {showStickyAddToCart && inStock && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5px)] left-3 right-[76px] z-[90] md:hidden">
-          <div className="flex min-h-[80px] w-full min-w-0 items-center gap-2 rounded-[18px] border border-[#E9EBEF] bg-white/95 px-3 py-2 shadow-[0_6px_24px_rgba(16,24,40,0.13)] backdrop-blur-xl">
+        <div className="fixed bottom-5 left-4 right-[76px] z-[90] md:hidden">
+          <div className="flex h-[52px] w-full min-w-0 items-center gap-1.5 rounded-[16px] border border-white/90 bg-white/95 px-2 py-1.5 shadow-[0_6px_22px_rgba(0,0,0,0.12)] backdrop-blur-xl">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[10px] font-medium leading-4 text-[#737780]">
-                {product.name}
-              </p>
-              <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-                <p className={`text-[16px] font-bold leading-5 tracking-[-0.035em] ${hasDiscount ? "text-[#00A878]" : "text-[#1D1D1F]"}`}>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <p className="min-w-0 truncate text-[10px] font-bold leading-3 text-[#303846]">
+                  {product.name}
+                </p>
+                <span className="inline-flex shrink-0 items-center gap-0.5 text-[8px] font-semibold leading-3 text-[#168653]">
+                  <Truck size={10} strokeWidth={2} />
+                  Free ship
+                </span>
+              </div>
+              <div className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap">
+                <p className={`text-[14px] font-bold leading-5 tracking-[-0.025em] ${hasDiscount ? "text-[#00B67A]" : "text-[#1D1D1F]"}`}>
                   {formatProductPrice(price, safeCurrency)}
                 </p>
                 {hasDiscount && (
                   <>
-                    <p className="text-[10px] font-medium leading-4 text-[#969BA3] line-through">
+                    <p className="text-[9px] font-medium leading-4 text-[#969BA3] line-through">
                       {formatProductPrice(comparePrice, safeCurrency)}
                     </p>
-                    <span className="inline-flex h-[18px] items-center rounded-full bg-[#E8F7EF] px-1.5 text-[9px] font-bold leading-none text-[#138653]">
+                    <span className="rounded-full bg-[#EAF7F0] px-1.5 py-0.5 text-[8px] font-bold leading-3 text-[#168653]">
                       -{discountPercent}%
                     </span>
                   </>
@@ -3181,16 +3155,16 @@ function ProductPage() {
               onClick={addToCart}
               aria-label="Add to cart"
               title="Add to cart"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-[#E7E9ED] bg-[#F7F8FA] text-[#303640] transition-colors hover:bg-[#EEF0F3] active:scale-[0.97]"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E8ECF1] bg-white text-[#536273] transition-colors duration-150 hover:border-[#C9D5E2] hover:bg-[#F7F9FB] active:scale-[0.96]"
             >
-              <ShoppingBag size={17} strokeWidth={1.9} />
+              <ShoppingBag size={15} strokeWidth={1.7} />
             </button>
 
             <button
               type="button"
               onClick={buyNow}
               aria-label="Buy now"
-              className="flex h-10 shrink-0 items-center justify-center rounded-[12px] bg-[#17212F] px-3.5 text-[12px] font-semibold text-white shadow-[0_2px_5px_rgba(16,24,40,0.12)] transition-colors hover:bg-[#26364A] active:scale-[0.97]"
+              className="flex h-8 shrink-0 items-center justify-center rounded-full border border-[#DCE6F1] bg-[#F3F7FC] px-3.5 text-[10px] font-semibold tracking-[-0.01em] text-[#29435F] transition-colors duration-150 hover:border-[#C7D7E8] hover:bg-[#EAF1F8] active:scale-[0.97]"
             >
               Buy now
             </button>
@@ -3242,7 +3216,11 @@ function ProductPage() {
                       id="trust-info-title"
                       className="mt-1 text-[18px] font-semibold leading-tight tracking-[-0.035em] text-[#1D1D1F] sm:text-[20px]"
                     >
-                      {activeTrustInfo.title}
+                      {activeTrustInfo.title === "30-day returns"
+                        ? "30-Day Replacement Guarantee"
+                        : activeTrustInfo.title === "Customer support"
+                          ? "We're Here to Help"
+                          : activeTrustInfo.title}
                     </h2>
                   </div>
                 </div>
@@ -3321,114 +3299,415 @@ function ProductPage() {
                   </div>
                 </div>
               ) : activeTrustInfo.title === "30-day returns" ? (
-                <div className="space-y-4">
-                  <div className="rounded-[14px] border border-[#E9EDF2] bg-[#F7F8FA] p-4">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#9299A3]">Return window</p>
-                    <div className="mt-1 flex items-baseline gap-2">
-                      <span className="text-[30px] font-semibold leading-none tracking-[-0.05em] text-[#252A32]">30</span>
-                      <span className="text-[12px] font-medium text-[#626873]">days from delivery</span>
+                <div className="space-y-5">
+                  {/* Main guarantee */}
+                  <div className="overflow-hidden rounded-[16px] border border-[#DCE8F8] bg-gradient-to-br from-[#F4F8FF] via-white to-[#F7FAFF] p-4 sm:p-5">
+                    <div className="flex items-center gap-2">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E5F0FF] text-[#1769C2]">
+                        <ShieldCheck size={17} strokeWidth={2} />
+                      </span>
+                      <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#3974B8]">
+                        INFIBETTER replacement promise
+                      </span>
                     </div>
-                    <p className="mt-2 text-[11px] leading-5 text-[#747C87]">You may request a standard return within 30 days of delivery.</p>
+                    <h3 className="mt-3 text-[21px] font-semibold leading-tight tracking-[-0.04em] text-[#1D2735] sm:text-[24px]">
+                      30-Day Replacement Guarantee
+                    </h3>
+                    <p className="mt-2 text-[12px] font-semibold leading-5 text-[#34465D] sm:text-[13px]">
+                      Shop with Confidence. We&apos;ve Got You Covered.
+                    </p>
+                    <p className="mt-2 text-[12px] leading-[1.75] text-[#667386]">
+                      At INFIBETTER, we stand behind the quality of our products. If your item has a verified manufacturing defect within 30 days of delivery, we&apos;ll replace it with a brand-new product at no additional cost.
+                    </p>
+                    <div className="mt-4 flex items-center gap-3 rounded-[12px] border border-[#DCE8F8] bg-white/90 px-3.5 py-3">
+                      <span className="text-[30px] font-semibold leading-none tracking-[-0.05em] text-[#1769C2]">30</span>
+                      <span className="text-[11px] leading-[1.5] text-[#667386]">
+                        <strong className="block text-[12px] text-[#26364A]">Days from delivery</strong>
+                        For verified manufacturing defects
+                      </span>
+                    </div>
                   </div>
 
-                  <div>
-                    <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9299A3]">Return conditions</p>
+                  {/* What's covered */}
+                  <section>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#7D8795]">What&apos;s covered</span>
+                      <span className="h-px flex-1 bg-[#E9EDF2]" />
+                    </div>
                     <ul className="space-y-2.5">
                       {[
-                        "Items must be unused and unopened.",
-                        "Items must be complete and in their original packaging.",
-                        "Contact us and receive return approval and instructions before sending anything back.",
+                        "Manufacturing defects",
+                        "Technical faults caused by manufacturing issues",
+                        "Products damaged due to manufacturing defects",
                       ].map((item) => (
-                        <li key={item} className="flex items-start gap-2.5 text-[12px] leading-5 text-[#626873]">
-                          <Check size={15} className="mt-0.5 shrink-0 text-[#5F806D]" />
+                        <li key={item} className="flex items-start gap-2.5 text-[12px] leading-[1.65] text-[#566273]">
+                          <Check size={15} className="mt-0.5 shrink-0 text-[#16845B]" strokeWidth={2.2} />
                           <span>{item}</span>
                         </li>
                       ))}
                     </ul>
-                  </div>
+                  </section>
 
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="rounded-[12px] border border-[#E9EDF2] p-3">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#9299A3]">Restocking fee</p>
-                      <p className="mt-1 text-[17px] font-semibold text-[#252A32]">0%</p>
-                      <p className="text-[10px] text-[#858C96]">No restocking fee</p>
+                  {/* Customer promise */}
+                  <section>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#7D8795]">Our promise to you</span>
+                      <span className="h-px flex-1 bg-[#E9EDF2]" />
                     </div>
-                    <div className="rounded-[12px] border border-[#E9EDF2] p-3">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#9299A3]">Return shipping</p>
-                      <p className="mt-1 text-[12px] font-semibold leading-5 text-[#252A32]">Customer-paid</p>
-                      <p className="text-[10px] leading-4 text-[#858C96]">Tracked shipping for standard returns</p>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {[
+                        {
+                          title: "100% Free Replacement",
+                          detail: "A brand-new replacement product.",
+                          icon: PackageCheck,
+                        },
+                        {
+                          title: "Free Return Shipping",
+                          detail: "We cover return shipping for approved claims.",
+                          icon: Truck,
+                        },
+                        {
+                          title: "Free Delivery",
+                          detail: "Your replacement ships at no extra charge.",
+                          icon: Package,
+                        },
+                        {
+                          title: "Zero Additional Fees",
+                          detail: "No hidden or unexpected charges.",
+                          icon: BadgeCheck,
+                        },
+                      ].map(({ title, detail, icon: Icon }) => (
+                        <div key={title} className="min-w-0 rounded-[12px] border border-[#E6EBF1] bg-[#F8FAFC] p-3">
+                          <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-white text-[#3974B8] shadow-[0_1px_3px_rgba(20,35,55,0.07)]">
+                            <Icon size={16} strokeWidth={1.8} />
+                          </span>
+                          <p className="mt-2 text-[11px] font-semibold leading-[1.4] text-[#2D3949]">{title}</p>
+                          <p className="mt-1 text-[10px] leading-[1.55] text-[#7B8795]">{detail}</p>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  </section>
 
-                  <p className="text-[10px] leading-[1.7] text-[#9299A3]">
-                    For standard non-defective returns, customers are responsible for tracked return shipping unless applicable law says otherwise. Defective, damaged or incorrect items are handled under the Refund Policy. Mandatory consumer rights remain unaffected.
-                  </p>
-                </div>
-              ) : activeTrustInfo.title === "Secure checkout" ? (
-                <div className="space-y-3.5">
-                  <p className="text-[13px] leading-6 text-[#626873]">
-                    We make checkout straightforward. Your available payment methods are displayed clearly when you place your order.
-                  </p>
-
-                  <div className="space-y-2.5">
-                    <div className="flex items-start gap-3 rounded-[13px] border border-[#E9EDF2] bg-[#F7F8FA] p-3.5">
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-white text-[#53657A] shadow-sm">
-                        <ShoppingBag size={16} />
+                  {/* How to request */}
+                  <section className="rounded-[14px] border border-[#E6EBF1] p-3.5 sm:p-4">
+                    <div className="flex items-center gap-2">
+                      <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-[#F0F5FC] text-[#3974B8]">
+                        <Mail size={16} />
                       </span>
-                      <div>
-                        <p className="text-[12px] font-semibold text-[#303640]">Choose your payment method</p>
-                        <p className="mt-1 text-[11px] leading-5 text-[#7B838E]">Available payment options are shown at checkout.</p>
-                      </div>
+                      <h3 className="text-[12px] font-semibold text-[#2D3949]">How to request a replacement</h3>
                     </div>
-                    <div className="flex items-start gap-3 rounded-[13px] border border-[#E9EDF2] bg-[#F7F8FA] p-3.5">
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-white text-[#53657A] shadow-sm">
-                        <ShieldCheck size={16} />
-                      </span>
-                      <div>
-                        <p className="text-[12px] font-semibold text-[#303640]">Payment processing</p>
-                        <p className="mt-1 text-[11px] leading-5 text-[#7B838E]">Your payment is processed through the method you select during checkout.</p>
-                      </div>
-                    </div>
-                  </div>
+                    <p className="mt-2 text-[11px] leading-[1.7] text-[#687587]">
+                      Contact our support team with your order number and clear photos or videos showing the issue. Once the manufacturing defect is verified, we&apos;ll guide you through the replacement process.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent("infibetter:open-support"))}
+                      className="mt-3 inline-flex min-h-9 items-center justify-center gap-2 rounded-[9px] bg-[#1769C2] px-3.5 text-[11px] font-semibold text-white transition hover:bg-[#125BA9]"
+                    >
+                      Contact support
+                      <ArrowUpRight size={13} />
+                    </button>
+                  </section>
 
-                  <div className="rounded-[12px] border border-[#E9EDF2] px-3.5 py-3">
-                    <p className="text-[11px] leading-[1.7] text-[#747C87]">
-                      For your security, enter payment information only through the checkout payment form. For questions about a payment or transaction, contact our support team.
+                  {/* Important limitations */}
+                  <div className="rounded-[12px] border border-[#F0E5D2] bg-[#FFFBF4] p-3.5">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#9A7848]">Important notes</p>
+                    <p className="mt-1.5 text-[11px] leading-[1.7] text-[#786B58]">
+                      This guarantee applies exclusively to verified manufacturing defects. It does not cover accidental damage, misuse, improper handling, or damage caused by the customer.
+                    </p>
+                    <p className="mt-2 text-[10px] font-medium leading-[1.6] text-[#786B58]">
+                      Your statutory consumer rights remain unaffected.
                     </p>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-[13px] leading-6 text-[#626873]">
-                    Need help with an order, delivery, return, refund or product? Our support team is here to help.
+              ) : activeTrustInfo.title === "Secure checkout" ? (
+                <div className="space-y-5">
+                  <div className="rounded-[15px] border border-[#DCE8F8] bg-gradient-to-br from-[#F4F8FF] via-white to-[#F8FAFD] p-4 sm:p-5">
+                    <div className="flex items-center gap-2">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E5F0FF] text-[#1769C2]">
+                        <ShieldCheck size={17} strokeWidth={2} />
+                      </span>
+                      <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#3974B8]">
+                        INFIBETTER payment protection
+                      </span>
+                    </div>
+                    <h3 className="mt-3 text-[21px] font-semibold leading-tight tracking-[-0.04em] text-[#1D2735] sm:text-[24px]">
+                      Secure &amp; Trusted Checkout
+                    </h3>
+                    <p className="mt-2 text-[12px] font-semibold leading-5 text-[#34465D]">
+                      Your security and peace of mind are our top priorities.
+                    </p>
+                    <p className="mt-2 text-[12px] leading-[1.75] text-[#667386]">
+                      At INFIBETTER, we make online shopping simple, convenient, and secure through trusted payment processing with PayPal.
+                    </p>
+                  </div>
+
+                  <section>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#7D8795]">Trusted payment with PayPal</span>
+                      <span className="h-px flex-1 bg-[#E9EDF2]" />
+                    </div>
+                    <div className="flex items-start gap-3 rounded-[13px] border border-[#E6EBF1] bg-[#F8FAFC] p-3.5">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] border border-[#E9EDF2] bg-white">
+                        <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden="true">
+                          <path d="M12.1 4.2h9.1c4.1 0 6.1 2.1 5.4 5.9-.8 4.3-3.5 6.3-7.6 6.3h-3.2l-1.1 5.1H9.4l2.7-17.3Z" fill="#003087"/>
+                          <path d="M8.7 6.3h9.1c4.1 0 6.1 2.1 5.4 5.9-.8 4.3-3.5 6.3-7.6 6.3h-3.2l-1.1 5.1H6l2.7-17.3Z" fill="#009CDE"/>
+                        </svg>
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-semibold text-[#303B4A]">Trusted Payment with PayPal</p>
+                        <p className="mt-1 text-[11px] leading-[1.7] text-[#748092]">
+                          We partner with PayPal, a globally recognized payment platform, to process your transactions securely and reliably.
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#7D8795]">Accepted payment methods</span>
+                      <span className="h-px flex-1 bg-[#E9EDF2]" />
+                    </div>
+                    <p className="text-[11px] leading-[1.7] text-[#687587]">
+                      We accept the following payment methods through PayPal, subject to availability at checkout:
+                    </p>
+                    <div className="mt-3 flex w-full items-center justify-between gap-1.5 rounded-[12px] border border-[#E6EBF1] bg-white px-2 py-2 sm:gap-3 sm:px-4">
+                      <span className="flex min-w-0 flex-1 items-center justify-center" aria-label="Visa">
+                        <svg viewBox="0 0 64 24" className="h-5 w-full max-w-[48px]" role="img">
+                          <text x="32" y="18" textAnchor="middle" fill="#1434CB" fontFamily="Arial, Helvetica, sans-serif" fontSize="21" fontWeight="900" fontStyle="italic">VISA</text>
+                        </svg>
+                      </span>
+                      <span className="flex min-w-0 flex-1 items-center justify-center" aria-label="Mastercard">
+                        <svg viewBox="0 0 64 30" className="h-6 w-full max-w-[44px]" role="img">
+                          <circle cx="25" cy="15" r="10" fill="#EB001B"/>
+                          <circle cx="39" cy="15" r="10" fill="#F79E1B"/>
+                          <path d="M32 7.1a10 10 0 0 1 0 15.8 10 10 0 0 1 0-15.8Z" fill="#FF5F00"/>
+                        </svg>
+                      </span>
+                      <span className="flex min-w-0 flex-1 items-center justify-center" aria-label="American Express">
+                        <svg viewBox="0 0 92 28" className="h-5 w-full max-w-[54px]" role="img">
+                          <rect x="1" y="2" width="90" height="24" rx="4" fill="#2E77BC"/>
+                          <text x="46" y="12" textAnchor="middle" fill="#FFFFFF" fontFamily="Arial, Helvetica, sans-serif" fontSize="7" fontWeight="800">AMERICAN</text>
+                          <text x="46" y="21" textAnchor="middle" fill="#FFFFFF" fontFamily="Arial, Helvetica, sans-serif" fontSize="9" fontWeight="900">EXPRESS</text>
+                        </svg>
+                      </span>
+                      <span className="flex min-w-0 flex-1 items-center justify-center" aria-label="Discover">
+                        <svg viewBox="0 0 92 28" className="h-5 w-full max-w-[56px]" role="img">
+                          <text x="43" y="18" textAnchor="middle" fill="#252525" fontFamily="Arial, Helvetica, sans-serif" fontSize="15" fontWeight="800">DISCOVER</text>
+                          <path d="M47 19c7 0 12-2 16-6-3 7-9 10-16 10Z" fill="#F58220"/>
+                        </svg>
+                      </span>
+                      <span className="flex min-w-0 flex-1 items-center justify-center" aria-label="PayPal">
+                        <svg viewBox="0 0 132 32" className="h-5 w-full max-w-[66px]" role="img">
+                          <path d="M12 3h10c5 0 7 2.5 6 7-.8 4.5-3.6 6.5-8 6.5h-3l-1.2 6H9L12 3Z" fill="#003087"/>
+                          <path d="M6 6h10c5 0 7 2.5 6 7-.8 4.5-3.6 6.5-8 6.5h-3l-1.2 6H3L6 6Z" fill="#009CDE"/>
+                          <text x="36" y="22" fill="#253B80" fontFamily="Arial, Helvetica, sans-serif" fontSize="18" fontWeight="700">PayPal</text>
+                        </svg>
+                      </span>
+                    </div>
+                    <p className="mt-2.5 text-[10px] leading-[1.65] text-[#87919E]">
+                      You can pay directly with an eligible credit or debit card without creating a PayPal account, where this option is available.
+                    </p>
+                  </section>
+
+                  <section>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#7D8795]">Your payment security matters</span>
+                      <span className="h-px flex-1 bg-[#E9EDF2]" />
+                    </div>
+                    <div className="space-y-2.5">
+                      {[
+                        {
+                          title: "Secure Payment Processing",
+                          detail: "Payments are processed through PayPal's secure payment infrastructure.",
+                          icon: ShieldCheck,
+                        },
+                        {
+                          title: "Buyer Protection",
+                          detail: "Eligible PayPal transactions may qualify for PayPal Buyer Protection, subject to its terms and conditions.",
+                          icon: BadgeCheck,
+                        },
+                        {
+                          title: "Card Payment Convenience",
+                          detail: "Pay using a supported credit or debit card without necessarily needing a PayPal account.",
+                          icon: CreditCard,
+                        },
+                        {
+                          title: "Payment Privacy",
+                          detail: "Enter your payment details only through the secure checkout payment form.",
+                          icon: LockKeyhole,
+                        },
+                      ].map(({ title, detail, icon: Icon }) => (
+                        <div key={title} className="flex items-start gap-3 rounded-[12px] border border-[#E9EDF2] bg-[#F8FAFC] p-3">
+                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-white text-[#3974B8] shadow-[0_1px_3px_rgba(20,35,55,0.07)]">
+                            <Icon size={16} strokeWidth={1.8} />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold text-[#303B4A]">{title}</p>
+                            <p className="mt-1 text-[10px] leading-[1.65] text-[#7B8795]">{detail}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <div className="rounded-[12px] border border-[#E6EBF1] bg-white p-3.5">
+                    <p className="text-[11px] font-semibold text-[#303B4A]">Simple &amp; Transparent Checkout</p>
+                    <p className="mt-1.5 text-[11px] leading-[1.7] text-[#687587]">
+                      Available payment options are clearly displayed during checkout, allowing you to choose the method that works best for you. Your payment will be processed using your selected payment method.
+                    </p>
+                  </div>
+
+                  <div className="rounded-[12px] bg-[#F7F8FA] p-3.5">
+                    <p className="text-[11px] font-semibold text-[#303B4A]">Need Help?</p>
+                    <p className="mt-1 text-[11px] leading-[1.7] text-[#687587]">
+                      If you have any questions about a payment or transaction, our customer support team is always here to help.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent("infibetter:open-support"))}
+                      className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#1769C2] hover:underline"
+                    >
+                      Contact support <ArrowUpRight size={12} />
+                    </button>
+                  </div>
+
+                  <p className="text-center text-[12px] font-semibold text-[#34465D]">
+                    Shop with confidence. Your security matters to us.
                   </p>
 
-                  <a
-                    href="mailto:infibetter@gmail.com"
-                    className="flex items-center justify-between gap-3 rounded-[14px] border border-[#E5EAF0] bg-[#F7F8FA] p-4 transition hover:border-[#CAD3DE] hover:bg-[#F2F5F8]"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#9299A3]">Email our team</p>
-                      <p className="mt-1 truncate text-[13px] font-semibold text-[#273444]">infibetter@gmail.com</p>
+                  {/* Payment logos placed at the end of the content */}
+                  <div className="border-t border-[#E9EDF2] pt-4">
+                    <p className="mb-3 text-center text-[9px] font-bold uppercase tracking-[0.14em] text-[#9AA3AF]">
+                      Payment methods
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <span className="flex h-8 items-center justify-center rounded-[7px] border border-[#E8EBF0] bg-white px-2.5">
+                        <svg viewBox="0 0 64 24" className="h-5 w-12" role="img" aria-label="Visa">
+                          <text x="32" y="18" textAnchor="middle" fill="#1434CB" fontFamily="Arial, Helvetica, sans-serif" fontSize="21" fontWeight="900" fontStyle="italic">VISA</text>
+                        </svg>
+                      </span>
+                      <span className="flex h-8 items-center justify-center rounded-[7px] border border-[#E8EBF0] bg-white px-2.5">
+                        <svg viewBox="0 0 64 30" className="h-6 w-12" role="img" aria-label="Mastercard">
+                          <circle cx="25" cy="15" r="10" fill="#EB001B"/>
+                          <circle cx="39" cy="15" r="10" fill="#F79E1B"/>
+                          <path d="M32 7.1a10 10 0 0 1 0 15.8 10 10 0 0 1 0-15.8Z" fill="#FF5F00"/>
+                        </svg>
+                      </span>
+                      <span className="flex h-8 items-center justify-center rounded-[7px] border border-[#E8EBF0] bg-white px-2">
+                        <svg viewBox="0 0 92 28" className="h-5 w-12" role="img" aria-label="American Express">
+                          <rect x="1" y="2" width="90" height="24" rx="4" fill="#2E77BC"/>
+                          <text x="46" y="12" textAnchor="middle" fill="#FFFFFF" fontFamily="Arial, Helvetica, sans-serif" fontSize="7" fontWeight="800">AMERICAN</text>
+                          <text x="46" y="21" textAnchor="middle" fill="#FFFFFF" fontFamily="Arial, Helvetica, sans-serif" fontSize="9" fontWeight="900">EXPRESS</text>
+                        </svg>
+                      </span>
+                      <span className="flex h-8 items-center justify-center rounded-[7px] border border-[#E8EBF0] bg-white px-2">
+                        <svg viewBox="0 0 92 28" className="h-5 w-12" role="img" aria-label="Discover">
+                          <text x="43" y="18" textAnchor="middle" fill="#252525" fontFamily="Arial, Helvetica, sans-serif" fontSize="15" fontWeight="800">DISCOVER</text>
+                          <path d="M47 19c7 0 12-2 16-6-3 7-9 10-16 10Z" fill="#F58220"/>
+                        </svg>
+                      </span>
+                      <span className="flex h-8 items-center justify-center rounded-[7px] border border-[#E8EBF0] bg-white px-2.5">
+                        <svg viewBox="0 0 100 30" className="h-5 w-14" role="img" aria-label="PayPal">
+                          <path d="M30 3h10c5 0 7 2.5 6 7-.8 4.5-3.6 6.5-8 6.5h-3l-1.2 6H27L30 3Z" fill="#003087"/>
+                          <path d="M24 6h10c5 0 7 2.5 6 7-.8 4.5-3.6 6.5-8 6.5h-3l-1.2 6H21L24 6Z" fill="#009CDE"/>
+                          <text x="65" y="20" fill="#253B80" fontFamily="Arial, Helvetica, sans-serif" fontSize="15" fontWeight="700">PayPal</text>
+                        </svg>
+                      </span>
                     </div>
-                    <ArrowUpRight size={17} className="shrink-0 text-[#64748B]" />
-                  </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  <div className="rounded-[15px] border border-[#DCE8F8] bg-gradient-to-br from-[#F4F8FF] via-white to-[#F8FAFD] p-4 sm:p-5">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#3974B8]">
+                      INFIBETTER customer care
+                    </p>
+                    <h3 className="mt-2 text-[19px] font-semibold leading-tight tracking-[-0.035em] text-[#1D2735] sm:text-[21px]">
+                      We're Here to Help
+                    </h3>
+                    <p className="mt-2 text-[12px] leading-[1.75] text-[#667386]">
+                      Your satisfaction matters to us. Whether you have a question about your order, shipping, delivery, returns, or product information, our support team is always happy to assist.
+                    </p>
+                    <p className="mt-3 text-[12px] font-semibold text-[#26364A]">
+                      We're just an email away.
+                    </p>
+                  </div>
 
-                  <div>
-                    <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9299A3]">To help us assist you faster</p>
+                  <section>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#7D8795]">
+                      Email our support team
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent("infibetter:open-support"))}
+                      className="flex min-h-[58px] w-full items-center justify-between gap-3 rounded-[13px] border border-[#DCE5F0] bg-white px-4 py-3 text-left shadow-[0_1px_3px_rgba(20,35,55,0.04)] transition hover:border-[#B8CBE2] hover:bg-[#F8FAFC]"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-[11px] leading-5 text-[#7B8795]">
+                          Have a question or need assistance? Reach out anytime.
+                        </span>
+                        <span className="mt-0.5 block truncate text-[13px] font-semibold text-[#1769C2]">
+                          infibetter@gmail.com
+                        </span>
+                      </span>
+                      <ArrowUpRight size={17} className="shrink-0 text-[#64748B]" />
+                    </button>
+                  </section>
+
+                  <section>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#7D8795]">How we can help</span>
+                      <span className="h-px flex-1 bg-[#E9EDF2]" />
+                    </div>
+                    <div className="space-y-2.5">
+                      {[
+                        { title: "Order Support", detail: "Questions about your order, payment, or order status.", icon: PackageCheck },
+                        { title: "Shipping & Delivery", detail: "Updates and assistance with your shipment.", icon: Truck },
+                        { title: "Product Assistance", detail: "Questions about product features, usage, or technical issues.", icon: Headphones },
+                        { title: "Returns & Replacements", detail: "Help with eligible replacement requests and product issues.", icon: RefreshCw },
+                      ].map(({ title, detail, icon: Icon }) => (
+                        <div key={title} className="flex items-start gap-3 rounded-[12px] border border-[#E9EDF2] bg-[#F8FAFC] p-3">
+                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-white text-[#3974B8] shadow-[0_1px_3px_rgba(20,35,55,0.07)]">
+                            <Icon size={16} strokeWidth={1.8} />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold text-[#303B4A]">{title}</p>
+                            <p className="mt-1 text-[10px] leading-[1.65] text-[#7B8795]">{detail}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="rounded-[13px] border border-[#E6EBF1] p-3.5">
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#7D8795]">
+                      To help us assist you faster
+                    </p>
                     <ul className="space-y-2.5">
                       {[
-                        "Include your order number.",
-                        "Describe the issue clearly.",
-                        "For damaged, defective or incorrect items, include photos or a video of the item and its packaging.",
+                        "Your order number.",
+                        "A brief description of your question or issue.",
+                        "For damaged, defective, or incorrect items, photos or a short video showing the product and its packaging.",
                       ].map((item) => (
-                        <li key={item} className="flex items-start gap-2.5 text-[12px] leading-5 text-[#626873]">
-                          <Check size={15} className="mt-0.5 shrink-0 text-[#5F806D]" />
+                        <li key={item} className="flex items-start gap-2.5 text-[11px] leading-[1.65] text-[#626D7C]">
+                          <Check size={15} className="mt-0.5 shrink-0 text-[#16845B]" strokeWidth={2.2} />
                           <span>{item}</span>
                         </li>
                       ))}
                     </ul>
+                  </section>
+
+                  <div className="rounded-[12px] bg-[#F4F7FA] p-3.5">
+                    <p className="text-[11px] font-semibold text-[#303B4A]">Our Commitment to You</p>
+                    <p className="mt-1.5 text-[11px] leading-[1.7] text-[#687587]">
+                      Every customer matters to us. We aim to provide clear communication, helpful support, and a smooth shopping experience from checkout to delivery and beyond.
+                    </p>
                   </div>
+
+                  <p className="text-center text-[12px] font-semibold text-[#34465D]">
+                    Thank you for choosing INFIBETTER. We're always here when you need us.
+                  </p>
                 </div>
               )}
             </div>
