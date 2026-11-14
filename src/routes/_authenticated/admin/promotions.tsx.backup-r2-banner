@@ -1,0 +1,584 @@
+﻿import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Save, Trash2, RefreshCw, Search } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+export const Route = createFileRoute("/_authenticated/admin/promotions")({ component: Page });
+
+type Product = {
+  id: string;
+  name: string | null;
+  slug: string | null;
+  price: number | string | null;
+  image_url: string | null;
+  is_active: boolean | null;
+  status: string | null;
+};
+
+type Promotion = {
+  id: string;
+  name: string;
+  nav_label: string;
+  slug: string;
+  description: string | null;
+  banner_url: string | null;
+  is_active: boolean;
+  show_in_header: boolean;
+  sort_order: number;
+  starts_at: string | null;
+  ends_at: string | null;
+};
+
+type Form = {
+  id?: string;
+  name: string;
+  nav_label: string;
+  slug: string;
+  description: string;
+  banner_url: string;
+  is_active: boolean;
+  show_in_header: boolean;
+  sort_order: number;
+  starts_at: string;
+  ends_at: string;
+  product_ids: string[];
+};
+
+const blank: Form = {
+  name: "",
+  nav_label: "",
+  slug: "",
+  description: "",
+  banner_url: "",
+  is_active: false,
+  show_in_header: true,
+  sort_order: 0,
+  starts_at: "",
+  ends_at: "",
+  product_ids: [],
+};
+
+const input =
+  "h-10 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-500";
+
+const label = "mb-1.5 block text-xs font-semibold text-neutral-600";
+
+const slugify = (s: string) =>
+  s.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+const local = (s: string | null) =>
+  s
+    ? new Date(
+        new Date(s).getTime() -
+          new Date(s).getTimezoneOffset() * 60000
+      ).toISOString().slice(0, 16)
+    : "";
+
+const usd = (v: unknown) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(Number(v || 0));
+
+function Page() {
+  const [rows, setRows] = useState<Promotion[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [form, setForm] = useState<Form>(blank);
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const set = <K extends keyof Form>(k: K, v: Form[K]) =>
+    setForm((x) => ({ ...x, [k]: v }));
+
+  async function load() {
+    setLoading(true);
+
+    const [a, b] = await Promise.all([
+      supabase
+        .from("promotions")
+        .select("*")
+        .order("sort_order")
+        .order("created_at", { ascending: false }),
+
+      supabase
+        .from("products")
+        .select("id,name,slug,price,image_url,is_active,status")
+        .order("name"),
+    ]);
+
+    if (a.error) toast.error(a.error.message);
+    else setRows((a.data || []) as Promotion[]);
+
+    if (b.error) toast.error(b.error.message);
+    else setProducts((b.data || []) as Product[]);
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const filtered = useMemo(
+    () =>
+      products.filter(
+        (p) =>
+          !q ||
+          `${p.name || ""} ${p.slug || ""}`
+            .toLowerCase()
+            .includes(q.toLowerCase())
+      ),
+    [products, q]
+  );
+
+  async function edit(p: Promotion) {
+    const { data, error } = await supabase
+      .from("promotion_products")
+      .select("product_id")
+      .eq("promotion_id", p.id)
+      .order("sort_order");
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setForm({
+      id: p.id,
+      name: p.name,
+      nav_label: p.nav_label,
+      slug: p.slug,
+      description: p.description || "",
+      banner_url: p.banner_url || "",
+      is_active: p.is_active,
+      show_in_header: p.show_in_header,
+      sort_order: p.sort_order,
+      starts_at: local(p.starts_at),
+      ends_at: local(p.ends_at),
+      product_ids: (data || []).map((x) => x.product_id),
+    });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function save() {
+    if (
+      !form.name.trim() ||
+      !form.nav_label.trim() ||
+      !slugify(form.slug)
+    ) {
+      toast.error("Nhập tên, nhãn Header và slug.");
+      return;
+    }
+
+    if (
+      form.starts_at &&
+      form.ends_at &&
+      new Date(form.ends_at) <= new Date(form.starts_at)
+    ) {
+      toast.error("Ngày kết thúc phải sau ngày bắt đầu.");
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      const payload = {
+        name: form.name.trim(),
+        nav_label: form.nav_label.trim(),
+        slug: slugify(form.slug),
+        description: form.description || null,
+        banner_url: form.banner_url || null,
+        is_active: form.is_active,
+        show_in_header: form.show_in_header,
+        sort_order: Number(form.sort_order) || 0,
+        starts_at: form.starts_at
+          ? new Date(form.starts_at).toISOString()
+          : null,
+        ends_at: form.ends_at
+          ? new Date(form.ends_at).toISOString()
+          : null,
+      };
+
+      let id = form.id;
+
+      if (id) {
+        const { error } = await supabase
+          .from("promotions")
+          .update(payload)
+          .eq("id", id);
+
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("promotions")
+          .insert(payload)
+          .select("id")
+          .single();
+
+        if (error) throw error;
+        id = data.id;
+      }
+
+      const del = await supabase
+        .from("promotion_products")
+        .delete()
+        .eq("promotion_id", id!);
+
+      if (del.error) throw del.error;
+
+      if (form.product_ids.length) {
+        const ins = await supabase
+          .from("promotion_products")
+          .insert(
+            form.product_ids.map((product_id, i) => ({
+              promotion_id: id!,
+              product_id,
+              sort_order: i,
+            }))
+          );
+
+        if (ins.error) throw ins.error;
+      }
+
+      toast.success("Đã lưu chiến dịch");
+      window.dispatchEvent(new Event("infibetter:promotion-updated"));
+      setForm({ ...blank });
+      await load();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Lỗi lưu chiến dịch"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(p: Promotion) {
+    if (!confirm(`Xóa ${p.name}?`)) return;
+
+    const { error } = await supabase
+      .from("promotions")
+      .delete()
+      .eq("id", p.id);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Đã xóa");
+
+      if (form.id === p.id) setForm({ ...blank });
+
+      await load();
+    }
+  }
+
+  async function toggle(p: Promotion) {
+    const { error } = await supabase
+      .from("promotions")
+      .update({ is_active: !p.is_active })
+      .eq("id", p.id);
+
+    if (error) toast.error(error.message);
+    else {
+      window.dispatchEvent(new Event("infibetter:promotion-updated"));
+      await load();
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-[#F7F8FA] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1440px] space-y-6">
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald-700">
+              INFIBETTER · MARKETING
+            </p>
+            <h1 className="mt-1 text-2xl font-bold sm:text-3xl">
+              Promotion Manager
+            </h1>
+            <p className="mt-1 text-sm text-neutral-500">
+              Quản lý chiến dịch và landing page.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setForm({ ...blank })}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#202124] px-4 text-sm font-semibold text-white"
+          >
+            <Plus size={16} /> Chiến dịch mới
+          </button>
+        </header>
+
+        <section className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
+          <div className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
+            <h2 className="mb-4 font-bold">
+              {form.id ? "Chỉnh sửa chiến dịch" : "Tạo chiến dịch"}
+            </h2>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className={label}>Tên chiến dịch</label>
+                <input
+                  className={input}
+                  value={form.name}
+                  placeholder="Early Black Friday"
+                  onChange={(e) => {
+                    set("name", e.target.value);
+                    if (!form.id && !form.slug) {
+                      set("slug", slugify(e.target.value));
+                    }
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className={label}>Nhãn Header</label>
+                <input
+                  className={input}
+                  value={form.nav_label}
+                  placeholder="Black Friday"
+                  onChange={(e) => set("nav_label", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className={label}>Slug</label>
+                <input
+                  className={input}
+                  value={form.slug}
+                  placeholder="blackfriday"
+                  onChange={(e) => set("slug", slugify(e.target.value))}
+                />
+                <p className="mt-1 text-[11px] text-neutral-400">
+                  URL: /{form.slug || "campaign"}
+                </p>
+              </div>
+
+              <div>
+                <label className={label}>Thứ tự Header</label>
+                <input
+                  type="number"
+                  className={input}
+                  value={form.sort_order}
+                  onChange={(e) =>
+                    set("sort_order", Number(e.target.value))
+                  }
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className={label}>Banner URL (public R2 URL)</label>
+                <input
+                  className={input}
+                  value={form.banner_url}
+                  onChange={(e) => set("banner_url", e.target.value)}
+                  placeholder="https://..."
+                />
+
+                {form.banner_url && (
+                  <img
+                    src={form.banner_url}
+                    alt="Banner preview"
+                    className="mt-3 max-h-44 w-full rounded-xl object-cover"
+                  />
+                )}
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className={label}>Mô tả</label>
+                <textarea
+                  className="min-h-24 w-full rounded-xl border p-3 text-sm"
+                  value={form.description}
+                  onChange={(e) => set("description", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className={label}>Bắt đầu</label>
+                <input
+                  type="datetime-local"
+                  className={input}
+                  value={form.starts_at}
+                  onChange={(e) => set("starts_at", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className={label}>Kết thúc</label>
+                <input
+                  type="datetime-local"
+                  className={input}
+                  value={form.ends_at}
+                  onChange={(e) => set("ends_at", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-5 border-t pt-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.is_active}
+                  onChange={(e) => set("is_active", e.target.checked)}
+                />
+                Kích hoạt
+              </label>
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.show_in_header}
+                  onChange={(e) =>
+                    set("show_in_header", e.target.checked)
+                  }
+                />
+                Hiện trên Header
+              </label>
+            </div>
+
+            <button
+              disabled={busy}
+              onClick={save}
+              className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl bg-[#202124] px-5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {busy ? (
+                <RefreshCw size={15} className="animate-spin" />
+              ) : (
+                <Save size={15} />
+              )}
+              Lưu chiến dịch
+            </button>
+          </div>
+
+          <div className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
+            <h2 className="font-bold">
+              Chọn sản phẩm ({form.product_ids.length})
+            </h2>
+
+            <div className="relative my-4">
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+              />
+              <input
+                className={`${input} pl-9`}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Tìm sản phẩm..."
+              />
+            </div>
+
+            <div className="max-h-[610px] space-y-2 overflow-y-auto">
+              {filtered.map((p) => (
+                <label
+                  key={p.id}
+                  className={`flex cursor-pointer items-center gap-3 rounded-xl border p-2.5 ${
+                    form.product_ids.includes(p.id)
+                      ? "border-neutral-900 bg-neutral-50"
+                      : "border-neutral-100"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.product_ids.includes(p.id)}
+                    onChange={() =>
+                      set(
+                        "product_ids",
+                        form.product_ids.includes(p.id)
+                          ? form.product_ids.filter((x) => x !== p.id)
+                          : [...form.product_ids, p.id]
+                      )
+                    }
+                  />
+
+                  <img
+                    src={p.image_url || "/placeholder.svg"}
+                    alt=""
+                    className="h-12 w-12 rounded-lg object-cover"
+                  />
+
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-sm">
+                      {p.name || "Unnamed"}
+                    </b>
+                    <small className="text-neutral-400">
+                      {p.slug} · {usd(p.price)}
+                    </small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b p-4">
+            <h2 className="font-bold">Danh sách chiến dịch</h2>
+            <button
+              onClick={load}
+              className="inline-flex items-center gap-2 text-xs"
+            >
+              <RefreshCw size={14} /> Làm mới
+            </button>
+          </div>
+
+          {loading ? (
+            <p className="p-8 text-center text-sm text-neutral-400">
+              Đang tải...
+            </p>
+          ) : rows.length === 0 ? (
+            <p className="p-8 text-center text-sm text-neutral-400">
+              Chưa có chiến dịch nào.
+            </p>
+          ) : (
+            rows.map((p) => (
+              <div
+                key={p.id}
+                className="flex flex-wrap items-center gap-3 border-b p-4"
+              >
+                <div className="min-w-0 flex-1">
+                  <b className="block truncate text-sm">{p.name}</b>
+                  <small className="text-neutral-400">
+                    /{p.slug} · {p.show_in_header ? p.nav_label : "Ẩn Header"}
+                  </small>
+                </div>
+
+                <span className="text-xs">
+                  {p.is_active ? "Active" : "Inactive"}
+                </span>
+
+                <button
+                  onClick={() => toggle(p)}
+                  className="rounded-lg border px-3 py-2 text-xs"
+                >
+                  {p.is_active ? "Tắt" : "Bật"}
+                </button>
+
+                <button
+                  onClick={() => edit(p)}
+                  className="rounded-lg border px-3 py-2 text-xs"
+                >
+                  Sửa
+                </button>
+
+                <button
+                  onClick={() => remove(p)}
+                  className="rounded-lg border border-red-100 p-2 text-red-600"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}

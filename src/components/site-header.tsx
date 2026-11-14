@@ -100,6 +100,15 @@ type MegaSection = {
 
 
 
+type HeaderPromotion = {
+  id: string;
+  name: string;
+  nav_label: string;
+  slug: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  sort_order: number;
+};
 const fallbackImages = [banner01, banner02, banner03];
 
 
@@ -165,6 +174,7 @@ export function SiteHeader() {
   const [mobileExpandedMenu, setMobileExpandedMenu] = useState<MegaMenuKey>(null);
 
   const [megaMenus, setMegaMenus] = useState<MegaSection[]>([]);
+  const [headerPromotions, setHeaderPromotions] = useState<HeaderPromotion[]>([]);
 
 
 
@@ -264,6 +274,49 @@ export function SiteHeader() {
 
 
 
+  // INFIBETTER_PROMOTION_HEADER
+  const loadHeaderPromotions = async () => {
+    const { data, error } = await supabase
+      .from("promotions")
+      .select("id,name,nav_label,slug,starts_at,ends_at,sort_order")
+      .eq("is_active", true)
+      .eq("show_in_header", true)
+      .order("sort_order", { ascending: true });
+
+    if (error) {
+      console.error("Promotion Header load error:", error);
+      return;
+    }
+
+    const now = Date.now();
+
+    const active = ((data ?? []) as HeaderPromotion[]).filter((item) => {
+      const starts = item.starts_at ? new Date(item.starts_at).getTime() : null;
+      const ends = item.ends_at ? new Date(item.ends_at).getTime() : null;
+
+      return (
+        (starts === null || starts <= now) &&
+        (ends === null || ends >= now)
+      );
+    });
+
+    setHeaderPromotions(active);
+  };
+
+  useEffect(() => {
+    loadHeaderPromotions();
+
+    const handlePromotionUpdated = () => loadHeaderPromotions();
+
+    window.addEventListener("infibetter:promotion-updated", handlePromotionUpdated);
+
+    const interval = window.setInterval(loadHeaderPromotions, 60000);
+
+    return () => {
+      window.removeEventListener("infibetter:promotion-updated", handlePromotionUpdated);
+      window.clearInterval(interval);
+    };
+  }, []);
   const headerRef =
 
     useRef<HTMLDivElement>(null);
@@ -800,6 +853,24 @@ export function SiteHeader() {
 
 
 
+            {/* INFIBETTER PROMOTION LINKS - DESKTOP */}
+            {headerPromotions.map((promotion) => (
+              <Link
+                key={promotion.id}
+                to={`/${promotion.slug}` as never}
+                onClick={() => setActiveMenu(null)}
+                className="group rounded-full bg-[#17191D] px-4 py-2 text-[11px] font-bold whitespace-nowrap text-white ring-1 ring-[#FF4D00]/60 shadow-[0_0_8px_rgba(255,77,0,0.55),0_0_18px_rgba(255,77,0,0.30)] animate-pulse transition-all hover:bg-[#FF4D00] hover:shadow-[0_0_20px_rgba(255,77,0,0.75)]"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="rounded bg-[#FF4D00] px-1.5 py-0.5 text-[9px] font-extrabold tracking-wider text-white group-hover:bg-white group-hover:text-[#FF4D00]">
+                    EARLY
+                  </span>
+                  <span className="font-extrabold tracking-wide">
+                    {promotion.nav_label}
+                  </span>
+                </span>
+              </Link>
+            ))}
             {megaMenus.some((menu) => menu.menu_key === "cases" && menu.mega_menu_groups.length > 0) && (
             <button
 
@@ -2028,6 +2099,21 @@ export function SiteHeader() {
 
 
 
+              {/* INFIBETTER PROMOTION LINKS - MOBILE */}
+              {headerPromotions.map((promotion) => (
+                <Link
+                  key={promotion.id}
+                  to={`/${promotion.slug}` as never}
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setMobileExpandedMenu(null);
+                  }}
+                  className="flex items-center justify-between rounded-[9px] border-b border-[#E5E7EB] px-3 py-3 text-[11px] font-semibold text-[#111827] hover:bg-[#F8FAFC]"
+                >
+                  <span>{promotion.nav_label}</span>
+                  <ArrowRight size={13} className="text-[#94A3B8]" />
+                </Link>
+              ))}
               {(["cases", "charging", "lifestyle"] as const).map((menuKey) => {
 
                 const section = megaMenus.find((menu) => menu.menu_key === menuKey);
@@ -2220,3 +2306,5 @@ export function SiteHeader() {
   );
 
 }
+
+

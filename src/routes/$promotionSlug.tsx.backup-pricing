@@ -1,0 +1,145 @@
+﻿import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { ProductCard } from "@/components/product-card";
+
+export const Route = createFileRoute("/$promotionSlug")({
+  loader: async ({ params }) => {
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from("promotions")
+      .select("id,name,slug,description,banner_url,is_active,starts_at,ends_at")
+      .eq("slug", params.promotionSlug)
+      .eq("is_active", true)
+      .or(`starts_at.is.null,starts_at.lte.${now}`)
+      .or(`ends_at.is.null,ends_at.gte.${now}`)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw notFound();
+
+    return data;
+  },
+
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: `${loaderData?.name || "Promotion"} | INFIBETTER` },
+      {
+        name: "description",
+        content: loaderData?.description || "Discover our special offers.",
+      },
+    ],
+  }),
+
+  component: PromotionPage,
+});
+
+function PromotionPage() {
+  const campaign = Route.useLoaderData();
+
+  const { data: products = [], isLoading, error } = useQuery({
+    queryKey: ["promotion-products", campaign.id],
+
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("promotion_products")
+        .select(`
+          sort_order,
+          products:products (
+            id,
+            name,
+            slug,
+            price,
+            compare_at_price,
+            image_url,
+            is_active,
+            status
+          )
+        `)
+        .eq("promotion_id", campaign.id)
+        .order("sort_order");
+
+      if (error) throw error;
+
+      return (data || [])
+        .map((item: any) => item.products)
+        .filter(
+          (product: any) =>
+            product &&
+            product.is_active === true &&
+            product.status !== "hidden"
+        );
+    },
+  });
+
+  return (
+    <main className="min-h-screen bg-white">
+      {campaign.banner_url ? (
+        <div className="w-full overflow-hidden bg-neutral-100">
+          <img
+            src={campaign.banner_url}
+            alt={campaign.name}
+            className="max-h-[520px] w-full object-cover object-center"
+          />
+        </div>
+      ) : (
+        <section className="bg-[#17191D] px-5 py-20 text-center text-white sm:py-28">
+          <p className="text-xs font-semibold uppercase tracking-[.2em] text-white/60">
+            INFIBETTER SPECIAL EVENT
+          </p>
+          <h1 className="mt-4 text-3xl font-bold sm:text-5xl">
+            {campaign.name}
+          </h1>
+        </section>
+      )}
+
+      <section className="mx-auto max-w-[1320px] px-4 py-10 sm:px-6 sm:py-14">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-neutral-400">
+              LIMITED-TIME EVENT
+            </p>
+
+            <h1 className="mt-2 text-2xl font-bold text-[#17191D] sm:text-4xl">
+              {campaign.name}
+            </h1>
+
+            {campaign.description && (
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-500">
+                {campaign.description}
+              </p>
+            )}
+          </div>
+
+          <Link
+            to="/shop"
+            className="text-sm font-semibold underline underline-offset-4"
+          >
+            Shop all products
+          </Link>
+        </div>
+
+        {isLoading ? (
+          <p className="py-16 text-center text-sm text-neutral-400">
+            Loading products...
+          </p>
+        ) : error ? (
+          <p className="py-16 text-center text-sm text-red-500">
+            Unable to load campaign products.
+          </p>
+        ) : products.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
+            {products.map((product: any) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-2xl bg-neutral-50 px-5 py-16 text-center text-sm text-neutral-500">
+            Products coming soon.
+          </p>
+        )}
+      </section>
+    </main>
+  );
+}
