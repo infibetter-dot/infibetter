@@ -12,31 +12,31 @@ type VideoItem = {
 const videos: VideoItem[] = [
   {
     label: "INFIBETTER",
-    title: "AirDock Qi 2.2-25W",
-    description: "Up to 25W Qi 2.2 Fast Charging",
+    title: "MAGCOOL X7 25W",
+    description: "25W Qi 2.2 Ultra-Fast Wireless Charging",
     video: "/videos/video1.mp4",
-    href: "/products/airdock-qi-2-2-25w",
+    href: "/products/magcool-x7-25w",
   },
   {
-    label: "One Stand. All Your Apple Devices.",
-    title: "4-in-1 Charging Design for a cleaner setup.",
-    description: "Smart accessories for life on the go.",
+    label: "One Stand",
+    title: "4-in-1. Less Clutter.",
+    description: "Power Smarter. Live Better.",
     video: "/videos/video2.mp4",
-    href: "/products/foldcharge-3-in-1",
+    href: "/products/airdock-qi-2-2-25w",
   },
   {
     label: "DESIGN",
     title: "Active Cooling Fan",
     description: "To help reduce heat.",
     video: "/videos/video3.mp4",
-    href: "/products/products/trifold-charger",
+    href: "/products/airdock-qi-2-2-25w",
   },
   {
     label: " Desktop Charging Station",
     title: "Magstation PRO 105W",
-    description: "Up to 65W USB-C PD fast charging.",
+    description: "105W All-in-One Power Hub",
     video: "/videos/video4.mp4",
-    href: "/products/armor-magsafe-case",
+    href: "/products/magstation-pro-105w",
   },
 ];
 
