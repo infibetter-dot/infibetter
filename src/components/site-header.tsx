@@ -1107,6 +1107,28 @@ export function SiteHeader() {
 
           <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
 
+            {/* PROMOTION PILL - MOBILE HEADER */}
+            {headerPromotions.slice(0, 1).map((promotion) => (
+              <Link
+                key={promotion.id}
+                to={`/${promotion.slug}` as never}
+                onClick={() => {
+                  setMobileOpen(false);
+                  setMobileExpandedMenu(null);
+                  setActiveMenu(null);
+                }}
+                className="mr-1 shrink-0 rounded-full bg-[#17191D] px-2 py-1.5 text-[9px] font-extrabold text-white ring-1 ring-[#FF4D00]/60 shadow-[0_0_9px_rgba(255,77,0,0.5),0_0_16px_rgba(255,77,0,0.22)] animate-pulse lg:hidden"
+                aria-label={promotion.name}
+              >
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <span className="rounded bg-[#FF4D00] px-1 py-0.5 text-[7px] font-extrabold tracking-wide text-white">
+                    EARLY
+                  </span>
+                  <span>{promotion.nav_label}</span>
+                </span>
+              </Link>
+            ))}
+
             {searchOpen && (
 
               <form
@@ -2087,7 +2109,7 @@ export function SiteHeader() {
 
                 onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
 
-                className="flex items-center justify-between rounded-[9px] px-3 py-3 text-[11px] font-semibold text-[#111827] hover:bg-[#F8FAFC]"
+                className="flex min-h-[44px] items-center justify-between rounded-lg px-3 py-2.5 text-[12px] font-semibold text-[#172033] transition-colors hover:bg-[#F7F8FA]"
 
               >
 
@@ -2099,21 +2121,6 @@ export function SiteHeader() {
 
 
 
-              {/* INFIBETTER PROMOTION LINKS - MOBILE */}
-              {headerPromotions.map((promotion) => (
-                <Link
-                  key={promotion.id}
-                  to={`/${promotion.slug}` as never}
-                  onClick={() => {
-                    setMobileOpen(false);
-                    setMobileExpandedMenu(null);
-                  }}
-                  className="flex items-center justify-between rounded-[9px] border-b border-[#E5E7EB] px-3 py-3 text-[11px] font-semibold text-[#111827] hover:bg-[#F8FAFC]"
-                >
-                  <span>{promotion.nav_label}</span>
-                  <ArrowRight size={13} className="text-[#94A3B8]" />
-                </Link>
-              ))}
               {(["cases", "charging", "lifestyle"] as const).map((menuKey) => {
 
                 const section = megaMenus.find((menu) => menu.menu_key === menuKey);
@@ -2128,13 +2135,13 @@ export function SiteHeader() {
 
                 return (
 
-                  <div key={menuKey} className="overflow-hidden border-b border-[#E5E7EB]">
+                  <div key={menuKey} className="overflow-hidden border-b border-[#E9EDF2]">
 
-                    <button type="button" onClick={() => setMobileExpandedMenu(expanded ? null : menuKey)} className="flex w-full items-center justify-between rounded-[9px] px-3 py-3 text-left text-[11px] font-medium text-[#111827] hover:bg-[#F8FAFC]">
+                    <button type="button" onClick={() => setMobileExpandedMenu(expanded ? null : menuKey)} className="flex min-h-[44px] w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[12px] font-semibold text-[#172033] transition-colors hover:bg-[#F7F8FA]">
 
                       <span>{label}</span>
 
-                      <ChevronDown size={14} className={`text-[#64748B] transition-transform ${expanded ? "rotate-180" : ""}`} />
+                      <ChevronDown size={16} strokeWidth={1.7} className={`text-[#64748B] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
 
                     </button>
 
@@ -2228,7 +2235,7 @@ export function SiteHeader() {
 
                                       return (
 
-                                        <Link key={item.id} to="/shop" search={{ category: itemSlug } as never} onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="rounded-[8px] border border-white/70 bg-white/55 px-2 py-1.5 text-[9px] font-medium text-[#475467] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_3px_rgba(15,23,42,0.04)] backdrop-blur-xl hover:bg-white/75 hover:text-[#111827]">
+                                        <Link key={item.id} to="/shop" search={{ category: itemSlug } as never} onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="rounded-[8px] border border-[#D5E9D8] bg-[#EAF5EC] px-2 py-1.5 text-[9px] font-medium text-[#477A50] shadow-sm transition-colors hover:border-[#B8D9BE] hover:bg-[#DFF0E2] hover:text-[#315B3B]">
 
                                           {itemLabel}
 
@@ -2262,11 +2269,7 @@ export function SiteHeader() {
 
 
 
-              <Link to="/account" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="mt-1 flex items-center justify-between px-3 py-3 text-[11px] text-[#64748B]">
 
-                <span>Account</span><User size={14} strokeWidth={1.7} />
-
-              </Link>
 
             </nav>
 
@@ -2306,5 +2309,9 @@ export function SiteHeader() {
   );
 
 }
+
+
+
+
 
 
