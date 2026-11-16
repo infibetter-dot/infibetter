@@ -2764,6 +2764,47 @@ function ProductPage() {
         </div>
       </section>
 
+      {/* MOBILE INCLUDED IN THE BOX — placed after product specifications */}
+      {includedInBox.length > 0 && (
+        <section className="bg-white px-4 py-8 sm:px-6 lg:hidden">
+          <div className="mx-auto w-full max-w-[560px]">
+            <div className="relative mx-auto h-[34px] w-[176px] rounded-t-[16px] bg-black" aria-hidden="true">
+              <span className="absolute left-1/2 top-[19px] h-[13px] w-[92px] -translate-x-1/2 rounded-full bg-white" />
+              <span className="absolute left-1/2 top-[12px] h-[16px] w-[16px] -translate-x-1/2 rounded-full bg-white" />
+            </div>
+            <div className="bg-[#F7F7F8] px-5 pb-8 pt-6 sm:px-7">
+              <h2 className="mb-7 text-center text-[22px] font-medium leading-tight tracking-[-0.035em] text-black">
+                Included in the Box
+              </h2>
+              <div className="mx-auto flex w-full flex-wrap justify-center gap-x-6 gap-y-7">
+                {includedInBox.map((item: any, index: number) => (
+                  <div
+                    key={`${item.id ?? item.name ?? item.title}-${index}`}
+                    className="flex min-w-0 max-w-[150px] flex-col items-center text-center"
+                  >
+                    <div className="mb-3 flex h-[96px] w-[96px] items-center justify-center overflow-hidden rounded-full bg-white">
+                      {item.image_url ? (
+                        <img
+                          src={item.image_url}
+                          alt={item.name || item.title || "Included item"}
+                          className="h-full w-full object-contain p-3"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <Package size={32} strokeWidth={1.35} className="text-[#777]" />
+                      )}
+                    </div>
+                    <p className="max-w-[140px] whitespace-pre-line text-[12px] font-semibold leading-[1.55] text-[#222]">
+                      {Number(item.quantity ?? 1)} x {item.name || item.title}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
 {/* FAQ / Product information */}
 
       <section className="border-y border-[#ECEEF1] bg-white">
