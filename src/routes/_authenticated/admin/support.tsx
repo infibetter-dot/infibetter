@@ -21,6 +21,7 @@ export const Route = createFileRoute("/_authenticated/admin/support")({
 
 type SupportRequest = {
   id: string;
+  customer_name: string | null;
   customer_email: string;
   issue_type: string;
   message: string;
@@ -51,7 +52,7 @@ function SupportInboxPage() {
       const { data, error } = await supabase
         .from("support_requests")
         .select(
-          "id, customer_email, issue_type, message, page_url, status, admin_reply, created_at, updated_at",
+          "id, customer_name, customer_email, issue_type, message, page_url, status, admin_reply, created_at, updated_at",
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -69,6 +70,7 @@ function SupportInboxPage() {
       const matchesStatus = filter === "all" || item.status === filter;
       const matchesSearch =
         !q ||
+        (item.customer_name ?? "").toLowerCase().includes(q) ||
         item.customer_email.toLowerCase().includes(q) ||
         item.issue_type.toLowerCase().includes(q) ||
         item.message.toLowerCase().includes(q);
@@ -243,7 +245,7 @@ function SupportInboxPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="min-w-0 break-all text-[11px] font-semibold leading-4 text-slate-800 sm:text-xs">
-                        {item.customer_email}
+                        {item.customer_name?.trim() || item.customer_email}
                       </span>
                       <span
                         className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold ${
@@ -312,8 +314,11 @@ function SupportInboxPage() {
                       Customer request
                     </p>
                     <h2 className="mt-0.5 break-all text-sm font-semibold leading-5 text-[#171717] sm:mt-1 sm:text-lg">
-                      {selected.customer_email}
+                      {selected.customer_name?.trim() || selected.customer_email}
                     </h2>
+                      <p className="mt-1 break-all text-[10px] leading-4 text-slate-500 sm:text-xs">
+                        {selected.customer_email}
+                      </p>
                       <p className="mt-1 text-[10px] leading-4 text-slate-500 sm:text-xs">
                         {selected.issue_type} <span className="px-1 text-slate-300">·</span>
                         {new Date(selected.created_at).toLocaleString()}

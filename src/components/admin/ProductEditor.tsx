@@ -15,6 +15,12 @@ import ProductCompatibility from "./ProductCompatibility";
 // VND chỉ dùng để hiển thị tham khảo cho admin.
 const USD_TO_VND = 25500;
 
+type IncludedBoxItem = {
+  name: string;
+  quantity: number;
+  image_url: string;
+};
+
 function formatUSD(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -112,6 +118,70 @@ const [topSeller, setTopSeller] = useState(
   const [imageUrl, setImageUrl] = useState(
     product.image_url ?? ""
   );
+
+  // Included in the Box: stored as JSONB on public.products.included_in_box.
+  const [includedItems, setIncludedItems] = useState<IncludedBoxItem[]>(() => {
+    const saved = product.included_in_box;
+    if (!Array.isArray(saved)) return [];
+    return saved.map((item: any) => ({
+      name: typeof item?.name === "string" ? item.name : "",
+      quantity: Math.max(1, Number(item?.quantity) || 1),
+      image_url: typeof item?.image_url === "string" ? item.image_url : "",
+    }));
+  });
+  const [uploadingIncludedIndex, setUploadingIncludedIndex] = useState<number | null>(null);
+
+  function addIncludedItem() {
+    setIncludedItems((items) => [...items, { name: "", quantity: 1, image_url: "" }]);
+  }
+
+  function updateIncludedItem(index: number, field: keyof IncludedBoxItem, value: string | number) {
+    setIncludedItems((items) =>
+      items.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item)
+    );
+  }
+
+  function removeIncludedItem(index: number) {
+    setIncludedItems((items) => items.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  async function uploadIncludedImage(index: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file hình ảnh.");
+      input.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ảnh không được vượt quá 10MB.");
+      input.value = "";
+      return;
+    }
+
+    try {
+      setUploadingIncludedIndex(index);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("productId", product.id);
+      const response = await fetch("/api/upload-r2", { method: "POST", body: formData });
+      const result = await response.json();
+
+      if (!response.ok || !result.success || !result.url) {
+        throw new Error(result.error || result.detail || "Upload ảnh lên Cloudflare R2 thất bại.");
+      }
+
+      updateIncludedItem(index, "image_url", result.url);
+      toast.success("Đã tải ảnh phụ kiện lên Cloudflare R2.");
+    } catch (error: any) {
+      toast.error(error?.message || "Upload ảnh thất bại.");
+    } finally {
+      setUploadingIncludedIndex(null);
+      input.value = "";
+    }
+  }
 
 useEffect(() => {
   
@@ -433,6 +503,13 @@ async function save() {
     const { error } = await supabase
       .from("products")
       .update({
+  included_in_box: includedItems
+    .map((item) => ({
+      name: item.name.trim(),
+      quantity: Math.max(1, Number(item.quantity) || 1),
+      image_url: item.image_url.trim(),
+    }))
+    .filter((item) => item.name),
   featured,
   best_seller: bestSeller,
   top_seller: topSeller,
@@ -1028,6 +1105,90 @@ if (error) throw error;
 
   </div>
 </section>
+
+      {/* INCLUDED IN THE BOX */}
+      <section className="rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm md:p-5">
+        <div className="mb-4 flex flex-col gap-3 border-b border-[#ECE7DF] pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-bold tracking-tight text-[#222]">Included in the Box</h2>
+            <p className="mt-0.5 text-[11px] text-neutral-500">
+              Quản lý phụ kiện và số lượng đi kèm sản phẩm.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={addIncludedItem}
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-[#2D6A4F] px-4 text-xs font-semibold text-white transition hover:bg-[#245640]"
+          >
+            + Thêm phụ kiện
+          </button>
+        </div>
+
+        {includedItems.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[#D9D4CC] bg-[#FAF8F5] px-4 py-8 text-center">
+            <p className="text-sm font-semibold text-neutral-700">Chưa có phụ kiện nào</p>
+            <p className="mt-1 text-xs text-neutral-400">Thêm các thành phần được đóng gói cùng sản phẩm.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {includedItems.map((item, index) => (
+              <div key={`included-item-${index}`} className="grid gap-3 rounded-xl border border-[#E8E2DA] bg-[#FCFBF9] p-3 sm:grid-cols-[76px_minmax(0,1fr)_100px_auto]">
+                <div className="flex flex-col gap-2">
+                  <div className="h-[76px] w-[76px] overflow-hidden rounded-lg border border-[#E5DED5] bg-white">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.name || `Included item ${index + 1}`} className="h-full w-full object-contain p-1" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center px-2 text-center text-[10px] text-neutral-400">No image</div>
+                    )}
+                  </div>
+                  <label className="cursor-pointer text-center text-[10px] font-semibold text-[#2D6A4F] hover:underline">
+                    {uploadingIncludedIndex === index ? "Uploading..." : "Upload ảnh"}
+                    <input type="file" accept="image/*" disabled={uploadingIncludedIndex !== null} onChange={(e) => uploadIncludedImage(index, e)} className="hidden" />
+                  </label>
+                </div>
+
+                <div className="min-w-0">
+                  <label className="mb-1 block text-[11px] font-semibold text-neutral-700">Tên phụ kiện</label>
+                  <input
+                    value={item.name}
+                    onChange={(e) => updateIncludedItem(index, "name", e.target.value)}
+                    placeholder="Ví dụ: USB-C Charging Cable"
+                    className="h-10 w-full rounded-lg border border-[#D9D4CC] bg-white px-3 text-xs outline-none focus:border-[#9B7B5A] focus:ring-2 focus:ring-[#F6EFE8]"
+                  />
+                  <label className="mb-1 mt-2 block text-[11px] font-semibold text-neutral-700">Image URL (có thể dán link ảnh)</label>
+                  <input
+                    value={item.image_url}
+                    onChange={(e) => updateIncludedItem(index, "image_url", e.target.value)}
+                    placeholder="https://..."
+                    className="h-9 w-full rounded-lg border border-[#D9D4CC] bg-white px-3 text-xs outline-none focus:border-[#9B7B5A] focus:ring-2 focus:ring-[#F6EFE8]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold text-neutral-700">Số lượng</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={item.quantity}
+                    onChange={(e) => updateIncludedItem(index, "quantity", Math.max(1, Number(e.target.value) || 1))}
+                    className="h-10 w-full rounded-lg border border-[#D9D4CC] bg-white px-3 text-xs outline-none focus:border-[#9B7B5A] focus:ring-2 focus:ring-[#F6EFE8]"
+                  />
+                </div>
+
+                <div className="flex items-start justify-end sm:justify-center">
+                  <button type="button" onClick={() => removeIncludedItem(index)} className="h-9 rounded-lg border border-red-200 bg-white px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50">
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-3 text-[10px] text-neutral-400">
+          Dữ liệu được lưu vào products.included_in_box khi nhấn Lưu sản phẩm.
+        </p>
+      </section>
 
       {/* GALLERY + MÀU SẮC / BIẾN THỂ */}
       {product.id && (

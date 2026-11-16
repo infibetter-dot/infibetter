@@ -1,4 +1,4 @@
-import {
+﻿import {
   createFileRoute,
   Link,
   notFound,
@@ -12,7 +12,8 @@ import { useEffect,
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent } from "react";
+  type KeyboardEvent,
+  type FormEvent } from "react";
 
 import {
 
@@ -54,7 +55,8 @@ import {
   Gift,
   House,
   LampDesk,
-  Sofa
+  Sofa,
+  Users
 } from "lucide-react";
 
 // Keep this mapping in sync with the icon keys in admin ProductUSP.tsx.
@@ -206,6 +208,8 @@ const productOptions = (slug: string) =>
         .from("products")
 
         .select(`
+
+          included_in_box,
 
           short_description,
 
@@ -649,9 +653,56 @@ function ProductPage() {
 
   const [openSpecs, setOpenSpecs] = useState(false);
 
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-
   const [openProductFaq, setOpenProductFaq] = useState<string | null>(null);
+
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+
+  async function handleProductContactSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (contactSubmitting) return;
+
+    const customerName = contactName.trim();
+    const customerEmail = contactEmail.trim();
+    const customerMessage = contactMessage.trim();
+
+    if (!customerName || !customerEmail || !customerMessage) {
+      toast.error("Please complete all fields.");
+      return;
+    }
+
+    setContactSubmitting(true);
+
+    try {
+      const { error } = await supabase.from("support_requests").insert({
+        customer_name: customerName,
+        customer_email: customerEmail,
+        issue_type: "Product Information",
+        message: `Product: ${product.name}\n\n${customerMessage}`,
+        page_url: window.location.href,
+        status: "new",
+      });
+
+      if (error) throw error;
+
+      toast.success("Your message has been sent. Our team will get back to you.");
+      setContactName("");
+      setContactEmail("");
+      setContactMessage("");
+    } catch (error: any) {
+      console.error("PRODUCT SUPPORT REQUEST ERROR:", error);
+      toast.error(
+        error?.message
+          ? `Unable to send your message: ${error.message}`
+          : "Unable to send your message. Please try again.",
+      );
+    } finally {
+      setContactSubmitting(false);
+    }
+  }
 
   const productImages = useMemo(() => {
 
@@ -1239,6 +1290,10 @@ function ProductPage() {
 
   };
 
+  const includedInBox = Array.isArray(product.included_in_box)
+    ? product.included_in_box.filter((item: any) => item && (item.name || item.title))
+    : [];
+
   const specs = (product.product_specifications ?? [])
 
     .slice()
@@ -1252,38 +1307,6 @@ function ProductPage() {
     .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
 
     .slice(0, 4);
-
-  const faqItems = [
-
-    {
-
-      question: "Tech specs",
-
-      type: "specs",
-
-    },
-
-    {
-
-      question: "FAQs",
-
-      type: "faq",
-
-    },
-
-    {
-
-      question: "How to use",
-
-      type: "howto",
-
-      answer:
-
-        "Please follow the instructions included with the product. If instructions are not provided, contact our support team before use.",
-
-    },
-
-  ];
 
   const productFaqs = (product.product_faqs ?? [])
 
@@ -1781,7 +1804,7 @@ function ProductPage() {
   className="mt-1.5 inline-flex min-h-5 items-center gap-1.5 whitespace-nowrap text-[12px] leading-5 text-[#6E6E73] transition hover:text-[#1D1D1F]"
   aria-label={`Rated ${productReviewSummary.average.toFixed(1)} out of 5 from ${productReviewSummary.total} reviews. View reviews.`}
 >
-  <span className="tracking-[1px] text-[#00B67A]" aria-hidden="true">★★★★★</span>
+  <span className="tracking-[1px] text-[#00B67A]" aria-label="5 out of 5 stars">{"★★★★★"}</span>
   <span className="font-semibold text-[#1D1D1F]">
     {productReviewSummary.average.toFixed(1)}
   </span>
@@ -1836,11 +1859,9 @@ function ProductPage() {
 
                       </span>
 
-                      <span className="text-[12px] font-medium text-[#6E6E73]">
-
-                        -{discountPercent}%
-
-                      </span>
+                      <span className="inline-flex items-center rounded-md bg-[#FFF0EB] px-2 py-1 text-[12px] font-bold text-[#E5482E]">
+  -{discountPercent}%
+</span>
 
                     </>
 
@@ -2141,247 +2162,269 @@ function ProductPage() {
 
               )}
 
-              {/* Quantity + CTA */}
-
-              <div className="mt-3 pt-0">
-
-                <div className="flex items-center justify-between">
-
-                  <span className="text-[13px] font-semibold">Quantity</span>
-
-                  <div className="flex h-9 items-center rounded-[10px] border border-[#D2D2D7] bg-white">
-
+              {/* Quantity + PayPal checkout actions */}
+              <div className="mt-3 space-y-2.5">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-[46px] w-[96px] shrink-0 items-center justify-between rounded-[3px] border border-[#D8D8D8] bg-white">
                     <button
-
                       type="button"
-
+                      aria-label="Decrease quantity"
                       onClick={() => setQuantity((value) => Math.max(1, value - 1))}
-
-                      className="flex h-9 w-9 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
-
+                      className="flex h-full w-8 items-center justify-center text-[#333] hover:bg-[#F5F5F5]"
                     >
-
-                      <Minus size={14} />
-
+                      <Minus size={13} />
                     </button>
-
-                    <span className="w-8 text-center text-[13px] font-medium">
-
-                      {quantity}
-
-                    </span>
-
+                    <span className="min-w-4 text-center text-[12px] font-medium tabular-nums">{quantity}</span>
                     <button
-
                       type="button"
-
-                      onClick={() =>
-
-                        setQuantity((value) =>
-
-                          Math.min(
-
-                            Math.max(1, Number(selectedVariant?.stock ?? product.stock ?? 1)),
-
-                            value + 1,
-
-                          ),
-
-                        )
-
-                      }
-
-                      className="flex h-9 w-9 items-center justify-center text-[#6E6E73] hover:text-[#1D1D1F]"
-
+                      aria-label="Increase quantity"
+                      onClick={() => setQuantity((value) => Math.min(Math.max(1, Number(selectedVariant?.stock ?? product.stock ?? 1)), value + 1))}
+                      className="flex h-full w-8 items-center justify-center text-[#333] hover:bg-[#F5F5F5]"
                     >
-
-                      <Plus size={14} />
-
+                      <Plus size={13} />
                     </button>
-
-                  </div>
-
-                </div>
-
-                <button
-
-                  ref={primaryAddToCartRef}
-
-                  type="button"
-
-                  onClick={addToCart}
-
-                  disabled={!inStock}
-
-                  className="mt-2.5 flex h-[44px] w-full items-center justify-center gap-2 rounded-[10px] bg-[#0071E3] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0077ED] disabled:cursor-not-allowed disabled:bg-[#D2D2D7]"
-
-                >
-
-                  <ShoppingBag size={16} />
-
-                  Add to cart
-
-                </button>
-
-                <button
-
-                  type="button"
-
-                  onClick={buyNow}
-
-                  disabled={!inStock}
-
-                  className="mt-1.5 flex h-[40px] w-full items-center justify-center gap-2 rounded-[10px] bg-[#FFC439] px-6 text-[14px] font-semibold text-[#003087] transition hover:bg-[#F7B928] disabled:cursor-not-allowed disabled:opacity-50"
-
-                  aria-label="Pay with PayPal"
-
-                >
-
-                  <span className="font-bold tracking-[-0.04em]">PayPal</span>
-
-                </button>
-
-                {/* Express checkout and accepted payment marks */}
-                <div className="mt-3 flex flex-col items-center gap-2.5">
-                  <div
-                    className="flex min-h-[24px] items-center justify-center gap-3"
-                    aria-label="PayPal, Visa, Mastercard and more payment options at checkout"
-                  >
-                    <svg viewBox="0 0 32 24" className="h-[19px] w-7" role="img" aria-label="PayPal">
-                      <path d="M13 2h9c4 0 6 2.2 5.2 6-.7 3.8-3.2 5.6-7 5.6h-3l-1 4.5h-5L13 2Z" fill="#003087" />
-                      <path d="M8.5 5h9c4 0 6 2.2 5.2 6-.7 3.8-3.2 5.6-7 5.6h-3l-1 4.5h-5L8.5 5Z" fill="#009CDE" />
-                    </svg>
-                    <span className="flex h-[21px] min-w-[39px] items-center justify-center rounded-[5px] bg-[#1434CB] px-1.5 text-[10px] font-extrabold italic tracking-[-0.04em] text-white">
-                      VISA
-                    </span>
-                    <svg viewBox="0 0 38 24" className="h-[21px] w-[34px]" role="img" aria-label="Mastercard">
-                      <circle cx="14" cy="12" r="9" fill="#EB001B" />
-                      <circle cx="24" cy="12" r="9" fill="#F79E1B" />
-                      <path d="M19 4.43a9 9 0 0 1 0 15.14 9 9 0 0 1 0-15.14Z" fill="#FF5F00" />
-                    </svg>
-                    <span className="text-[11px] font-medium text-[#7B8491]">+more</span>
                   </div>
 
                   <button
+                    ref={primaryAddToCartRef}
                     type="button"
-                    onClick={buyNow}
+                    onClick={addToCart}
                     disabled={!inStock}
-                    className="inline-flex min-h-[24px] items-center justify-center gap-1.5 text-[12px] font-medium text-[#687386] underline decoration-[#AAB3C0] underline-offset-4 transition hover:text-[#1D1D1F] disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Express checkout with PayPal"
+                    className="flex h-[46px] min-w-0 flex-1 items-center justify-center gap-2 rounded-[3px] bg-[#171717] px-3 text-[13px] font-semibold text-white transition hover:bg-[#303030] disabled:cursor-not-allowed disabled:bg-[#A3A3A3]"
                   >
-                    Express Checkout
-                    <ArrowUpRight size={13} strokeWidth={1.8} />
+                    <span>Add to cart</span>
+                    <span aria-hidden="true">–</span>
+                    <span className="whitespace-nowrap">{formatProductPrice(price * quantity, "USD")} USD</span>
                   </button>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={buyNow}
+                  disabled={!inStock}
+                  className="flex h-[46px] w-full items-center justify-center gap-2 rounded-[3px] bg-[#FFC439] px-5 text-[14px] font-semibold text-[#003087] transition hover:bg-[#F7B928] disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Buy with PayPal"
+                >
+                  <svg viewBox="0 0 32 24" className="h-[19px] w-7" role="img" aria-label="PayPal">
+                    <path d="M13 2h9c4 0 6 2.2 5.2 6-.7 3.8-3.2 5.6-7 5.6h-3l-1 4.5h-5L13 2Z" fill="#003087" />
+                    <path d="M8.5 5h9c4 0 6 2.2 5.2 6-.7 3.8-3.2 5.6-7 5.6h-3l-1 4.5h-5L8.5 5Z" fill="#009CDE" />
+                  </svg>
+                  Buy with PayPal
+                </button>
+
+                <a
+                  href="#payment-options"
+                  className="mx-auto block w-fit text-center text-[11px] text-[#555] underline underline-offset-2 transition hover:text-[#003087]"
+                >
+                  More payment options
+                </a>
+
+                {/* Accepted payment cards - crisp inline vector marks */}
+                <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2.5" aria-label="Accepted payment cards">
+                  {/* Visa */}
+                  <svg viewBox="0 0 52 32" className="h-7 w-[46px] shrink-0" role="img" aria-label="Visa">
+                    <rect x="0.5" y="0.5" width="51" height="31" rx="4" fill="#1434CB" stroke="#1434CB" />
+                    <text x="26" y="21" textAnchor="middle" fill="#FFFFFF" fontFamily="Arial, Helvetica, sans-serif" fontSize="17" fontWeight="900" fontStyle="italic">VISA</text>
+                  </svg>
+                  {/* Mastercard */}
+                  <svg viewBox="0 0 52 32" className="h-7 w-[46px] shrink-0" role="img" aria-label="Mastercard">
+                    <rect x="0.5" y="0.5" width="51" height="31" rx="4" fill="#fff" stroke="#E5E7EB" />
+                    <circle cx="22" cy="16" r="9" fill="#EB001B" />
+                    <circle cx="30" cy="16" r="9" fill="#F79E1B" />
+                    <path d="M26 8.06a9 9 0 0 1 0 15.88 9 9 0 0 1 0-15.88Z" fill="#FF5F00" />
+                  </svg>
+                  {/* Discover */}
+                  <svg viewBox="0 0 62 32" className="h-7 w-[54px] shrink-0" role="img" aria-label="Discover">
+                    <rect x="0.5" y="0.5" width="61" height="31" rx="4" fill="#fff" stroke="#E5E7EB" />
+                    <text x="31" y="19" textAnchor="middle" fill="#222" fontFamily="Arial, Helvetica, sans-serif" fontSize="10" fontWeight="800">DISCOVER</text>
+                    <path d="M25 22c8 0 15-2.5 21-7-3 7-11 11-21 11Z" fill="#F58220" />
+                  </svg>
+                  {/* Diners Club */}
+                  <svg viewBox="0 0 52 32" className="h-7 w-[46px] shrink-0" role="img" aria-label="Diners Club">
+                    <rect x="0.5" y="0.5" width="51" height="31" rx="4" fill="#fff" stroke="#E5E7EB" />
+                    <circle cx="26" cy="16" r="10.5" fill="#fff" stroke="#0079BE" strokeWidth="2.5" />
+                    <path d="M24 7.5v17a8.5 8.5 0 0 0 0-17Z" fill="#0079BE" />
+                    <path d="M28 7.5v17a8.5 8.5 0 0 1 0-17Z" fill="#0079BE" />
+                  </svg>
+                  {/* American Express */}
+                  <svg viewBox="0 0 52 32" className="h-7 w-[46px] shrink-0" role="img" aria-label="American Express">
+                    <rect x="0.5" y="0.5" width="51" height="31" rx="4" fill="#2E77BC" stroke="#2466A3" />
+                    <text x="26" y="13" textAnchor="middle" fill="#fff" fontFamily="Arial, Helvetica, sans-serif" fontSize="7" fontWeight="800">AMERICAN</text>
+                    <text x="26" y="23" textAnchor="middle" fill="#fff" fontFamily="Arial, Helvetica, sans-serif" fontSize="10" fontWeight="900">EXPRESS</text>
+                  </svg>
+                </div>
               </div>
 
-              {/* Benefits / Trust Features — aligned with INFIBETTER policies */}
-              <section className="mt-3 w-full min-w-0" aria-label="Shopping benefits">
-                <div className="mb-2.5 flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#777F89]">
-                    Shop with confidence
-                  </p>
-                  <span className="h-px flex-1 bg-[#ECEEF1]" aria-hidden="true" />
-                </div>
+              {/* INFIBETTER - PREMIUM POLICY ACCORDION */}
+              <section className="mt-5 w-full min-w-0" aria-label="Shopping policies">
 
-                <div className="grid w-full min-w-0 grid-cols-2 gap-1.5 sm:gap-2">
-                  {[
-                    {
-                      icon: Truck,
-                      iconColor: "text-[#2878D0]",
-                      iconBg: "bg-[#EAF3FF]",
-                      iconBorder: "border-[#D8E9FF]",
-                      trackingItem: "tracked_delivery",
-                      text: "Tracked delivery",
-                      label: "Tracked Delivery",
-                      hint: "Track your order",
-                      description:
-                        "Orders are generally processed within 1–2 business days before dispatch. After dispatch, tracking details are sent so you can follow your delivery. Estimated transit times are 5–9 business days for the US, Canada, Europe, and Australia/New Zealand; 5–8 business days for the UK; and 5–12 business days for other destinations. Battery products may take approximately 4–10 business days after dispatch, depending on destination and carrier. These are estimates, not guarantees. Customs, weather, carrier delays, and other local disruptions may affect delivery. For help, email infibetter@gmail.com.",
-                    },
-                    {
-                      icon: RotateCcw,
-                      iconColor: "text-[#8058C9]",
-                      iconBg: "bg-[#F2EDFF]",
-                      iconBorder: "border-[#E7DCFF]",
-                      trackingItem: "30_day_guarantee",
-                      text: "30-day returns",
-                      label: "30-Day Guarantee",
-                      hint: "Free replacement",
-                      description:
-                        "You may request a standard return within 30 days of delivery. Items must be unused, unopened, complete, and in their original packaging. For standard non-defective returns, customers are responsible for tracked return shipping unless applicable law says otherwise. We charge no restocking fee (0%). Please contact infibetter@gmail.com and receive return approval and instructions before sending anything back. Defective, damaged, or incorrect items are handled under the Refund Policy, and mandatory consumer rights remain unaffected.",
-                    },
-                    {
-                      icon: ShieldCheck,
-                      iconColor: "text-[#15966B]",
-                      iconBg: "bg-[#E8F7F1]",
-                      iconBorder: "border-[#D1EFE2]",
-                      trackingItem: "secure_payment",
-                      text: "Secure checkout",
-                      label: "Secure Payment",
-                      hint: "PayPal protected",
-                      description:
-                        "Available payment methods are shown at checkout. Your payment is processed through the method you select during checkout. Please enter payment information only through the checkout payment form. For questions about a payment or transaction, contact infibetter@gmail.com.",
-                    },
-                    {
-                      icon: Check,
-                      iconColor: "text-[#C17A25]",
-                      iconBg: "bg-[#FFF3E3]",
-                      iconBorder: "border-[#F8E5C9]",
-                      trackingItem: "customer_support",
-                      text: "Customer support",
-                      label: "Customer Support",
-                      hint: "We're here to help",
-                      description:
-                        "Need help with an order, delivery, return, refund, or product? Contact INFIBETTER at infibetter@gmail.com. For order-related requests, include your order number and a clear description of the issue. For damaged, defective, or incorrect items, please contact us as soon as possible and include photos or video of the item and its packaging.",
-                    },
-                  ].map(({ icon: Icon, iconColor, iconBg, iconBorder, trackingItem, text, label, hint, description }) => (
-                    <button
-                      key={text}
-                      type="button"
+                <div className="divide-y divide-[#EAEAEA] border-y border-[#EAEAEA]">
+
+                  <details className="group">
+                    <summary
                       onClick={() => {
-                        const win = window as Window & {
-                          dataLayer?: Array<Record<string, unknown>>;
-                        };
-                        win.dataLayer = win.dataLayer || [];
-                        win.dataLayer.push({
+                        window.dataLayer = window.dataLayer || [];
+                        window.dataLayer.push({
                           event: "shop_confidence_click",
-                          confidence_item: trackingItem,
-                          confidence_label: label,
+                          confidence_item: "tracked_delivery",
+                          confidence_label: "Fast Worldwide Shipping",
                           page_type: "product",
                           product_name: product.name,
                           product_id: String(product.id),
                         });
-
-                        setActiveTrustInfo({ title: text, description, icon: Icon });
                       }}
-                      aria-haspopup="dialog"
-                      className="group relative flex min-h-[50px] min-w-0 items-center gap-2 overflow-hidden rounded-[11px] border border-[#E7EAF0] bg-white px-2 py-1.5 text-left outline-none transition-all duration-200 hover:border-[#D7DDE7] hover:bg-[#FAFBFC] focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 sm:gap-2.5 sm:px-2.5"
+                      className="flex min-h-[62px] cursor-pointer list-none items-center justify-between gap-3 py-4 text-[13px] font-medium text-[#202124] marker:hidden"
                     >
-                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] border ${iconBorder} ${iconBg} ${iconColor} shadow-[0_1px_2px_rgba(20,30,45,0.03)] transition-transform duration-200 group-hover:scale-[1.04] sm:h-10 sm:w-10`}>
-                        <Icon size={18} strokeWidth={1.9} aria-hidden="true" />
+                      <span className="flex items-center gap-3">
+                        <Truck size={21} strokeWidth={1.7} />
+                        Fast Worldwide Shipping
                       </span>
+                      <span className="text-[21px] font-light leading-none transition-transform group-open:rotate-45">+</span>
+                    </summary>
+                    <div className="pb-5 pl-9 pr-5 text-[12px] leading-[1.8] text-[#737373]">
+                      <p>
+                        We will ship orders within 24 to 72 business hours
+                        (excluding pre-order items), except in the event of
+                        force majeure or public holidays.
+                      </p>
+                      <p className="mt-2">
+                        For more information, please see the{" "}
+                        <Link
+                          to="/shipping"
+                          className="font-medium text-[#0071E3] underline underline-offset-2 hover:text-[#005BB5]"
+                        >
+                          Shipping Policy
+                        </Link>.
+                      </p>
+                    </div>
+                  </details>
 
-                      <span className="min-w-0 flex-1">
-                        <span className="block whitespace-normal break-words text-[11px] font-semibold leading-[1.25] text-[#293342]">
-                          {label}
-                        </span>
-                        <span className="mt-0.5 block whitespace-normal break-words text-[10px] leading-4 text-[#7C8796] sm:text-[11px]">
-                          {hint}
-                        </span>
+                  <details className="group">
+                    <summary
+                      onClick={() => {
+                        window.dataLayer = window.dataLayer || [];
+                        window.dataLayer.push({
+                          event: "shop_confidence_click",
+                          confidence_item: "30_day_guarantee",
+                          confidence_label: "30-Day Hassle-Free Returns",
+                          page_type: "product",
+                          product_name: product.name,
+                          product_id: String(product.id),
+                        });
+                      }}
+                      className="flex min-h-[62px] cursor-pointer list-none items-center justify-between gap-3 py-4 text-[13px] font-medium text-[#202124] marker:hidden"
+                    >
+                      <span className="flex items-center gap-3">
+                        <RotateCcw size={21} strokeWidth={1.7} />
+                        30-Day Hassle-Free Returns
                       </span>
+                      <span className="text-[21px] font-light leading-none transition-transform group-open:rotate-45">+</span>
+                    </summary>
+                    <div className="pb-5 pl-9 pr-5 text-[12px] leading-[1.8] text-[#737373]">
+                      <p>
+                        We accept returns up to 30 days after receipt of your order.
+                      </p>
+                      <p className="mt-4">
+                        For more information, please see the{" "}
+                        <Link
+                          to="/refund-policy"
+                          className="font-medium text-[#737373] underline underline-offset-2 hover:text-[#0071E3]"
+                        >
+                          Refund Policy
+                        </Link>.
+                      </p>
+                    </div>
+                  </details>
 
-                      <ArrowUpRight
-                        size={15}
-                        strokeWidth={1.8}
-                        aria-hidden="true"
-                        className="shrink-0 text-[#9299A3] transition duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#34465D]"
-                      />
-                    </button>
-                  ))}
+                  <details className="group">
+                    <summary
+                      onClick={() => {
+                        window.dataLayer = window.dataLayer || [];
+                        window.dataLayer.push({
+                          event: "shop_confidence_click",
+                          confidence_item: "one_year_warranty",
+                          confidence_label: "1-Year Warranty Coverage",
+                          page_type: "product",
+                          product_name: product.name,
+                          product_id: String(product.id),
+                        });
+                      }}
+                      className="flex min-h-[62px] cursor-pointer list-none items-center justify-between gap-3 py-4 text-[13px] font-medium text-[#202124] marker:hidden"
+                    >
+                      <span className="flex items-center gap-3">
+                        <ShieldCheck size={21} strokeWidth={1.7} />
+                        1-Year Warranty Coverage
+                      </span>
+                      <span className="text-[21px] font-light leading-none transition-transform group-open:rotate-45">+</span>
+                    </summary>
+                    <div className="pb-5 pl-9 pr-5 text-[12px] leading-[1.8] text-[#737373]">
+                      <p>
+                        We provide a straightforward, hassle-free warranty to save you some headaches.
+                        If there is any quality problem with our products, please feel free to contact us at{" "}
+                        <a
+                          href="mailto:support@infibetter.com"
+                          className="font-medium text-[#737373] underline underline-offset-2 hover:text-[#0071E3]"
+                        >
+                          support@infibetter.com
+                        </a>{" "}
+                        with your order receipt for confirmation.
+                      </p>
+                      <p className="mt-4">
+                        For more details, you can view our{" "}
+                        <Link
+                          to="/warranty"
+                          className="font-medium text-[#737373] underline underline-offset-2 hover:text-[#0071E3]"
+                        >
+                          Warranty Policy
+                        </Link>.
+                      </p>
+                    </div>
+                  </details>
+
+                  <details className="group">
+                    <summary
+                      onClick={() => {
+                        window.dataLayer = window.dataLayer || [];
+                        window.dataLayer.push({
+                          event: "shop_confidence_click",
+                          confidence_item: "customer_support",
+                          confidence_label: "Lifetime Customer Support",
+                          page_type: "product",
+                          product_name: product.name,
+                          product_id: String(product.id),
+                        });
+                      }}
+                      className="flex min-h-[62px] cursor-pointer list-none items-center justify-between gap-3 py-4 text-[13px] font-medium text-[#202124] marker:hidden"
+                    >
+                      <span className="flex items-center gap-3">
+                        <Users size={21} strokeWidth={1.7} />
+                        Lifetime Customer Support
+                      </span>
+                      <span className="text-[21px] font-light leading-none transition-transform group-open:rotate-45">+</span>
+                    </summary>
+                    <div className="pb-5 pl-9 pr-5 text-[12px] leading-[1.8] text-[#737373]">
+                      <p>
+                        We are here to help whenever you need us. Whether you have questions about a product,
+                        your order, or delivery, our support team is ready to assist.
+                      </p>
+                      <p className="mt-3">
+                        Feel free to reach us at{" "}
+                        <a
+                          href="mailto:support@infibetter.com"
+                          className="font-medium text-[#737373] underline underline-offset-2 hover:text-[#0071E3]"
+                        >
+                          support@infibetter.com
+                        </a>.
+                        Please include your order number so we can assist you faster.
+                      </p>
+                    </div>
+                  </details>
+
                 </div>
-              </section>
 
+
+
+              </section>
               {/* Description */}
 
               {product.description && (
@@ -2454,7 +2497,7 @@ function ProductPage() {
 
       </section>
 
-            {/* Product video carousel — displayed above Lifestyle */}
+            {/* Product video carousel â€” displayed above Lifestyle */}
 
       {productVideos.length > 0 && (
 
@@ -2554,7 +2597,7 @@ function ProductPage() {
 
             </div>
 
-            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos →</p>}
+            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos â†’</p>}
 
           </div>
 
@@ -2562,7 +2605,7 @@ function ProductPage() {
 
       )}
 
-{/* Lifestyle gallery — only Lifestyle images */}
+{/* Lifestyle gallery â€” only Lifestyle images */}
 
       {lifestyleImages.length > 0 && (
 
@@ -2636,383 +2679,193 @@ function ProductPage() {
 
       )}
 
-{/* FAQ / Product information */}
+{/* DESKTOP SPECS + INCLUDED IN THE BOX */}
+      <section className="hidden border-y border-[#ECEEF1] bg-white py-10 lg:block lg:py-14">
+        <div className="mx-auto max-w-[1600px] px-5 xl:px-[18px]">
+          <h2 className="mb-8 text-[38px] font-semibold leading-none tracking-[-0.045em] text-black">
+            Specs
+          </h2>
 
-      <section className="border-y border-[#ECEEF1] bg-[#F7F8FA]">
+          <div className="grid grid-cols-[minmax(0,2.08fr)_minmax(330px,0.96fr)] items-start gap-[60px]">
+            <div className="min-w-0 bg-[#F4F4F4] px-8 py-7 xl:px-[34px]">
+              <div className="mb-8 flex items-center justify-between">
+                <h3 className="text-[17px] font-medium tracking-[-0.02em] text-black">
+                  Product Specifications
+                </h3>
+                <span className="text-[18px] leading-none text-black">×</span>
+              </div>
 
-        <div className="mx-auto max-w-[1240px] px-5 py-10 md:px-8 md:py-14 lg:py-16">
-
-          <div className="mx-auto w-full max-w-[920px]">
-
-            <div className="mb-5 text-left sm:mb-6">
-
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#858991]">
-
-                Product details
-
-              </p>
-
-              <h2 className="text-[24px] font-semibold leading-tight tracking-[-0.04em] text-[#17191C] sm:text-[28px]">
-
-                Need to know more?
-
-              </h2>
-
-              <p className="mt-1.5 text-[13px] leading-5 text-[#737780] sm:text-[14px]">
-
-                The details that help you choose with confidence.
-
-              </p>
-
+              {(() => {
+                const specItems = [
+                  ...specs.map((spec: any) => ({
+                    id: spec.id,
+                    label: spec.label,
+                    value: spec.value,
+                  })),
+                  ...(product.material ? [{ id: "material", label: "Material", value: product.material }] : []),
+                  ...(product.dimensions ? [{ id: "dimensions", label: "Dimensions", value: product.dimensions }] : []),
+                  ...(product.color ? [{ id: "color", label: "Color", value: product.color }] : []),
+                  ...(product.light_source ? [{ id: "light_source", label: "Light source", value: product.light_source }] : []),
+                  ...(product.power_source ? [{ id: "power_source", label: "Power source", value: product.power_source }] : []),
+                  ...(product.warranty ? [{ id: "warranty", label: "Warranty", value: product.warranty }] : []),
+                ];
+                return specItems.length ? (
+                  <div className="grid grid-cols-2 gap-x-12 gap-y-10">
+                    {specItems.map((item: any) => (
+                      <div key={item.id} className="min-w-0">
+                        <h4 className="mb-2 text-[15px] font-medium leading-6 text-black">
+                          {item.label}
+                        </h4>
+                        <p className="whitespace-pre-line break-words text-[14px] leading-[1.65] text-[#171717]">
+                          {String(item.value ?? "").split(/\\r?\\n/).map((line: string, index: number) => (
+                            <span key={index} className="block">{line.trim().startsWith("-") ? line : `- ${line}`}</span>
+                          ))}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-neutral-500">No technical specifications have been added for this product yet.</p>
+                );
+              })()}
             </div>
 
-            <div className="overflow-hidden rounded-[16px] border border-[#E4E6EA] bg-white shadow-[0_2px_10px_rgba(20,24,32,0.035)]">
-
-              {faqItems.map((faq, index) => (
-
-                <div
-
-                  key={faq.question}
-
-                  className={index < faqItems.length - 1 ? "border-b border-[#E5E5EA]" : ""}
-
-                >
-
-                  <button
-
-                    type="button"
-
-                    onClick={() => {
-                      const nextOpen = openFaq !== index;
-                      setOpenFaq((value) => (value === index ? null : index));
-
-                      if (nextOpen) {
-                        trackProductInteraction("faq_expand", {
-                          product_id: String(product.id),
-                          product_name: product.name,
-                          interaction_type: "main_faq",
-                          interaction_value: faq.question,
-                        });
-                      }
-                    }}
-
-                    aria-expanded={openFaq === index}
-                    className={`group flex min-h-[58px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#F8F9FB] sm:min-h-[62px] sm:gap-3.5 sm:px-5 ${
-                      openFaq === index ? "bg-[#FAFBFC]" : "bg-white"
-                    }`}
-
-                  >
-
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#F3F4F6] text-[#555D68]">
-
-                      {index === 0 && (
-
-                        <SlidersHorizontal size={19} strokeWidth={1.5} />
-
-                      )}
-
-                      {index === 1 && (
-
-                        <Smartphone size={19} strokeWidth={1.5} />
-
-                      )}
-
-                      {index === 2 && (
-
-                        <CircleHelp size={19} strokeWidth={1.5} />
-
-                      )}
-
-                      {index === 3 && (
-
-                        <BookOpen size={19} strokeWidth={1.5} />
-
-                      )}
-
-                    </span>
-
-                    <span className="flex-1 text-[13px] font-semibold tracking-[-0.01em] text-[#25282D] sm:text-[14px]">
-
-                      {faq.question}
-
-                    </span>
-
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#E7E9ED] text-[#656B75] transition-colors group-hover:border-[#D5D9DF]">
-
-                      <Plus
-
-                        size={18}
-
-                        strokeWidth={1.6}
-
-                        className={`transition-transform duration-200 ${
-
-                          openFaq === index ? "rotate-45" : ""
-
-                        }`}
-
-                      />
-
-                    </span>
-
-                  </button>
-
-                  {openFaq === index && (
-
-                    <div
-
-                      className={`px-4 pb-5 pt-1 sm:px-5 sm:pb-6 ${
-
-                        faq.type === "specs" || faq.type === "faq"
-
-                          ? ""
-
-                          : "pl-[60px] sm:pl-[68px]"
-
-                      }`}
-
-                    >
-
-                      {faq.type === "specs" ? (
-
-                        specs.length > 0 ||
-
-                        product.material ||
-
-                        product.dimensions ||
-
-                        product.color ||
-
-                        product.light_source ||
-
-                        product.power_source ||
-
-                        product.warranty ? (
-
-                          <div className="overflow-hidden rounded-[10px] border border-[#ECECF0]">
-
-                            {[
-
-                              ...specs.map((spec: any) => ({
-
-                                id: spec.id,
-
-                                label: spec.label,
-
-                                value: spec.value,
-
-                              })),
-
-                              ...(product.material
-
-                                ? [{ id: "material", label: "Material", value: product.material }]
-
-                                : []),
-
-                              ...(product.dimensions
-
-                                ? [{ id: "dimensions", label: "Dimensions", value: product.dimensions }]
-
-                                : []),
-
-                              ...(product.color
-
-                                ? [{ id: "color", label: "Color", value: product.color }]
-
-                                : []),
-
-                              ...(product.light_source
-
-                                ? [{ id: "light_source", label: "Light source", value: product.light_source }]
-
-                                : []),
-
-                              ...(product.power_source
-
-                                ? [{ id: "power_source", label: "Power source", value: product.power_source }]
-
-                                : []),
-
-                              ...(product.warranty
-
-                                ? [{ id: "warranty", label: "Warranty", value: product.warranty }]
-
-                                : []),
-
-                            ].map((item: any, index: number, items: any[]) => (
-
-                              <div
-
-                                key={item.id}
-
-                                className={`grid grid-cols-[43%_57%] items-start text-[13px] sm:grid-cols-[38%_62%] ${
-
-                                  index < items.length - 1
-
-                                    ? "border-b border-[#ECECF0]"
-
-                                    : ""
-
-                                } ${index % 2 === 0 ? "bg-white" : "bg-[#FAFAFB]"}`}
-
-                              >
-
-                                <span className="min-w-0 px-3 py-3.5 text-[#77777C] sm:px-4">
-
-                                  {item.label}
-
-                                </span>
-
-                                <span className="min-w-0 border-l border-[#F0F0F2] px-3 py-3.5 text-left font-medium leading-5 text-[#1D1D1F] sm:px-4">
-
-                                  {item.value}
-
-                                </span>
-
-                              </div>
-
-                            ))}
-
-                          </div>
-
+            <aside className="relative min-w-0 bg-[#F8F8F8] px-7 pb-8 pt-9">
+              <div className="absolute left-1/2 top-0 h-[70px] w-[224px] -translate-x-1/2 -translate-y-full rounded-t-[18px] bg-black">
+                <div className="absolute left-1/2 top-[29px] h-[18px] w-[114px] -translate-x-1/2 rounded-full bg-white" />
+                <div className="absolute left-1/2 top-[19px] h-[21px] w-[21px] -translate-x-1/2 rounded-full bg-white" />
+              </div>
+              <h3 className="mb-9 text-center text-[27px] font-medium leading-tight tracking-[-0.04em] text-black">
+                Included in the Box
+              </h3>
+
+              {includedInBox.length ? (
+                <div className="mx-auto flex w-full max-w-[360px] flex-wrap justify-center gap-x-5 gap-y-8">
+                  {includedInBox.map((item: any, index: number) => (
+                    <div key={`${item.id ?? item.name ?? item.title}-${index}`} className="flex min-w-0 flex-col items-center text-center">
+                      <div className="mb-3 flex h-[96px] w-[96px] items-center justify-center overflow-hidden rounded-full bg-white">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name || item.title || "Included item"} className="h-full w-full object-contain p-3" loading="lazy" />
                         ) : (
-
-                          <p className="text-[13px] leading-6 text-[#6E6E73]">
-
-                            No technical specifications have been added for this product yet.
-
-                          </p>
-
-                        )
-
-                      ) : faq.type === "faq" ? (
-
-                        productFaqs.length > 0 ? (
-
-                          <div className="overflow-hidden rounded-[10px] border border-[#ECECF0]">
-
-                            {productFaqs.map((item: any, faqIndex: number) => {
-
-                              const itemOpen = openProductFaq === item.id;
-
-                              return (
-
-                                <div
-
-                                  key={item.id}
-
-                                  className={
-
-                                    faqIndex < productFaqs.length - 1
-
-                                      ? "border-b border-[#ECECF0]"
-
-                                      : ""
-
-                                  }
-
-                                >
-
-                                  <button
-
-                                    type="button"
-
-                                    onClick={() => {
-                                      const nextOpen = openProductFaq !== item.id;
-                                      setOpenProductFaq((value) =>
-                                        value === item.id ? null : item.id,
-                                      );
-
-                                      if (nextOpen) {
-                                        trackProductInteraction("faq_expand", {
-                                          product_id: String(product.id),
-                                          product_name: product.name,
-                                          interaction_type: "product_faq",
-                                          interaction_value: item.question,
-                                        });
-                                      }
-                                    }}
-
-                                    className="flex min-h-[56px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FAFAFA]"
-
-                                  >
-
-                                    <span className="flex-1 text-[13px] font-medium text-[#1D1D1F]">
-
-                                      {item.question}
-
-                                    </span>
-
-                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#6E6E73]">
-
-                                      <Plus
-
-                                        size={16}
-
-                                        strokeWidth={1.6}
-
-                                        className={`transition-transform duration-200 ${
-
-                                          itemOpen ? "rotate-45" : ""
-
-                                        }`}
-
-                                      />
-
-                                    </span>
-
-                                  </button>
-
-                                  {itemOpen && (
-
-                                    <div className="px-4 pb-5 pr-10">
-
-                                      <p className="whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
-
-                                        {item.answer}
-
-                                      </p>
-
-                                    </div>
-
-                                  )}
-
-                                </div>
-
-                              );
-
-                            })}
-
-                          </div>
-
-                        ) : (
-
-                          <p className="text-[13px] leading-6 text-[#6E6E73]">
-
-                            No FAQs have been added for this product yet.
-
-                          </p>
-
-                        )
-
-                      ) : (
-
-                        <p className="max-w-[760px] whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
-
-                          {faq.answer}
-
-                        </p>
-
-                      )}
-
+                          <Package size={32} strokeWidth={1.35} className="text-[#777]" />
+                        )}
+                      </div>
+                      <p className="max-w-[130px] whitespace-pre-line text-[12px] leading-[1.55] text-[#222]">
+                        {Number(item.quantity ?? 1)} x {item.name || item.title}
+                      </p>
                     </div>
-
-                  )}
-
+                  ))}
                 </div>
+              ) : (
+                <p className="py-8 text-center text-[13px] text-neutral-400">No items have been added yet.</p>
+              )}
+            </aside>
+          </div>
+        </div>
+      </section>
 
-              ))}
+{/* FAQ / Product information */}
 
+      <section className="border-y border-[#ECEEF1] bg-white">
+
+        <div className="mx-auto max-w-[1240px] px-5 py-12 md:px-8 md:py-16 lg:py-[76px]">
+
+          <div className="mx-auto grid w-full max-w-[1088px] grid-cols-1 gap-12 lg:grid-cols-[1.12fr_0.88fr] lg:gap-[clamp(64px,12vw,192px)]">
+
+            <div className="min-w-0">
+              <h2 className="mb-7 text-[28px] font-medium leading-tight tracking-[-0.04em] text-[#17191C] sm:text-[32px]">FAQs</h2>
+
+            <div className="border-t border-[#E5E5E5] bg-transparent">
+              {productFaqs.length > 0 ? (
+                productFaqs.map((item: any, faqIndex: number) => {
+                  const itemOpen = openProductFaq === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      className={faqIndex < productFaqs.length - 1 ? "border-b border-[#E5E5E5]" : ""}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextOpen = openProductFaq !== item.id;
+                          setOpenProductFaq((value) => value === item.id ? null : item.id);
+                          if (nextOpen) {
+                            trackProductInteraction("faq_expand", {
+                              product_id: String(product.id),
+                              product_name: product.name,
+                              interaction_type: "product_faq",
+                              interaction_value: item.question,
+                            });
+                          }
+                        }}
+                        aria-expanded={itemOpen}
+                        className="flex min-h-[68px] w-full items-center gap-4 py-4 text-left"
+                      >
+                        <span className="min-w-0 flex-1 text-[15px] font-medium leading-[1.4] tracking-[-0.02em] text-[#17191C] sm:text-[16px]">
+                          {item.question}
+                        </span>
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#333]">
+                          <Plus size={17} strokeWidth={1.5} className={`transition-transform duration-200 ${itemOpen ? "rotate-45" : ""}`} />
+                        </span>
+                      </button>
+                      {itemOpen && (
+                        <div className="pb-5 pr-10">
+                          <p className="whitespace-pre-line text-[13px] leading-6 text-[#6E6E73]">
+                            {item.answer}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="py-5 text-[13px] leading-6 text-[#6E6E73]">
+                  No FAQs have been added for this product yet.
+                </p>
+              )}
+            </div>
+            </div>
+
+            <div className="min-w-0 lg:pt-0 lg:max-w-[323px]">
+              <h3 className="text-[20px] font-semibold leading-tight tracking-[-0.035em] text-[#17191C] sm:text-[22px]">Didn’t find your answer?</h3>
+              <p className="mt-1 text-[11px] text-[#858585]">Don’t hesitate to contact us</p>
+
+              <form onSubmit={handleProductContactSubmit} className="mt-8 space-y-[18px]">
+                <input
+                  type="text"
+                  required
+                  value={contactName}
+                  onChange={(event) => setContactName(event.target.value)}
+                  placeholder="Name"
+                  aria-label="Name"
+                  className="h-[47px] w-full border-0 bg-[#F4F4F4] px-5 text-[11px] text-[#222] outline-none transition placeholder:text-[#858585] focus:bg-[#EEEEEE] focus:ring-1 focus:ring-[#D5D5D5]"
+                />
+                <input
+                  type="email"
+                  required
+                  value={contactEmail}
+                  onChange={(event) => setContactEmail(event.target.value)}
+                  placeholder="Email"
+                  aria-label="Email"
+                  className="h-[47px] w-full border-0 bg-[#F4F4F4] px-5 text-[11px] text-[#222] outline-none transition placeholder:text-[#858585] focus:bg-[#EEEEEE] focus:ring-1 focus:ring-[#D5D5D5]"
+                />
+                <textarea
+                  required
+                  rows={4}
+                  value={contactMessage}
+                  onChange={(event) => setContactMessage(event.target.value)}
+                  placeholder="Message"
+                  aria-label="Message"
+                  className="min-h-[96px] w-full resize-y border-0 bg-[#F4F4F4] px-5 py-4 text-[11px] text-[#222] outline-none transition placeholder:text-[#858585] focus:bg-[#EEEEEE] focus:ring-1 focus:ring-[#D5D5D5]"
+                />
+                <button
+                  type="submit"
+                  disabled={contactSubmitting}
+                  className="inline-flex h-[44px] min-w-[144px] items-center justify-center bg-[#171717] px-7 text-[10px] font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#777] focus-visible:ring-offset-2"
+                >
+                  {contactSubmitting ? "Sending..." : "Send message"}
+                </button>
+              </form>
             </div>
 
           </div>
@@ -3061,7 +2914,7 @@ function ProductPage() {
 
               >
 
-                View all →
+                View all â†’
 
               </Link>
 
@@ -3237,7 +3090,7 @@ function ProductPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[9px] font-bold uppercase tracking-[0.19em] text-[#A0A5AD]">
-                      INFIBETTER · SHOP WITH CONFIDENCE
+                      INFIBETTER Â· SHOP WITH CONFIDENCE
                     </p>
                     <h2
                       id="trust-info-title"
@@ -3277,7 +3130,7 @@ function ProductPage() {
                   <div className="rounded-[14px] border border-[#ECEEF1] bg-white px-4 py-3.5">
                     <p className="text-[13px] leading-[1.85] text-[#626873]">
                       Orders are generally processed within{" "}
-                      <strong className="font-semibold text-[#252A32]">1–2 business days</strong>{" "}
+                      <strong className="font-semibold text-[#252A32]">1â€“2 business days</strong>{" "}
                       before dispatch. Once your order is on its way, tracking details are sent so you can follow its journey.
                     </p>
                   </div>
@@ -3285,7 +3138,7 @@ function ProductPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex min-h-[112px] flex-col rounded-[14px] border border-[#E5EAF0] bg-[#F7F8FA] p-4">
                       <p className="text-[9px] font-bold uppercase leading-4 tracking-[0.16em] text-[#9299A3]">Processing time</p>
-                      <p className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.025em] text-[#252A32]">1–2 days</p>
+                      <p className="mt-3 text-[22px] font-semibold leading-[1.15] tracking-[-0.025em] text-[#252A32]">1â€“2 days</p>
                       <p className="mt-2 text-[11px] leading-[1.5] text-[#858C96]">Before dispatch</p>
                     </div>
                     <div className="flex min-h-[112px] flex-col rounded-[14px] border border-[#E5EAF0] bg-[#F7F8FA] p-4">
@@ -3302,10 +3155,10 @@ function ProductPage() {
                     </div>
                     <div className="overflow-hidden rounded-[13px] border border-[#E9EDF2]">
                       {[
-                        ["US, Canada, Europe, Australia & New Zealand", "5–9 business days"],
-                        ["United Kingdom", "5–8 business days"],
-                        ["Other destinations", "5–12 business days"],
-                        ["Battery products", "4–10 business days"],
+                        ["US, Canada, Europe, Australia & New Zealand", "5â€“9 business days"],
+                        ["United Kingdom", "5â€“8 business days"],
+                        ["Other destinations", "5â€“12 business days"],
+                        ["Battery products", "4â€“10 business days"],
                       ].map(([region, timing], index) => (
                         <div key={region} className={`flex items-center justify-between gap-3 px-3.5 py-3.5 ${index ? "border-t border-[#ECEEF1]" : ""}`}>
                           <span className="min-w-0 flex-1 text-[11px] leading-[1.65] text-[#626873]">{region}</span>
@@ -3490,7 +3343,7 @@ function ProductPage() {
                     </div>
                   </section>
 
-                  <section>
+                  <section id="payment-options" className="scroll-mt-24">
                     <div className="mb-3 flex items-center gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#7D8795]">Accepted payment methods</span>
                       <span className="h-px flex-1 bg-[#E9EDF2]" />
@@ -3675,7 +3528,7 @@ function ProductPage() {
                           Have a question or need assistance? Reach out anytime.
                         </span>
                         <span className="mt-0.5 block truncate text-[13px] font-semibold text-[#1769C2]">
-                          infibetter@gmail.com
+                          support@infibetter.com
                         </span>
                       </span>
                       <ArrowUpRight size={17} className="shrink-0 text-[#64748B]" />
@@ -3769,4 +3622,3 @@ function ProductPage() {
   );
 
 }
-

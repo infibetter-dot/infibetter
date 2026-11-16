@@ -20,9 +20,12 @@ import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as FlashsaleRouteImport } from './routes/flashsale'
 import { Route as OrderSuccessRouteImport } from './routes/order-success'
 import { Route as PopupRouteImport } from './routes/popup'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as ReviewsRouteImport } from './routes/reviews'
+import { Route as ShippingRouteImport } from './routes/shipping'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as VoucherRegisterRouteImport } from './routes/voucher-register'
+import { Route as WarrantyRouteImport } from './routes/warranty'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as AccountOldRouteImport } from './routes/account.old'
 import { Route as ApiUploadR2RouteImport } from './routes/api/upload-r2'
@@ -98,9 +101,19 @@ const PopupRoute = PopupRouteImport.update({
   path: '/popup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReviewsRoute = ReviewsRouteImport.update({
   id: '/reviews',
   path: '/reviews',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShippingRoute = ShippingRouteImport.update({
+  id: '/shipping',
+  path: '/shipping',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShopRoute = ShopRouteImport.update({
@@ -111,6 +124,11 @@ const ShopRoute = ShopRouteImport.update({
 const VoucherRegisterRoute = VoucherRegisterRouteImport.update({
   id: '/voucher-register',
   path: '/voucher-register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WarrantyRoute = WarrantyRouteImport.update({
+  id: '/warranty',
+  path: '/warranty',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
@@ -240,9 +258,12 @@ export interface FileRoutesByFullPath {
   '/flashsale': typeof FlashsaleRoute
   '/order-success': typeof OrderSuccessRoute
   '/popup': typeof PopupRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/reviews': typeof ReviewsRoute
+  '/shipping': typeof ShippingRoute
   '/shop': typeof ShopRoute
   '/voucher-register': typeof VoucherRegisterRouteWithChildren
+  '/warranty': typeof WarrantyRoute
   '/account': typeof AuthenticatedAccountRoute
   '/account/old': typeof AccountOldRoute
   '/api/upload-r2': typeof ApiUploadR2Route
@@ -275,9 +296,12 @@ export interface FileRoutesByTo {
   '/flashsale': typeof FlashsaleRoute
   '/order-success': typeof OrderSuccessRoute
   '/popup': typeof PopupRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/reviews': typeof ReviewsRoute
+  '/shipping': typeof ShippingRoute
   '/shop': typeof ShopRoute
   '/voucher-register': typeof VoucherRegisterRouteWithChildren
+  '/warranty': typeof WarrantyRoute
   '/account': typeof AuthenticatedAccountRoute
   '/account/old': typeof AccountOldRoute
   '/api/upload-r2': typeof ApiUploadR2Route
@@ -312,9 +336,12 @@ export interface FileRoutesById {
   '/flashsale': typeof FlashsaleRoute
   '/order-success': typeof OrderSuccessRoute
   '/popup': typeof PopupRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/reviews': typeof ReviewsRoute
+  '/shipping': typeof ShippingRoute
   '/shop': typeof ShopRoute
   '/voucher-register': typeof VoucherRegisterRouteWithChildren
+  '/warranty': typeof WarrantyRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/account/old': typeof AccountOldRoute
   '/api/upload-r2': typeof ApiUploadR2Route
@@ -349,9 +376,12 @@ export interface FileRouteTypes {
     | '/flashsale'
     | '/order-success'
     | '/popup'
+    | '/refund-policy'
     | '/reviews'
+    | '/shipping'
     | '/shop'
     | '/voucher-register'
+    | '/warranty'
     | '/account'
     | '/account/old'
     | '/api/upload-r2'
@@ -384,9 +414,12 @@ export interface FileRouteTypes {
     | '/flashsale'
     | '/order-success'
     | '/popup'
+    | '/refund-policy'
     | '/reviews'
+    | '/shipping'
     | '/shop'
     | '/voucher-register'
+    | '/warranty'
     | '/account'
     | '/account/old'
     | '/api/upload-r2'
@@ -420,9 +453,12 @@ export interface FileRouteTypes {
     | '/flashsale'
     | '/order-success'
     | '/popup'
+    | '/refund-policy'
     | '/reviews'
+    | '/shipping'
     | '/shop'
     | '/voucher-register'
+    | '/warranty'
     | '/_authenticated/account'
     | '/account/old'
     | '/api/upload-r2'
@@ -457,9 +493,12 @@ export interface RootRouteChildren {
   FlashsaleRoute: typeof FlashsaleRoute
   OrderSuccessRoute: typeof OrderSuccessRoute
   PopupRoute: typeof PopupRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
   ReviewsRoute: typeof ReviewsRoute
+  ShippingRoute: typeof ShippingRoute
   ShopRoute: typeof ShopRoute
   VoucherRegisterRoute: typeof VoucherRegisterRouteWithChildren
+  WarrantyRoute: typeof WarrantyRoute
   AccountOldRoute: typeof AccountOldRoute
   ApiUploadR2Route: typeof ApiUploadR2Route
   ProductsSlugRoute: typeof ProductsSlugRoute
@@ -544,11 +583,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PopupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reviews': {
       id: '/reviews'
       path: '/reviews'
       fullPath: '/reviews'
       preLoaderRoute: typeof ReviewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipping': {
+      id: '/shipping'
+      path: '/shipping'
+      fullPath: '/shipping'
+      preLoaderRoute: typeof ShippingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shop': {
@@ -563,6 +616,13 @@ declare module '@tanstack/react-router' {
       path: '/voucher-register'
       fullPath: '/voucher-register'
       preLoaderRoute: typeof VoucherRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/warranty': {
+      id: '/warranty'
+      path: '/warranty'
+      fullPath: '/warranty'
+      preLoaderRoute: typeof WarrantyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/account': {
@@ -800,9 +860,12 @@ const rootRouteChildren: RootRouteChildren = {
   FlashsaleRoute: FlashsaleRoute,
   OrderSuccessRoute: OrderSuccessRoute,
   PopupRoute: PopupRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
   ReviewsRoute: ReviewsRoute,
+  ShippingRoute: ShippingRoute,
   ShopRoute: ShopRoute,
   VoucherRegisterRoute: VoucherRegisterRouteWithChildren,
+  WarrantyRoute: WarrantyRoute,
   AccountOldRoute: AccountOldRoute,
   ApiUploadR2Route: ApiUploadR2Route,
   ProductsSlugRoute: ProductsSlugRoute,
