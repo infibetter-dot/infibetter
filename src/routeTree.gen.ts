@@ -15,15 +15,22 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BestSellerRouteImport } from './routes/best-seller'
+import { Route as CancellationsRouteImport } from './routes/cancellations'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as FaqsRouteImport } from './routes/faqs'
 import { Route as FlashsaleRouteImport } from './routes/flashsale'
+import { Route as LegalNoticeRouteImport } from './routes/legal-notice'
+import { Route as OrderPaymentRouteImport } from './routes/order-payment'
 import { Route as OrderSuccessRouteImport } from './routes/order-success'
 import { Route as PopupRouteImport } from './routes/popup'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as ShippingRouteImport } from './routes/shipping'
 import { Route as ShopRouteImport } from './routes/shop'
+import { Route as TermsOfServiceRouteImport } from './routes/terms-of-service'
 import { Route as VoucherRegisterRouteImport } from './routes/voucher-register'
 import { Route as WarrantyRouteImport } from './routes/warranty'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
@@ -76,6 +83,11 @@ const BestSellerRoute = BestSellerRouteImport.update({
   path: '/best-seller',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CancellationsRoute = CancellationsRouteImport.update({
+  id: '/cancellations',
+  path: '/cancellations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CartRoute = CartRouteImport.update({
   id: '/cart',
   path: '/cart',
@@ -86,9 +98,29 @@ const CheckoutRoute = CheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqsRoute = FaqsRouteImport.update({
+  id: '/faqs',
+  path: '/faqs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FlashsaleRoute = FlashsaleRouteImport.update({
   id: '/flashsale',
   path: '/flashsale',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalNoticeRoute = LegalNoticeRouteImport.update({
+  id: '/legal-notice',
+  path: '/legal-notice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderPaymentRoute = OrderPaymentRouteImport.update({
+  id: '/order-payment',
+  path: '/order-payment',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrderSuccessRoute = OrderSuccessRouteImport.update({
@@ -99,6 +131,11 @@ const OrderSuccessRoute = OrderSuccessRouteImport.update({
 const PopupRoute = PopupRouteImport.update({
   id: '/popup',
   path: '/popup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RefundPolicyRoute = RefundPolicyRouteImport.update({
@@ -119,6 +156,11 @@ const ShippingRoute = ShippingRouteImport.update({
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsOfServiceRoute = TermsOfServiceRouteImport.update({
+  id: '/terms-of-service',
+  path: '/terms-of-service',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VoucherRegisterRoute = VoucherRegisterRouteImport.update({
@@ -253,15 +295,22 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/best-seller': typeof BestSellerRoute
+  '/cancellations': typeof CancellationsRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/contact': typeof ContactRoute
+  '/faqs': typeof FaqsRoute
   '/flashsale': typeof FlashsaleRoute
+  '/legal-notice': typeof LegalNoticeRoute
+  '/order-payment': typeof OrderPaymentRoute
   '/order-success': typeof OrderSuccessRoute
   '/popup': typeof PopupRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
   '/reviews': typeof ReviewsRoute
   '/shipping': typeof ShippingRoute
   '/shop': typeof ShopRoute
+  '/terms-of-service': typeof TermsOfServiceRoute
   '/voucher-register': typeof VoucherRegisterRouteWithChildren
   '/warranty': typeof WarrantyRoute
   '/account': typeof AuthenticatedAccountRoute
@@ -291,15 +340,22 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/best-seller': typeof BestSellerRoute
+  '/cancellations': typeof CancellationsRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/contact': typeof ContactRoute
+  '/faqs': typeof FaqsRoute
   '/flashsale': typeof FlashsaleRoute
+  '/legal-notice': typeof LegalNoticeRoute
+  '/order-payment': typeof OrderPaymentRoute
   '/order-success': typeof OrderSuccessRoute
   '/popup': typeof PopupRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
   '/reviews': typeof ReviewsRoute
   '/shipping': typeof ShippingRoute
   '/shop': typeof ShopRoute
+  '/terms-of-service': typeof TermsOfServiceRoute
   '/voucher-register': typeof VoucherRegisterRouteWithChildren
   '/warranty': typeof WarrantyRoute
   '/account': typeof AuthenticatedAccountRoute
@@ -331,15 +387,22 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/best-seller': typeof BestSellerRoute
+  '/cancellations': typeof CancellationsRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
+  '/contact': typeof ContactRoute
+  '/faqs': typeof FaqsRoute
   '/flashsale': typeof FlashsaleRoute
+  '/legal-notice': typeof LegalNoticeRoute
+  '/order-payment': typeof OrderPaymentRoute
   '/order-success': typeof OrderSuccessRoute
   '/popup': typeof PopupRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
   '/reviews': typeof ReviewsRoute
   '/shipping': typeof ShippingRoute
   '/shop': typeof ShopRoute
+  '/terms-of-service': typeof TermsOfServiceRoute
   '/voucher-register': typeof VoucherRegisterRouteWithChildren
   '/warranty': typeof WarrantyRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
@@ -371,15 +434,22 @@ export interface FileRouteTypes {
     | '/about'
     | '/auth'
     | '/best-seller'
+    | '/cancellations'
     | '/cart'
     | '/checkout'
+    | '/contact'
+    | '/faqs'
     | '/flashsale'
+    | '/legal-notice'
+    | '/order-payment'
     | '/order-success'
     | '/popup'
+    | '/privacy-policy'
     | '/refund-policy'
     | '/reviews'
     | '/shipping'
     | '/shop'
+    | '/terms-of-service'
     | '/voucher-register'
     | '/warranty'
     | '/account'
@@ -409,15 +479,22 @@ export interface FileRouteTypes {
     | '/about'
     | '/auth'
     | '/best-seller'
+    | '/cancellations'
     | '/cart'
     | '/checkout'
+    | '/contact'
+    | '/faqs'
     | '/flashsale'
+    | '/legal-notice'
+    | '/order-payment'
     | '/order-success'
     | '/popup'
+    | '/privacy-policy'
     | '/refund-policy'
     | '/reviews'
     | '/shipping'
     | '/shop'
+    | '/terms-of-service'
     | '/voucher-register'
     | '/warranty'
     | '/account'
@@ -448,15 +525,22 @@ export interface FileRouteTypes {
     | '/about'
     | '/auth'
     | '/best-seller'
+    | '/cancellations'
     | '/cart'
     | '/checkout'
+    | '/contact'
+    | '/faqs'
     | '/flashsale'
+    | '/legal-notice'
+    | '/order-payment'
     | '/order-success'
     | '/popup'
+    | '/privacy-policy'
     | '/refund-policy'
     | '/reviews'
     | '/shipping'
     | '/shop'
+    | '/terms-of-service'
     | '/voucher-register'
     | '/warranty'
     | '/_authenticated/account'
@@ -488,15 +572,22 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AuthRoute: typeof AuthRoute
   BestSellerRoute: typeof BestSellerRoute
+  CancellationsRoute: typeof CancellationsRoute
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
+  ContactRoute: typeof ContactRoute
+  FaqsRoute: typeof FaqsRoute
   FlashsaleRoute: typeof FlashsaleRoute
+  LegalNoticeRoute: typeof LegalNoticeRoute
+  OrderPaymentRoute: typeof OrderPaymentRoute
   OrderSuccessRoute: typeof OrderSuccessRoute
   PopupRoute: typeof PopupRoute
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   RefundPolicyRoute: typeof RefundPolicyRoute
   ReviewsRoute: typeof ReviewsRoute
   ShippingRoute: typeof ShippingRoute
   ShopRoute: typeof ShopRoute
+  TermsOfServiceRoute: typeof TermsOfServiceRoute
   VoucherRegisterRoute: typeof VoucherRegisterRouteWithChildren
   WarrantyRoute: typeof WarrantyRoute
   AccountOldRoute: typeof AccountOldRoute
@@ -548,6 +639,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BestSellerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cancellations': {
+      id: '/cancellations'
+      path: '/cancellations'
+      fullPath: '/cancellations'
+      preLoaderRoute: typeof CancellationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cart': {
       id: '/cart'
       path: '/cart'
@@ -562,11 +660,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faqs': {
+      id: '/faqs'
+      path: '/faqs'
+      fullPath: '/faqs'
+      preLoaderRoute: typeof FaqsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/flashsale': {
       id: '/flashsale'
       path: '/flashsale'
       fullPath: '/flashsale'
       preLoaderRoute: typeof FlashsaleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal-notice': {
+      id: '/legal-notice'
+      path: '/legal-notice'
+      fullPath: '/legal-notice'
+      preLoaderRoute: typeof LegalNoticeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order-payment': {
+      id: '/order-payment'
+      path: '/order-payment'
+      fullPath: '/order-payment'
+      preLoaderRoute: typeof OrderPaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/order-success': {
@@ -581,6 +707,13 @@ declare module '@tanstack/react-router' {
       path: '/popup'
       fullPath: '/popup'
       preLoaderRoute: typeof PopupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/refund-policy': {
@@ -609,6 +742,13 @@ declare module '@tanstack/react-router' {
       path: '/shop'
       fullPath: '/shop'
       preLoaderRoute: typeof ShopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms-of-service': {
+      id: '/terms-of-service'
+      path: '/terms-of-service'
+      fullPath: '/terms-of-service'
+      preLoaderRoute: typeof TermsOfServiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/voucher-register': {
@@ -855,15 +995,22 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AuthRoute: AuthRoute,
   BestSellerRoute: BestSellerRoute,
+  CancellationsRoute: CancellationsRoute,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
+  ContactRoute: ContactRoute,
+  FaqsRoute: FaqsRoute,
   FlashsaleRoute: FlashsaleRoute,
+  LegalNoticeRoute: LegalNoticeRoute,
+  OrderPaymentRoute: OrderPaymentRoute,
   OrderSuccessRoute: OrderSuccessRoute,
   PopupRoute: PopupRoute,
+  PrivacyPolicyRoute: PrivacyPolicyRoute,
   RefundPolicyRoute: RefundPolicyRoute,
   ReviewsRoute: ReviewsRoute,
   ShippingRoute: ShippingRoute,
   ShopRoute: ShopRoute,
+  TermsOfServiceRoute: TermsOfServiceRoute,
   VoucherRegisterRoute: VoucherRegisterRouteWithChildren,
   WarrantyRoute: WarrantyRoute,
   AccountOldRoute: AccountOldRoute,

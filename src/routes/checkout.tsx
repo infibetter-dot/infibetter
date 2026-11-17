@@ -17,7 +17,6 @@ import {
   ShoppingBag,
   Trash2,
   Truck,
-  X,
 } from "lucide-react";
 
 import {
@@ -289,7 +288,6 @@ function CheckoutPage() {
   const [offerIndex, setOfferIndex] = useState(0);
   const [offerLoading, setOfferLoading] = useState(true);
   const [offerDismissed, setOfferDismissed] = useState(false);
-  const [legalModal, setLegalModal] = useState<LegalDocumentKey | null>(null);
 
   const checkoutEventSent = useRef(false);
   const ga4BeginCheckoutSent = useRef(false);
@@ -421,17 +419,6 @@ function CheckoutPage() {
       cancelled = true;
     };
   }, [items]);
-
-  useEffect(() => {
-    if (!legalModal) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setLegalModal(null);
-    };
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [legalModal]);
 
   if (count === 0) {
     return (
@@ -1372,13 +1359,48 @@ function CheckoutPage() {
                 aria-label="Checkout legal information"
                 className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[11px] leading-5 sm:gap-x-4 sm:text-xs"
               >
-                <LegalLink label="Refund policy" onClick={() => setLegalModal("refund")} />
-                <LegalLink label="Shipping" onClick={() => setLegalModal("shipping")} />
-                <LegalLink label="Privacy policy" onClick={() => setLegalModal("privacy")} />
-                <LegalLink label="Terms of service" onClick={() => setLegalModal("terms")} />
-                <LegalLink label="Legal notice" onClick={() => setLegalModal("legal")} />
-                <LegalLink label="Cancellations" onClick={() => setLegalModal("cancellations")} />
-                <LegalLink label="Contact" onClick={() => setLegalModal("contact")} />
+                <Link
+                  to="/refund-policy"
+                  className="text-[#0066e6] underline underline-offset-2 transition hover:text-[#0052b8]"
+                >
+                  Refund policy
+                </Link>
+                <Link
+                  to="/shipping"
+                  className="text-[#0066e6] underline underline-offset-2 transition hover:text-[#0052b8]"
+                >
+                  Shipping
+                </Link>
+                <Link
+                  to="/privacy-policy"
+                  className="text-[#0066e6] underline underline-offset-2 transition hover:text-[#0052b8]"
+                >
+                  Privacy policy
+                </Link>
+                <Link
+                  to="/terms-of-service"
+                  className="text-[#0066e6] underline underline-offset-2 transition hover:text-[#0052b8]"
+                >
+                  Terms of service
+                </Link>
+                <Link
+                  to="/legal-notice"
+                  className="text-[#0066e6] underline underline-offset-2 transition hover:text-[#0052b8]"
+                >
+                  Legal notice
+                </Link>
+                <Link
+                  to="/cancellations"
+                  className="text-[#0066e6] underline underline-offset-2 transition hover:text-[#0052b8]"
+                >
+                  Cancellations
+                </Link>
+                <Link
+                  to="/contact"
+                  className="text-[#0066e6] underline underline-offset-2 transition hover:text-[#0052b8]"
+                >
+                  Contact
+                </Link>
               </nav>
 
               <p className="mx-auto mt-3 max-w-[330px] text-center text-[11px] leading-5 text-neutral-500 sm:text-xs">
@@ -1390,781 +1412,7 @@ function CheckoutPage() {
         </PayPalScriptProvider>
       </main>
 
-      {legalModal ? (
-        <LegalModal
-          document={legalModal}
-          onClose={() => setLegalModal(null)}
-        />
-      ) : null}
     </div>
-  );
-}
-
-/* =========================================================
-   LEGAL LINKS + MODALS
-========================================================= */
-
-type LegalDocumentKey =
-  | "refund"
-  | "shipping"
-  | "privacy"
-  | "terms"
-  | "legal"
-  | "cancellations"
-  | "contact";
-
-function LegalLink({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="text-[#0066e6] underline underline-offset-2 transition hover:text-[#0052b8]"
-    >
-      {label}
-    </button>
-  );
-}
-
-function LegalModal({
-  document,
-  onClose,
-}: {
-  document: LegalDocumentKey;
-  onClose: () => void;
-}) {
-  const titles: Record<LegalDocumentKey, string> = {
-    refund: "Refund policy",
-    shipping: "Shipping",
-    privacy: "Privacy policy",
-    terms: "Terms of service",
-    legal: "Legal notice",
-    cancellations: "Cancellations",
-    contact: "Contact",
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="legal-modal-title"
-        className="flex max-h-[88vh] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-[#e8e8e8] px-5 py-4 sm:px-6">
-          <h2
-            id="legal-modal-title"
-            className="text-lg font-semibold tracking-[-0.02em]"
-          >
-            {titles[document]}
-          </h2>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="grid h-9 w-9 place-items-center rounded-full text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto px-5 py-6 sm:px-8">
-          <LegalDocumentContent document={document} />
-        </div>
-
-        <div className="flex shrink-0 justify-end border-t border-[#e8e8e8] px-5 py-3 sm:px-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl bg-[#111] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LegalDocumentContent({
-  document,
-}: {
-  document: LegalDocumentKey;
-}) {
-  const headingClass =
-    "mt-7 text-base font-semibold tracking-[-0.01em] first:mt-0";
-  const paragraphClass = "mt-3 text-sm leading-6 text-neutral-600";
-  const listClass =
-    "mt-3 list-disc space-y-1 pl-5 text-sm leading-6 text-neutral-600";
-  const numberedClass =
-    "mt-3 list-decimal space-y-1 pl-5 text-sm leading-6 text-neutral-600";
-  const linkClass =
-    "text-[#0066e6] underline underline-offset-2";
-  const mailto = "mailto:infibetter@gmail.com";
-
-  if (document === "refund") {
-    return (
-      <article>
-        <p className={paragraphClass}>
-          We want the return process to be clear before you send anything.
-          Please read the conditions below and obtain approval before returning
-          a product.
-        </p>
-
-        <h3 className={headingClass}>At a glance</h3>
-        <ul className={listClass}>
-          <li><strong>30-day window:</strong> Request a standard return within 30 days of delivery.</li>
-          <li><strong>No restocking fee:</strong> We charge 0% on approved returns.</li>
-          <li><strong>Standard return condition:</strong> Unused, unopened, and complete in the original packaging.</li>
-          <li><strong>Return postage:</strong> Customer-paid for standard non-defective returns, unless applicable law requires otherwise.</li>
-        </ul>
-
-        <a
-          href={mailto + "?subject=Start%20a%20return"}
-          className="mt-5 inline-flex rounded-xl bg-[#0066e6] px-4 py-2.5 text-sm font-semibold text-white no-underline"
-        >
-          Start a return
-        </a>
-
-        <h3 className={headingClass}>30-day return window</h3>
-        <p className={paragraphClass}>
-          You may request a standard return within <strong>30 days of delivery</strong>.
-          Submitting a request does not automatically approve the return. You
-          must wait for confirmation, instructions, and the correct return
-          address before sending anything.
-        </p>
-
-        <h3 className={headingClass}>Standard return eligibility</h3>
-        <ul className={listClass}>
-          <li>Unused and unopened</li>
-          <li>Complete and in the same condition as delivered</li>
-          <li>Returned in its original packaging</li>
-          <li>Accompanied by all accessories, manuals, inserts, and included gifts</li>
-        </ul>
-        <p className={paragraphClass}>
-          A promotional or discounted price alone does not make a product Final
-          Sale unless it was clearly identified as Final Sale before purchase.
-        </p>
-
-        <h3 className={headingClass}>Items not eligible under the standard return policy</h3>
-        <ul className={listClass}>
-          <li>Opened, used, incomplete, or customer-damaged products</li>
-          <li>Products clearly marked Final Sale before purchase</li>
-          <li>Personalized or custom-made products</li>
-          <li>Gift cards</li>
-          <li>Non-physical services that have already been provided, including shipping protection</li>
-          <li>Products damaged through misuse, accidents, unauthorized modification, or failure to follow supplied instructions</li>
-        </ul>
-        <p className={paragraphClass}>
-          These restrictions do not remove mandatory rights that may apply to
-          defective, incorrect, or non-conforming goods.
-        </p>
-
-        <h3 className={headingClass}>How to request a return</h3>
-        <ol className={numberedClass}>
-          <li>Email <a className={linkClass} href={mailto}>infibetter@gmail.com</a>.</li>
-          <li>Use the email address connected to your order.</li>
-          <li>Identify the relevant order and product.</li>
-          <li>Provide the requested return reason and information.</li>
-          <li>Wait for approval and return instructions.</li>
-        </ol>
-        <p className={paragraphClass}>
-          <strong>Do not send the product to the address shown on the original parcel.</strong>
-          That address may belong to a carrier or fulfillment partner and may
-          not be able to accept returns.
-        </p>
-
-        <h3 className={headingClass}>Return shipping and costs</h3>
-        <p className={paragraphClass}>
-          <strong>We do not charge a restocking fee (0%).</strong>
-        </p>
-        <ul className={listClass}>
-          <li>The customer pays for tracked return shipping for standard non-defective returns.</li>
-          <li>Original shipping charges and paid shipping upgrades are not refundable unless required by law.</li>
-          <li>The sender is responsible for return-related duties, taxes, brokerage charges, and similar costs unless applicable law requires otherwise.</li>
-        </ul>
-
-        <h3 className={headingClass}>Damaged, defective, or incorrect items</h3>
-        <p className={paragraphClass}>
-          <strong>Do not submit a standard return for a product that arrived damaged, defective, or incorrect.</strong>
-          Contact us as soon as possible and include your order number, a clear
-          description, photographs or a short video, and packaging photographs
-          where relevant.
-        </p>
-        <p className={paragraphClass}>
-          Contact us at <a className={linkClass} href={mailto}>infibetter@gmail.com</a>.
-          After reviewing the information, we will provide the appropriate next
-          step.
-        </p>
-
-        <h3 className={headingClass}>Refund processing</h3>
-        <p className={paragraphClass}>
-          We will notify you after an approved return reaches the specified
-          return location and has been inspected. If accepted, the refundable
-          amount—less any applicable return costs—will be issued to the original
-          payment method. <strong>No restocking fee will be deducted.</strong>
-        </p>
-
-        <h3 className={headingClass}>Exchanges</h3>
-        <p className={paragraphClass}>
-          The simplest exchange process is normally to return an eligible
-          product and place a new order for the correct product. Do not send an
-          exchange before receiving approval and return instructions.
-        </p>
-
-        <h3 className={headingClass}>Cancellations</h3>
-        <p className={paragraphClass}>
-          If your order has not been dispatched, contact us immediately. We will
-          try to change or cancel it, but changes cannot be guaranteed after
-          fulfillment has started.
-        </p>
-
-        <h3 className={headingClass}>Mandatory consumer rights</h3>
-        <p className={paragraphClass}>
-          Nothing in this policy excludes or restricts mandatory consumer
-          rights, including remedies for defective, incorrect, damaged, or
-          non-conforming goods. Consumers in the European Union generally have
-          statutory withdrawal rights for eligible distance purchases, subject
-          to applicable exceptions. The 30-day commercial request window is
-          intended to provide additional time where applicable.
-        </p>
-
-        <h3 className={headingClass}>Return assistance</h3>
-        <p className={paragraphClass}>
-          For assistance, email <a className={linkClass} href={mailto}>infibetter@gmail.com</a>.
-          Include your order number and tell us whether the product is unopened,
-          damaged, defective, incorrect, or otherwise not as expected.
-        </p>
-      </article>
-    );
-  }
-
-  if (document === "shipping") {
-    return (
-      <article>
-        <p className={paragraphClass}>
-          We ship INFIBETTER products to customers worldwide. Available
-          shipping methods, final charges, and estimated delivery information
-          are displayed at checkout.
-        </p>
-
-        <h3 className={headingClass}>At a glance</h3>
-        <ul className={listClass}>
-          <li><strong>Order processing:</strong> Generally 1–2 business days before dispatch.</li>
-          <li><strong>Delivery estimates:</strong> Transit times begin after dispatch.</li>
-          <li><strong>Shipping options and charges:</strong> Displayed at checkout before payment.</li>
-          <li><strong>Tracking:</strong> Normally emailed after your order has been dispatched.</li>
-        </ul>
-
-        <h3 className={headingClass}>Order processing</h3>
-        <p className={paragraphClass}>
-          Orders are generally processed within <strong>1–2 business days</strong>
-          before dispatch. Processing may take longer during product launches,
-          promotional events, public holidays, unusually high demand, or when
-          additional order verification is required.
-        </p>
-
-        <h3 className={headingClass}>Estimated delivery times</h3>
-        <p className={paragraphClass}>
-          The following estimates apply <strong>after dispatch</strong>:
-        </p>
-        <div className="mt-4 overflow-x-auto rounded-xl border border-[#e5e5e5]">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead className="bg-[#f7f7f7]">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Destination</th>
-                <th className="px-4 py-3 font-semibold">Estimated transit</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#e8e8e8]">
-              <tr><td className="px-4 py-3">United States, Canada, and Europe</td><td className="px-4 py-3">5–9 business days</td></tr>
-              <tr><td className="px-4 py-3">United Kingdom</td><td className="px-4 py-3">5–8 business days</td></tr>
-              <tr><td className="px-4 py-3">Australia and New Zealand</td><td className="px-4 py-3">5–9 business days</td></tr>
-              <tr><td className="px-4 py-3">Other destinations</td><td className="px-4 py-3">5–12 business days</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <p className={paragraphClass}>
-          These estimates are guidance and are not guaranteed delivery dates.
-          Products containing batteries may require specialized shipping and
-          can take approximately <strong>4–10 business days after dispatch</strong>,
-          depending on destination and carrier service.
-        </p>
-
-        <h3 className={headingClass}>Express shipping</h3>
-        <p className={paragraphClass}>
-          Express shipping may be displayed at checkout for supported products,
-          destinations, and orders. When available, processing is usually 1–2
-          business days before dispatch and transit is usually 2–4 business days
-          after dispatch.
-        </p>
-
-        <h3 className={headingClass}>Shipping charges</h3>
-        <p className={paragraphClass}>
-          Available shipping methods and charges are shown at checkout before
-          payment. Any free-shipping promotion applies only when the order meets
-          the conditions displayed during checkout.
-        </p>
-
-        <h3 className={headingClass}>Tracking</h3>
-        <p className={paragraphClass}>
-          Tracking information is normally emailed after your order has been
-          dispatched. Temporary gaps between carrier scans are normal while a
-          parcel moves between facilities, carriers, or customs authorities.
-        </p>
-
-        <h3 className={headingClass}>Delivery estimates and delays</h3>
-        <ul className={listClass}>
-          <li>Customs processing</li>
-          <li>Carrier congestion</li>
-          <li>Severe weather</li>
-          <li>Local disruptions and public holidays</li>
-          <li>Remote delivery locations</li>
-          <li>Incomplete or incorrect address information</li>
-          <li>Security or customs inspections</li>
-          <li>Peak shopping periods</li>
-        </ul>
-
-        <h3 className={headingClass}>Pre-orders</h3>
-        <p className={paragraphClass}>
-          A product identified as a <strong>Pre-order</strong> is not ready for
-          immediate dispatch. The product page or checkout will display an
-          estimated shipping timeframe where available. This is an estimate and
-          may change because of production, transportation, customs, or
-          supply-chain circumstances.
-        </p>
-
-        <h3 className={headingClass}>Products containing batteries</h3>
-        <p className={paragraphClass}>
-          Products containing lithium batteries may be unavailable in certain
-          countries or regions and may require additional transit time. Express
-          delivery may not be available for these products. Available options
-          will be shown at checkout.
-        </p>
-
-        <h3 className={headingClass}>Address changes and cancellations</h3>
-        <p className={paragraphClass}>
-          Review your delivery details carefully before completing checkout. If
-          an address needs to be changed, contact us immediately. We will try to
-          assist before dispatch, but cannot guarantee changes after fulfillment
-          has started.
-        </p>
-
-        <h3 className={headingClass}>Tracking shows delivered</h3>
-        <ol className={numberedClass}>
-          <li>Confirm that the delivery address is correct.</li>
-          <li>Check safe locations around the property.</li>
-          <li>Ask household members and nearby neighbors.</li>
-          <li>Check for carrier notices or pickup instructions.</li>
-          <li>Contact the carrier for delivery details or proof of delivery.</li>
-        </ol>
-
-        <h3 className={headingClass}>Lost or damaged shipments</h3>
-        <p className={paragraphClass}>
-          If a parcel appears lost, arrives visibly damaged, or contains a
-          damaged product, contact INFIBETTER at{" "}
-          <a className={linkClass} href={mailto}>infibetter@gmail.com</a>.
-        </p>
-      </article>
-    );
-  }
-
-  if (document === "privacy") {
-    return (
-      <article>
-        <p className={paragraphClass}>Last updated: September 3, 2026</p>
-
-        <h3 className={headingClass}>At a glance</h3>
-        <ul className={listClass}>
-          <li><strong>How we use information:</strong> To process orders, provide support, improve the Services, and support marketing.</li>
-          <li><strong>Your rights:</strong> Access, correction, deletion, and other choices may be available under applicable law.</li>
-          <li><strong>Marketing emails:</strong> You can unsubscribe using the link in each promotional email.</li>
-          <li><strong>Privacy requests:</strong> Email <a className={linkClass} href={mailto}>infibetter@gmail.com</a> with the subject line <strong>Privacy Request</strong>.</li>
-        </ul>
-
-        <h3 className={headingClass}>Personal information we collect or process</h3>
-        <p className={paragraphClass}>
-          We may collect or process information that identifies or can reasonably
-          be linked to you, depending on how you interact with the Services,
-          where you live, and as permitted or required by applicable law.
-        </p>
-        <ul className={listClass}>
-          <li><strong>Contact details</strong> including name, address, billing address, shipping address, phone number, and email address.</li>
-          <li><strong>Financial information</strong> including payment and transaction details.</li>
-          <li><strong>Account information</strong> including username, password, preferences, and settings.</li>
-          <li><strong>Transaction information</strong> including items viewed, cart items, purchases, returns, exchanges, and cancellations.</li>
-          <li><strong>Communications with us</strong> including customer support inquiries.</li>
-          <li><strong>Device information</strong> including device, browser, network, IP address, and similar identifiers.</li>
-          <li><strong>Usage information</strong> including interactions with and navigation of the Services.</li>
-        </ul>
-
-        <h3 className={headingClass}>Personal information sources</h3>
-        <ul className={listClass}>
-          <li>Directly from you when you use the Services or provide information.</li>
-          <li>Automatically through the Services, including cookies and similar technologies.</li>
-          <li>From service providers that enable technology and process information on our behalf.</li>
-          <li>From partners or other third parties.</li>
-        </ul>
-
-        <h3 className={headingClass}>How we use your personal information</h3>
-        <ul className={listClass}>
-          <li><strong>Provide, tailor, and improve the Services:</strong> Process payments, fulfill orders, arrange shipping, facilitate returns and exchanges, manage accounts, and improve the shopping experience.</li>
-          <li><strong>Marketing and advertising:</strong> Send promotional communications and show relevant advertising where permitted by law.</li>
-          <li><strong>Security and fraud prevention:</strong> Secure payments and services and detect, investigate, or prevent fraudulent, illegal, unsafe, or malicious activity.</li>
-          <li><strong>Communicating with you:</strong> Provide customer support and maintain our business relationship.</li>
-          <li><strong>Legal reasons:</strong> Comply with applicable law and respond to valid legal process.</li>
-        </ul>
-
-        <h3 className={headingClass}>How we disclose personal information</h3>
-        <ul className={listClass}>
-          <li>With vendors and service providers that perform payment processing, analytics, customer support, cloud storage, fulfillment, or shipping.</li>
-          <li>With business and marketing partners where permitted and subject to applicable privacy notices.</li>
-          <li>When you direct, request, or consent to disclosure.</li>
-          <li>With affiliates or within our corporate group.</li>
-          <li>In connection with business transactions or legal obligations.</li>
-        </ul>
-
-        <h3 className={headingClass}>Third-party websites and links</h3>
-        <p className={paragraphClass}>
-          The Services may provide links to third-party websites or platforms.
-          Review their privacy and security policies before providing
-          information. We are not responsible for independent third-party
-          websites except where applicable law provides otherwise.
-        </p>
-
-        <h3 className={headingClass}>Children's data</h3>
-        <p className={paragraphClass}>
-          The Services are not intended for children, and we do not knowingly
-          collect personal information from children under the age of majority
-          in the applicable jurisdiction.
-        </p>
-
-        <h3 className={headingClass}>Security and retention</h3>
-        <p className={paragraphClass}>
-          No security measure is perfect or impenetrable. Retention periods
-          depend on factors such as account maintenance, service delivery,
-          legal obligations, dispute resolution, and enforcement of agreements.
-        </p>
-
-        <h3 className={headingClass}>Your rights and choices</h3>
-        <ul className={listClass}>
-          <li>Request access to personal information we hold about you.</li>
-          <li>Request deletion of eligible information.</li>
-          <li>Request correction of inaccurate information.</li>
-          <li>Request a portable copy in applicable circumstances.</li>
-          <li>Object to or restrict certain processing where available.</li>
-          <li>Withdraw consent where processing is based on consent.</li>
-          <li>Opt out of certain marketing or targeted advertising where applicable.</li>
-        </ul>
-
-        <h3 className={headingClass}>Marketing communications</h3>
-        <p className={paragraphClass}>
-          You may opt out of promotional emails using the unsubscribe option
-          provided in those emails. We may still send non-promotional messages
-          relating to your account or orders.
-        </p>
-
-        <h3 className={headingClass}>International transfers</h3>
-        <p className={paragraphClass}>
-          Your personal information may be transferred, stored, or processed
-          outside the country where you live. Where required by law, we use
-          recognized safeguards for applicable international transfers.
-        </p>
-
-        <h3 className={headingClass}>Contact</h3>
-        <p className={paragraphClass}>
-          For privacy questions or requests, email{" "}
-          <a className={linkClass} href={mailto}>infibetter@gmail.com</a> with
-          the subject line <strong>Privacy Request</strong>.
-        </p>
-      </article>
-    );
-  }
-
-  if (document === "terms") {
-    return (
-      <article>
-        <p className={paragraphClass}>
-          These Terms of Service govern your use of INFIBETTER and purchases
-          made through the store. By accessing the website or placing an order,
-          you agree to these Terms. Mandatory consumer rights remain unaffected.
-        </p>
-
-        <h3 className={headingClass}>At a glance</h3>
-        <ul className={listClass}>
-          <li><strong>Shipping and delivery:</strong> See our Shipping policy for processing, delivery, and tracking information.</li>
-          <li><strong>Returns and refunds:</strong> See our Refund policy for eligibility, return costs, and refund processing.</li>
-          <li><strong>No restocking fee:</strong> We charge 0% on approved standard returns.</li>
-          <li><strong>Your consumer rights:</strong> Mandatory rights under applicable law remain unaffected.</li>
-        </ul>
-
-        <h3 className={headingClass}>1. Online store terms</h3>
-        <p className={paragraphClass}>
-          You must be legally capable of entering into a binding agreement to
-          place an order. You may not use our products, website, or services for
-          unlawful or unauthorized purposes.
-        </p>
-
-        <h3 className={headingClass}>2. Product information</h3>
-        <p className={paragraphClass}>
-          We aim to present product descriptions, specifications, compatibility
-          information, colors, prices, and images accurately. Screen settings,
-          lighting, manufacturing updates, and reasonable production variations
-          may cause minor differences.
-        </p>
-
-        <h3 className={headingClass}>3. Prices and payment</h3>
-        <p className={paragraphClass}>
-          Prices are displayed in the currency shown at checkout. The checkout
-          total reflects applicable discounts and the shipping charges shown
-          before payment. Payment is processed through the method selected at
-          checkout.
-        </p>
-
-        <h3 className={headingClass}>4. Orders and acceptance</h3>
-        <p className={paragraphClass}>
-          Your order is an offer to purchase the selected products. An order
-          confirmation acknowledges receipt but does not necessarily mean that
-          the order has been accepted. We may refuse or cancel an order for
-          legitimate reasons such as suspected fraud, product unavailability,
-          delivery restrictions, or obvious pricing errors. If we cancel a paid
-          order, the affected amount will be refunded to the original payment
-          method.
-        </p>
-
-        <h3 className={headingClass}>5. Pre-orders</h3>
-        <p className={paragraphClass}>
-          Products clearly marked <strong>Pre-order</strong> are not available
-          for immediate dispatch. Any shipping or release date shown is an
-          estimate unless expressly stated otherwise.
-        </p>
-
-        <h3 className={headingClass}>6. Shipping and delivery</h3>
-        <p className={paragraphClass}>
-          Processing times, estimated transit times, tracking, customs
-          information, and delivery limitations are explained in the Shipping
-          policy. Delivery estimates are not guarantees. You are responsible
-          for entering a complete and accurate delivery address.
-        </p>
-
-        <h3 className={headingClass}>7. Returns and refunds</h3>
-        <p className={paragraphClass}>
-          Returns, eligibility requirements, return shipping costs, damaged or
-          incorrect products, and refund processing are governed by the Refund
-          policy. <strong>We do not charge a restocking fee (0%).</strong>
-        </p>
-
-        <h3 className={headingClass}>8. Promotions and discount codes</h3>
-        <ul className={listClass}>
-          <li>Discount codes may be subject to eligibility requirements and usage limits.</li>
-          <li>Discounts cannot be applied retroactively unless stated otherwise.</li>
-          <li>Promotional offers have no cash value.</li>
-          <li>Fraudulent or abusive use of a promotion may be cancelled.</li>
-        </ul>
-
-        <h3 className={headingClass}>9. Intellectual property</h3>
-        <p className={paragraphClass}>
-          Website content including text, graphics, logos, images, videos,
-          product names, designs, and software is owned by or licensed to
-          INFIBETTER and protected by applicable intellectual-property laws.
-        </p>
-
-        <h3 className={headingClass}>10. Reviews and submitted content</h3>
-        <p className={paragraphClass}>
-          If you submit a review, photograph, comment, suggestion, or other
-          content, you confirm that you have the right to submit it and that it
-          does not violate another person's rights or applicable law.
-        </p>
-
-        <h3 className={headingClass}>11. Third-party services and links</h3>
-        <p className={paragraphClass}>
-          The website may contain third-party tools, payment services,
-          integrations, applications, or links. Third-party services may be
-          governed by their own terms and privacy policies.
-        </p>
-
-        <h3 className={headingClass}>12. Prohibited conduct</h3>
-        <ul className={listClass}>
-          <li>Use the website for unlawful or fraudulent activity.</li>
-          <li>Infringe intellectual-property or privacy rights.</li>
-          <li>Submit false or misleading information.</li>
-          <li>Introduce malware or harmful code.</li>
-          <li>Scrape or extract website data without permission.</li>
-          <li>Circumvent security or access restrictions.</li>
-          <li>Interfere with the website or another customer's use.</li>
-          <li>Place orders for unauthorized commercial resale.</li>
-        </ul>
-
-        <h3 className={headingClass}>13. Disclaimer and liability</h3>
-        <p className={paragraphClass}>
-          We do not guarantee that the website will always be uninterrupted,
-          error-free, or available. Nothing in these Terms excludes or limits
-          liability or consumer rights that cannot legally be excluded or
-          limited.
-        </p>
-
-        <h3 className={headingClass}>14. Changes to these Terms</h3>
-        <p className={paragraphClass}>
-          We may update these Terms when our services, business practices, or
-          legal obligations change. The version applying to your purchase is
-          generally the version made available when the order was placed, unless
-          a change is required by law or accepted by you.
-        </p>
-
-        <h3 className={headingClass}>15. Contact</h3>
-        <p className={paragraphClass}>
-          Questions about these Terms may be sent to{" "}
-          <a className={linkClass} href={mailto}>infibetter@gmail.com</a>.
-        </p>
-      </article>
-    );
-  }
-
-  if (document === "legal") {
-    return (
-      <article>
-        <h3 className={headingClass}>Legal notice</h3>
-        <p className={paragraphClass}>
-          This website is operated by <strong>INFIBETTER</strong>.
-        </p>
-
-        <h3 className={headingClass}>Customer service</h3>
-        <p className={paragraphClass}>
-          For customer service, order assistance, product questions, delivery
-          issues, returns, or complaints, email{" "}
-          <a className={linkClass} href={mailto}>infibetter@gmail.com</a>.
-        </p>
-
-        <h3 className={headingClass}>Intellectual property</h3>
-        <p className={paragraphClass}>
-          Unless otherwise stated, website content including text, logos,
-          graphics, photographs, videos, product names, layouts, and designs is
-          owned by or licensed to INFIBETTER and protected by applicable
-          intellectual-property laws.
-        </p>
-
-        <h3 className={headingClass}>Mandatory consumer rights</h3>
-        <p className={paragraphClass}>
-          Nothing in this Legal Notice excludes or restricts mandatory consumer
-          rights available under applicable law.
-        </p>
-      </article>
-    );
-  }
-
-  if (document === "cancellations") {
-    return (
-      <article>
-        <p className={paragraphClass}>
-          This policy applies to products clearly identified as{" "}
-          <strong>Pre-order</strong> before purchase.
-        </p>
-
-        <h3 className={headingClass}>At a glance</h3>
-        <ul className={listClass}>
-          <li><strong>Before dispatch:</strong> You may request cancellation of your pre-order.</li>
-          <li><strong>Cancellation refunds:</strong> Issued to the original payment method.</li>
-          <li><strong>Shipping timeframes:</strong> Estimated unless expressly stated otherwise.</li>
-          <li><strong>After delivery:</strong> Our Refund policy and mandatory consumer rights apply.</li>
-        </ul>
-
-        <h3 className={headingClass}>What a pre-order means</h3>
-        <p className={paragraphClass}>
-          A pre-order allows you to purchase a product before it is ready for
-          immediate dispatch. The product page or checkout may provide an
-          estimated release or shipping timeframe. Unless expressly stated
-          otherwise, this timeframe is an estimate and may change because of
-          production, transportation, customs, carrier, or supply-chain
-          circumstances.
-        </p>
-
-        <h3 className={headingClass}>Canceling before dispatch</h3>
-        <p className={paragraphClass}>
-          You may request cancellation of a pre-order at any time before it has
-          been dispatched. Contact{" "}
-          <a className={linkClass} href={mailto}>infibetter@gmail.com</a> with
-          your <strong>order number</strong>. If the pre-order has not been
-          dispatched, the canceled product will be refunded to the original
-          payment method.
-        </p>
-
-        <h3 className={headingClass}>After dispatch</h3>
-        <p className={paragraphClass}>
-          A pre-order cannot be canceled after dispatch. After delivery, the
-          order is subject to our Refund policy and mandatory consumer rights.
-        </p>
-
-        <h3 className={headingClass}>Changes to the estimated shipping date</h3>
-        <p className={paragraphClass}>
-          If we cannot ship within the timeframe stated at purchase, we will
-          notify you and provide a revised estimate. Where required by
-          applicable law, you may have cancellation or refund options.
-        </p>
-
-        <h3 className={headingClass}>Orders containing multiple products</h3>
-        <p className={paragraphClass}>
-          If an order contains both in-stock and pre-order products, they may be
-          shipped together or separately depending on fulfillment availability.
-        </p>
-
-        <h3 className={headingClass}>Cancellation by INFIBETTER</h3>
-        <p className={paragraphClass}>
-          We may cancel a pre-order if the product cannot be supplied,
-          production is discontinued, a material pricing or product-information
-          error occurred, shipping restrictions prevent fulfillment, or fraud
-          or unauthorized payment is reasonably suspected. If we cancel a paid
-          pre-order, the affected amount will be refunded to the original
-          payment method.
-        </p>
-
-        <h3 className={headingClass}>Contact</h3>
-        <p className={paragraphClass}>
-          For pre-order assistance, email{" "}
-          <a className={linkClass} href={mailto}>infibetter@gmail.com</a>.
-        </p>
-      </article>
-    );
-  }
-
-  return (
-    <article>
-      <h3 className={headingClass}>Contact information</h3>
-      <p className={paragraphClass}>
-        <strong>Trading name:</strong> INFIBETTER
-      </p>
-      <p className={paragraphClass}>
-        <strong>Email:</strong>{" "}
-        <a className={linkClass} href={mailto}>infibetter@gmail.com</a>
-      </p>
-
-      <h3 className={headingClass}>Customer support</h3>
-      <p className={paragraphClass}>
-        For assistance with an order, delivery, return, or product, email{" "}
-        <a className={linkClass} href={mailto}>infibetter@gmail.com</a>.
-        Include your <strong>order number</strong> when contacting us about an
-        existing order.
-      </p>
-
-      <h3 className={headingClass}>Returns</h3>
-      <p className={paragraphClass}>
-        You must request and receive return approval, instructions, and the
-        correct return address before shipping anything. Contact INFIBETTER
-        before sending a return.
-      </p>
-    </article>
   );
 }
 
@@ -2464,31 +1712,31 @@ function CheckoutOffer({
   const product = products[index];
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#e2e2e2] bg-[#fafafa]">
-      <div className="px-5 pt-5">
-        <h3 className="text-base font-semibold tracking-[-0.02em]">
+    <section className="overflow-hidden rounded-xl border border-[#e2e2e2] bg-[#fafafa]">
+      <div className="px-4 pt-3">
+        <h3 className="text-sm font-semibold tracking-[-0.02em]">
           Your checkout offer
         </h3>
-        <p className="mt-0.5 text-xs text-neutral-600">
+        <p className="mt-0.5 text-[11px] text-neutral-500">
           Take an extra 15% off the sale price.
         </p>
       </div>
 
       {loading ? (
-        <div className="mx-4 mt-4 animate-pulse rounded-xl bg-white p-4">
-          <div className="flex gap-3">
-            <div className="h-24 w-24 rounded-xl bg-neutral-200" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-2/3 rounded bg-neutral-200" />
+        <div className="mx-3 mt-2.5 animate-pulse rounded-lg bg-white p-2.5">
+          <div className="flex gap-2.5">
+            <div className="h-[72px] w-[72px] shrink-0 rounded-lg bg-neutral-200" />
+            <div className="flex-1 space-y-2 py-1">
+              <div className="h-3 w-2/3 rounded bg-neutral-200" />
               <div className="h-3 w-1/3 rounded bg-neutral-200" />
-              <div className="h-4 w-1/2 rounded bg-neutral-200" />
+              <div className="h-3 w-1/2 rounded bg-neutral-200" />
             </div>
           </div>
         </div>
       ) : product ? (
-        <div className="mx-4 mt-4 overflow-hidden rounded-xl bg-white">
-          <div className="flex gap-3 p-3">
-            <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-[#f3f3f3]">
+        <div className="mx-3 mt-2.5 rounded-lg bg-white p-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-lg bg-[#f3f3f3]">
               {product.image_url ? (
                 <img
                   src={product.image_url}
@@ -2503,108 +1751,49 @@ function CheckoutOffer({
             </div>
 
             <div className="min-w-0 flex-1">
-              <h4 className="line-clamp-2 text-sm font-semibold">
+              <h4 className="line-clamp-2 text-xs font-semibold leading-4">
                 {product.name}
               </h4>
-
-              <div className="mt-1 flex items-center gap-1">
-                <span className="text-[12px] tracking-[-1px] text-[#f5b800]">
+              <div className="mt-0.5 flex items-center gap-1">
+                <span className="text-[10px] tracking-[-1px] text-[#f5b800]">
                   ★★★★★
                 </span>
-                <span className="text-[11px] font-semibold text-neutral-700">
+                <span className="text-[10px] font-medium text-neutral-600">
                   4.9
                 </span>
               </div>
-
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="text-sm font-bold text-[#d71920]">
-                  {usd(
-                    Number(product.price) * (1 - OFFER_DISCOUNT),
-                  )}
+              <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                <span className="text-[13px] font-bold text-[#d71920]">
+                  {usd(Number(product.price) * (1 - OFFER_DISCOUNT))}
                 </span>
-
-                {Number(product.price) > 0 && (
-                  <span className="text-xs text-neutral-400 line-through">
-                    {usd(Number(product.price))}
-                  </span>
-                )}
-
-                <span className="rounded-full bg-[#eeeeee] px-2 py-0.5 text-[10px] font-semibold">
+                <span className="text-[10px] text-neutral-400 line-through">
+                  {usd(Number(product.price))}
+                </span>
+                <span className="rounded-full bg-[#eeeeee] px-1.5 py-0.5 text-[9px] font-semibold text-neutral-700">
                   Save 15%
                 </span>
               </div>
-
-              {Number(product.compare_at_price) > Number(product.price) && (
-                <p className="mt-1 text-[10px] text-neutral-400">
-                  Regular price:{" "}
-                  {usd(Number(product.compare_at_price))}
-                </p>
-              )}
             </div>
 
-            <div className="flex shrink-0 items-center">
-              <button
-                type="button"
-                onClick={() => onAdd(product)}
-                aria-label={`Add ${product.name} to order for ${usd(
-                  Number(product.price) * (1 - OFFER_DISCOUNT),
-                )}`}
-                className="
-                  flex
-                  h-[38px]
-                  w-[92px]
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-[9px]
-                  bg-[#0066E6]
-                  px-2
-                  text-[9.5px]
-                  font-semibold
-                  leading-none
-                  tracking-[-0.01em]
-                  text-white
-                  shadow-[0_4px_12px_rgba(0,102,230,0.18)]
-                  transition-all
-                  duration-200
-                  hover:bg-[#0057C7]
-                  hover:shadow-[0_6px_16px_rgba(0,102,230,0.24)]
-                  active:scale-[0.97]
-                  focus:outline-none
-                  focus:ring-2
-                  focus:ring-[#0066E6]/20
-                  focus:ring-offset-1
-                "
-              >
-                <span className="whitespace-nowrap">
-                  Add ·{" "}
-                  {usd(
-                    Number(product.price) * (1 - OFFER_DISCOUNT),
-                  )}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <div className="mx-3 mb-3 flex h-10 items-center justify-between rounded-xl border border-[#dcdcdc] bg-white px-3">
-            <span className="text-xs font-medium text-neutral-700">
-              Extra 15% off this product
-            </span>
-            <span className="text-xs font-semibold text-emerald-600">
-              Save{" "}
-              {usd(
-                (Number(product.price) * OFFER_DISCOUNT),
-              )}
-            </span>
+            <button
+              type="button"
+              onClick={() => onAdd(product)}
+              aria-label={`Add ${product.name} to order for ${usd(
+                Number(product.price) * (1 - OFFER_DISCOUNT),
+              )}`}
+              className="flex min-h-9 shrink-0 items-center justify-center rounded-lg bg-[#0066E6] px-2.5 text-[10px] font-semibold text-white shadow-sm transition hover:bg-[#0057C7] active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-[#0066E6]/20 focus:ring-offset-1"
+            >
+              Add · {usd(Number(product.price) * (1 - OFFER_DISCOUNT))}
+            </button>
           </div>
         </div>
       ) : (
-        <div className="mx-4 mt-4 rounded-xl bg-white px-4 py-5 text-sm text-neutral-500">
+        <div className="mx-3 mt-2.5 rounded-lg bg-white px-3 py-4 text-xs text-neutral-500">
           No additional offer is available right now.
         </div>
       )}
 
-      <div className="flex items-center justify-between px-4 py-2">
+      <div className="flex items-center justify-between px-3 py-1">
         <button
           type="button"
           onClick={onPrevious}
@@ -2614,15 +1803,13 @@ function CheckoutOffer({
         >
           <span className="text-lg">‹</span>
         </button>
-
         <button
           type="button"
           onClick={onNoThanks}
-          className="text-xs font-medium text-[#0066e6] underline underline-offset-2"
+          className="min-h-8 text-[11px] font-medium text-[#0066e6] underline underline-offset-2"
         >
           No thanks
         </button>
-
         <button
           type="button"
           onClick={onNext}
