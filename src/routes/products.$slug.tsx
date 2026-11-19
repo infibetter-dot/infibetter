@@ -2737,6 +2737,63 @@ function ProductPage() {
         </div>
       </section>
 
+      {/* MOBILE PRODUCT SPECIFICATIONS */}
+      <section className="bg-white px-4 py-7 sm:px-6 lg:hidden">
+        <div className="mx-auto w-full max-w-[560px]">
+          <h2 className="mb-4 text-[22px] font-semibold leading-tight tracking-[-0.035em] text-black">
+            Specs
+          </h2>
+
+          <div className="min-w-0 bg-[#F4F4F4] px-4 py-5 sm:px-5">
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-[14px] font-medium tracking-[-0.02em] text-black">
+                Product Specifications
+              </h3>
+              <span className="text-[15px] leading-none text-black" aria-hidden="true">×</span>
+            </div>
+
+            {(() => {
+              const mobileSpecItems = [
+                ...specs.map((spec: any) => ({
+                  id: spec.id,
+                  label: spec.label,
+                  value: spec.value,
+                })),
+                ...(product.material ? [{ id: "material", label: "Material", value: product.material }] : []),
+                ...(product.dimensions ? [{ id: "dimensions", label: "Dimensions", value: product.dimensions }] : []),
+                ...(product.color ? [{ id: "color", label: "Color", value: product.color }] : []),
+                ...(product.light_source ? [{ id: "light_source", label: "Light source", value: product.light_source }] : []),
+                ...(product.power_source ? [{ id: "power_source", label: "Power source", value: product.power_source }] : []),
+                ...(product.warranty ? [{ id: "warranty", label: "Warranty", value: product.warranty }] : []),
+              ];
+
+              return mobileSpecItems.length ? (
+                <div className="grid grid-cols-1 gap-y-4">
+                  {mobileSpecItems.map((item: any) => (
+                    <div key={`mobile-${item.id}`} className="min-w-0 border-b border-[#E5E5E5] pb-3 last:border-b-0 last:pb-0">
+                      <h4 className="mb-1 text-[12px] font-semibold leading-5 text-black">
+                        {item.label}
+                      </h4>
+                      <p className="whitespace-pre-line break-words text-[12px] leading-[1.65] text-[#303030]">
+                        {String(item.value ?? "").split(/\\r?\\n/).map((line: string, index: number) => (
+                          <span key={index} className="block">
+                            {line.trim().startsWith("-") ? line : `- ${line}`}
+                          </span>
+                        ))}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[12px] leading-5 text-neutral-500">
+                  No technical specifications have been added for this product yet.
+                </p>
+              );
+            })()}
+          </div>
+        </div>
+      </section>
+
       {/* MOBILE INCLUDED IN THE BOX — placed after product specifications */}
       {includedInBox.length > 0 && (
         <section className="bg-white px-4 py-8 sm:px-6 lg:hidden">
