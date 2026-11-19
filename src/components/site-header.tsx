@@ -777,7 +777,7 @@ export function SiteHeader() {
 
               items-center
 
-              gap-1
+              gap-2.5
 
               rounded-full
 

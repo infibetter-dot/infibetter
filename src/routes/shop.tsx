@@ -17,6 +17,7 @@ import {
   BatteryCharging,
   ChevronDown,
   Package,
+  Plane,
   Search,
   Smartphone,
   Watch,
@@ -98,6 +99,12 @@ const DEVICE_FILTERS = [
     label: "Power Banks",
     categorySlug: "power-banks",
     icon: Battery,
+  },
+  {
+    id: "travel-power",
+    label: "Travel Power",
+    categorySlug: "travel-power",
+    icon: Plane,
   },
 ];
 
@@ -305,6 +312,9 @@ function ShopPage() {
          */
         const CATEGORY_SLUG_ALIASES: Record<string, string> = {
           "wireless-chargers": "wireless-charging",
+          "travel-chargers": "travel-power",
+          "travel-charging": "travel-power",
+          "travel-adapters": "travel-power",
         };
 
         const resolvedCategorySlug =
@@ -351,7 +361,53 @@ function ShopPage() {
           throw categoryError;
         }
 
-        if (selectedCategory) {
+        // Travel Power may be stored under a slightly different slug.
+        // Resolve by its category name as a safe fallback; do not broaden
+        // the product query if no matching category exists.
+        let resolvedSelectedCategory = selectedCategory;
+
+        if (
+          !resolvedSelectedCategory &&
+          resolvedCategorySlug === "travel-power"
+        ) {
+          const { data: travelCategories, error: travelCategoryError } =
+            await supabase
+              .from("categories")
+              .select("id,name,slug,parent_id")
+              .ilike("name", "%travel%");
+
+          if (travelCategoryError) {
+            console.error(
+              "INFIBETTER TRAVEL POWER CATEGORY FALLBACK ERROR:",
+              travelCategoryError,
+            );
+            throw travelCategoryError;
+          }
+
+          const normalizeCategoryName = (value: unknown) =>
+            String(value ?? "")
+              .trim()
+              .toLowerCase()
+              .replace(/[_-]+/g, " ")
+              .replace(/\\s+/g, " ");
+
+          const acceptedTravelNames = [
+            "travel power",
+            "travel chargers",
+            "travel charging",
+            "travel adapters",
+            "travel adapter",
+          ];
+
+          resolvedSelectedCategory =
+            (travelCategories ?? []).find((category: any) =>
+              acceptedTravelNames.includes(
+                normalizeCategoryName(category.name),
+              ),
+            ) ?? null;
+        }
+
+        if (resolvedSelectedCategory) {
           /*
            * Do the tree expansion directly from the categories table.
            *
@@ -373,7 +429,7 @@ function ShopPage() {
           }
 
           const ids = new Set<string>([
-            selectedCategory.id,
+            resolvedSelectedCategory.id,
           ]);
 
           let changed = true;
@@ -400,7 +456,7 @@ function ShopPage() {
             {
               slug: sp.category,
               resolvedCategorySlug,
-              selectedCategory,
+              selectedCategory: resolvedSelectedCategory,
               categoryIds,
             },
           );
@@ -690,7 +746,7 @@ function ShopPage() {
 
           supabase
             .from("categories")
-            .select("id,slug,parent_id"),
+            .select("id,name,slug,parent_id"),
         ]);
 
       if (productsError) {
@@ -714,10 +770,31 @@ function ShopPage() {
 
       const categoryIdsBySlug: Record<string, string[]> = {};
 
+      const categoryNameFallbacks: Record<string, string[]> = {
+        "travel-power": [
+          "travel power",
+          "travel chargers",
+          "travel charging",
+          "travel adapters",
+          "travel adapter",
+        ],
+      };
+
+      const normalizeCategoryName = (value: unknown) =>
+        String(value ?? "")
+          .trim()
+          .toLowerCase()
+          .replace(/[_-]+/g, " ")
+          .replace(/\\s+/g, " ");
+
       const getCategoryTreeIds = (slug: string) => {
-        const selectedCategory = categoryList.find(
-          (category: any) => category.slug === slug,
-        );
+        const selectedCategory =
+          categoryList.find((category: any) => category.slug === slug) ??
+          categoryList.find((category: any) =>
+            (categoryNameFallbacks[slug] ?? []).includes(
+              normalizeCategoryName(category.name),
+            ),
+          );
 
         if (!selectedCategory) {
           return [];
@@ -752,6 +829,7 @@ function ShopPage() {
         "watch-bands",
         "wireless-charging",
         "power-banks",
+        "travel-power",
       ];
 
       categorySlugs.forEach((slug) => {
@@ -793,6 +871,10 @@ function ShopPage() {
         "power-banks": countProductsForCategory(
           categoryIdsBySlug["power-banks"] ?? [],
         ),
+
+        "travel-power": countProductsForCategory(
+          categoryIdsBySlug["travel-power"] ?? [],
+        ),
       };
     },
   });
@@ -804,6 +886,7 @@ function ShopPage() {
       watch: 0,
       charging: 0,
       "power-banks": 0,
+      "travel-power": 0,
     };
 
   /* =======================================================

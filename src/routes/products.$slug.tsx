@@ -1304,9 +1304,7 @@ function ProductPage() {
 
     .slice()
 
-    .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
-
-    .slice(0, 4);
+    .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
 
   const productFaqs = (product.product_faqs ?? [])
 
@@ -1850,7 +1848,7 @@ function ProductPage() {
 
                 {usps.length > 0 && (
                   <ul className="mt-3 grid gap-2" aria-label="Key product benefits">
-                    {usps.slice(0, 3).map((item: any) => {
+                    {usps.map((item: any) => {
                       const UspIcon =
                         PRODUCT_USP_ICON_MAP[
                           String(item.icon ?? "").trim().toLowerCase() as keyof typeof PRODUCT_USP_ICON_MAP
@@ -1887,7 +1885,7 @@ function ProductPage() {
                     <span className="text-[12px] font-semibold tracking-[-0.01em] text-[#303036]">
                       Color
                     </span>
-                    <span className="min-w-0 truncate text-[11px] font-medium text-[#6E6E73]">
+                    <span className="inline-flex min-h-[34px] min-w-[64px] shrink-0 items-center justify-center border border-[#D8DDE5] bg-white px-3 text-[11px] font-medium text-[#303846]">
                       {selectedColor?.name || "Choose a color"}
                     </span>
                   </div>
@@ -1902,14 +1900,14 @@ function ProductPage() {
                           aria-label={`Select ${color.name} color`}
                           aria-pressed={isSelected}
                           onClick={() => handleColorChange(color)}
-                          className={`group flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 ${
+                          className={`group flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-none transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 ${
                             isSelected
                               ? "border border-[#252525] bg-white p-[3px] shadow-[0_0_0_1px_rgba(255,255,255,1)]"
                               : "border border-transparent bg-transparent p-[3px] hover:bg-[#F3F3F4]"
                           }`}
                         >
                           <span
-                            className={`block h-full w-full rounded-full border ${
+                            className={`block h-full w-full rounded-none border ${
                               isSelected ? "border-black/10" : "border-black/[0.12] group-hover:border-black/20"
                             }`}
                             style={{ backgroundColor: color.hex || "#D2D2D7" }}
@@ -1928,11 +1926,11 @@ function ProductPage() {
                     <p className="text-[12px] font-semibold tracking-[-0.01em] text-[#303036]">
                       Plug type
                     </p>
-                    <span className="text-[11px] font-medium text-[#6E6E73]">
+                    <span className="inline-flex min-h-[34px] min-w-[88px] shrink-0 items-center justify-center border border-[#D8DDE5] bg-white px-3 text-[11px] font-medium text-[#303846]">
                       {selectedPlugType ? `${selectedPlugType} Plug` : "Choose a plug"}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid w-full grid-cols-4 gap-2">
                     {compatiblePlugTypes.map((type: string) => {
                       const isSelected = selectedPlugType === type;
                       return (
@@ -1941,7 +1939,7 @@ function ProductPage() {
                           type="button"
                           onClick={() => setSelectedPlugType(type)}
                           aria-pressed={isSelected}
-                          className={`inline-flex min-h-[36px] min-w-[64px] items-center justify-center rounded-full border px-4 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 ${
+                          className={`inline-flex min-h-[40px] w-full min-w-0 items-center justify-center rounded-none border px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:ring-offset-2 ${
                             isSelected
                               ? "border-[#B9DEC7] bg-[#EAF6EE] text-[#287A45] shadow-[inset_0_0_0_1px_rgba(40,122,69,0.04)]"
                               : "border-[#E5E5E7] bg-white text-[#45454B] hover:border-[#B9DEC7] hover:bg-[#F7FBF8]"
