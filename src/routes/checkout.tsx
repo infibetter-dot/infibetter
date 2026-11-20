@@ -159,6 +159,16 @@ function pushGa4Event(
   });
 }
 
+function pushCheckoutBehaviorEvent(
+  eventName: string,
+  params: Record<string, unknown> = {},
+) {
+  pushGa4Event(eventName, undefined, {
+    checkout_page: "/checkout",
+    ...params,
+  });
+}
+
 function flagUrl(code: string) {
   return code === "ROW"
     ? "https://flagcdn.com/w40/un.png"
@@ -316,6 +326,33 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   const ga4NameEnteredSent = useRef(false);
   const ga4OrderEventsSent = useRef<Set<string>>(new Set());
 
+  // Checkout behavior tracking: never collect field values or other PII.
+  const checkoutStartedAt = useRef(0);
+  const maxScrollDepth = useRef(0);
+  const scrollMilestonesSent = useRef<Set<number>>(new Set());
+  const viewedCheckoutSections = useRef<Set<string>>(new Set());
+  const focusedCheckoutFields = useRef<Set<string>>(new Set());
+  const editedCheckoutFields = useRef<Set<string>>(new Set());
+  const lastCheckoutSection = useRef("checkout_top");
+  const lastPaymentAttempt = useRef<{
+    flow: CheckoutFlow;
+    paymentType: "PayPal" | "Card";
+  } | null>(null);
+  const checkoutExitSent = useRef(false);
+  const checkoutCompleted = useRef(false);
+
+  function trackCheckoutPaymentClick(
+    flow: CheckoutFlow,
+    paymentType: "PayPal" | "Card",
+  ) {
+    lastPaymentAttempt.current = { flow, paymentType };
+    pushCheckoutBehaviorEvent("checkout_payment_click", {
+      checkout_flow: flow,
+      payment_type: paymentType,
+      payment_location: flow === "express" ? "express_checkout" : "payment_section",
+    });
+  }
+
   function trackCheckoutNameEntered() {
     if (!fullName.trim() || ga4NameEnteredSent.current) return;
 
@@ -343,6 +380,211 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     0,
     subtotalUsd + shippingFeeUsd - discountAmountUsd - shippingDiscountUsd - customerDiscountUsd,
   );
+
+  // Track checkout page entry, scroll milestones, section visibility,
+  // field interaction (field names only), and page exit.
+  useEffect(() => {
+    checkoutStartedAt.current = performance.now();
+    pushCheckoutBehaviorEvent("checkout_page_view", {
+      item_count: count,
+      currency: "USD",
+      value: Number(totalUsd.toFixed(2)),
+    });
+
+    const getScrollPercent = () => {
+      const doc = document.documentElement;
+      const scrollable = Math.max(1, doc.scrollHeight - window.innerHeight);
+      const atBottom = window.scrollY + window.innerHeight >= doc.scrollHeight - 2;
+      return atBottom ? 100 : Math.min(99, Math.round((window.scrollY / scrollable) * 100));
+    };
+
+    const handleScroll = () => {
+      const percent = getScrollPercent();
+      maxScrollDepth.current = Math.max(maxScrollDepth.current, percent);
+
+      for (const milestone of [25, 50, 75, 90, 100]) {
+        if (percent >= milestone && !scrollMilestonesSent.current.has(milestone)) {
+          scrollMilestonesSent.current.add(milestone);
+          pushCheckoutBehaviorEvent("checkout_scroll_depth", {
+            percent_scrolled: milestone,
+            max_scroll_depth: maxScrollDepth.current,
+          });
+        }
+      }
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+
+    const sectionIds = [
+      ["checkout-order-summary", "order_summary"],
+      ["checkout-order-summary-desktop", "order_summary"],
+      ["checkout-express", "express_checkout"],
+      ["checkout-contact", "contact"],
+      ["checkout-delivery", "delivery"],
+      ["checkout-shipping", "shipping"],
+      ["checkout-payment", "payment"],
+      ["checkout-billing", "billing_address"],
+    ] as const;
+
+    const sectionEnteredAt = new Map<string, number>();
+    const sectionTotalTime = new Map<string, number>();
+    const sectionObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const section = sectionIds.find(([id]) => id === entry.target.id)?.[1];
+          if (!section) continue;
+
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
+            lastCheckoutSection.current = section;
+            if (!viewedCheckoutSections.current.has(section)) {
+              viewedCheckoutSections.current.add(section);
+              pushCheckoutBehaviorEvent("checkout_section_view", {
+                section_name: section,
+                visibility_ratio: Number(entry.intersectionRatio.toFixed(2)),
+              });
+            }
+            if (!sectionEnteredAt.has(section)) sectionEnteredAt.set(section, Date.now());
+          } else if (sectionEnteredAt.has(section)) {
+            const seconds = Math.max(0, Math.round((Date.now() - sectionEnteredAt.get(section)!) / 1000));
+            sectionTotalTime.set(section, (sectionTotalTime.get(section) ?? 0) + seconds);
+            sectionEnteredAt.delete(section);
+            if (seconds > 0) {
+              pushCheckoutBehaviorEvent("checkout_section_time", {
+                section_name: section,
+                visible_seconds: seconds,
+              });
+            }
+          }
+        }
+      },
+      { threshold: [0, 0.35, 0.6] },
+    );
+
+    sectionIds.forEach(([id]) => {
+      const element = document.getElementById(id);
+      if (element) sectionObserver.observe(element);
+    });
+
+    const form = document.querySelector<HTMLFormElement>("#infibetter-checkout-form");
+    const getFieldSection = (fieldName: string) => {
+      if (fieldName.startsWith("billing_")) return "billing_address";
+      if (["email"].includes(fieldName)) return "contact";
+      if (["first_name", "last_name", "address", "address_line_2", "city", "state", "postal_code", "phone"].includes(fieldName)) return "delivery";
+      return "other";
+    };
+
+    const handleFieldFocus = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
+      const fieldName = target.name;
+      if (!fieldName || focusedCheckoutFields.current.has(fieldName)) return;
+      focusedCheckoutFields.current.add(fieldName);
+      pushCheckoutBehaviorEvent("checkout_field_focus", {
+        field_name: fieldName,
+        form_section: getFieldSection(fieldName),
+      });
+    };
+
+    const handleFieldInput = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
+      const fieldName = target.name;
+      if (!fieldName || editedCheckoutFields.current.has(fieldName)) return;
+      editedCheckoutFields.current.add(fieldName);
+      pushCheckoutBehaviorEvent("checkout_field_interaction", {
+        field_name: fieldName,
+        form_section: getFieldSection(fieldName),
+      });
+    };
+
+    const handleFieldBlur = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
+      if (!target.name) return;
+      // Record only validity state, never the field value.
+      pushCheckoutBehaviorEvent("checkout_field_validation", {
+        field_name: target.name,
+        form_section: getFieldSection(target.name),
+        is_valid: target.checkValidity(),
+        validation_reason: target.validity.valueMissing
+          ? "required"
+          : target.validity.typeMismatch
+            ? "type_mismatch"
+            : target.validity.patternMismatch
+              ? "pattern_mismatch"
+              : target.validity.tooShort
+                ? "too_short"
+                : target.validity.tooLong
+                  ? "too_long"
+                  : "other",
+      });
+    };
+
+    const handleCheckoutClick = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const control = target.closest("button, [role='button'], label");
+      if (!control) return;
+      const text = (control.textContent ?? "").replace(/\\s+/g, " ").trim().slice(0, 70);
+      if (!text) return;
+      const lower = text.toLowerCase();
+
+      let actionCategory = "other";
+      if (/apply|discount|gift card|coupon/.test(lower)) actionCategory = "discount";
+      else if (/shipping|delivery|standard|express/.test(lower)) actionCategory = "shipping";
+      else if (/same as shipping|different billing|billing address/.test(lower)) actionCategory = "billing_address";
+      else if (/remove|delete|\bminus\b|\bplus\b|quantity/.test(lower)) actionCategory = "cart";
+      else if (/sign in|login/.test(lower)) actionCategory = "account";
+
+      pushCheckoutBehaviorEvent("checkout_ui_interaction", {
+        action_category: actionCategory,
+        control_text: text,
+      });
+    };
+
+    form?.addEventListener("focusin", handleFieldFocus, true);
+    form?.addEventListener("input", handleFieldInput, true);
+    form?.addEventListener("change", handleFieldInput, true);
+    form?.addEventListener("focusout", handleFieldBlur, true);
+    document.addEventListener("click", handleCheckoutClick, true);
+
+    const handlePageHide = () => {
+      if (checkoutExitSent.current || checkoutCompleted.current) return;
+      checkoutExitSent.current = true;
+      pushCheckoutBehaviorEvent("checkout_page_exit", {
+        max_scroll_depth: maxScrollDepth.current,
+        last_section_viewed: lastCheckoutSection.current,
+        sections_viewed: Array.from(viewedCheckoutSections.current),
+        fields_focused_count: focusedCheckoutFields.current.size,
+        fields_interacted_count: editedCheckoutFields.current.size,
+        section_time_seconds: Object.fromEntries(
+          Array.from(sectionTotalTime.entries()),
+        ),
+        elapsed_seconds: Math.max(
+          0,
+          Math.round((performance.now() - checkoutStartedAt.current) / 1000),
+        ),
+        last_payment_flow: lastPaymentAttempt.current?.flow ?? "none",
+        last_payment_type: lastPaymentAttempt.current?.paymentType ?? "none",
+      });
+    };
+
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+      sectionObserver.disconnect();
+      form?.removeEventListener("focusin", handleFieldFocus, true);
+      form?.removeEventListener("input", handleFieldInput, true);
+      form?.removeEventListener("change", handleFieldInput, true);
+      form?.removeEventListener("focusout", handleFieldBlur, true);
+      document.removeEventListener("click", handleCheckoutClick, true);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, []);
 
   // Meta Pixel: fire InitiateCheckout once per checkout-page visit.
   useEffect(() => {
@@ -521,11 +763,32 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     }
 
     if (firstInvalid) {
+      const validationFieldNames = [
+        ...requiredFields.map(([name]) => name),
+        ...(!billingSameAsShipping
+          ? ["billing_address", "billing_city", "billing_state", "billing_postal_code"]
+          : []),
+      ];
+      const invalidFieldNames = validationFieldNames
+        .map((name) => form.elements.namedItem(name))
+        .filter((field): field is HTMLInputElement => field instanceof HTMLInputElement)
+        .filter((field) => field.getAttribute("aria-invalid") === "true")
+        .map((field) => field.name);
+
+      pushCheckoutBehaviorEvent("checkout_validation_error", {
+        checkout_flow: "standard",
+        invalid_field_names: invalidFieldNames,
+        billing_address_mode: billingSameAsShipping ? "same_as_shipping" : "different_billing",
+      });
       firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
       window.setTimeout(() => firstInvalid?.focus(), 250);
       toast.error("Please complete the highlighted required fields.");
       return false;
     }
+    pushCheckoutBehaviorEvent("checkout_validation_success", {
+      checkout_flow: "standard",
+      billing_address_mode: billingSameAsShipping ? "same_as_shipping" : "different_billing",
+    });
     return true;
   }
 
@@ -609,12 +872,21 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
       throw new Error("Please complete the required checkout details.");
     }
     const checkout = buildPaypalCheckoutPayload(flow);
+    pushCheckoutBehaviorEvent("checkout_payment_order_create_started", {
+      checkout_flow: flow,
+      payment_type: paymentType,
+    });
     const { data, error } = await supabase.functions.invoke(
       "paypal-create-order",
       { body: { checkout, currency: "USD", checkout_flow: flow } },
     );
 
     if (error || !data?.success || !data?.orderId) {
+      pushCheckoutBehaviorEvent("checkout_payment_order_create_failed", {
+        checkout_flow: flow,
+        payment_type: paymentType,
+        error_category: error ? "function_error" : "provider_or_validation_error",
+      });
       console.error("PAYPAL CREATE ORDER ERROR", { error, data });
       throw new Error(
         data?.error ?? "Unable to create the PayPal order.",
@@ -622,6 +894,10 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     }
 
     const paypalOrderId = String(data.orderId);
+    pushCheckoutBehaviorEvent("checkout_payment_order_created", {
+      checkout_flow: flow,
+      payment_type: paymentType,
+    });
     if (!ga4OrderEventsSent.current.has(paypalOrderId)) {
       ga4OrderEventsSent.current.add(paypalOrderId);
 
@@ -673,6 +949,11 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   async function handlePaypalApprove(orderID: string) {
     if (submitting) return;
     setSubmitting(true);
+    const paymentAttempt = lastPaymentAttempt.current;
+    pushCheckoutBehaviorEvent("checkout_payment_approved", {
+      checkout_flow: paymentAttempt?.flow ?? "unknown",
+      payment_type: paymentAttempt?.paymentType ?? "unknown",
+    });
     try {
       const form = document.querySelector("form");
       if (!form) throw new Error("Checkout form not found.");
@@ -711,6 +992,10 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
         { body: { orderId: orderID } },
       );
       if (error || !data?.success || !data?.dbOrderId) {
+        pushCheckoutBehaviorEvent("checkout_payment_capture_failed", {
+          checkout_flow: paymentAttempt?.flow ?? "unknown",
+          payment_type: paymentAttempt?.paymentType ?? "unknown",
+        });
         console.error("PAYPAL CHECKOUT FAILED", { error, data });
         throw new Error(data?.error ?? "Unable to confirm payment and save your order.");
       }
@@ -774,6 +1059,13 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
         }
       }
 
+      pushCheckoutBehaviorEvent("checkout_payment_completed", {
+        checkout_flow: paymentAttempt?.flow ?? "unknown",
+        payment_type: paymentAttempt?.paymentType ?? "unknown",
+        payment_status: data.paymentStatus ?? "unknown",
+      });
+      checkoutCompleted.current = true;
+
       localStorage.setItem("infibetter_last_order", JSON.stringify({
         id: data.dbOrderId,
         created_at: new Date().toISOString(),
@@ -818,6 +1110,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
       <main className="mx-auto w-full max-w-[1120px] px-4 py-5 sm:px-5 lg:px-8 lg:py-0">
         <PayPalScriptProvider options={PAYPAL_OPTIONS}>
           <form
+            id="infibetter-checkout-form"
             onSubmit={handleSubmit}
             data-validation-visible={showValidationErrors ? "true" : "false"}
             className="grid items-start gap-7 lg:items-stretch lg:grid-cols-[minmax(0,1fr)_410px] lg:gap-0 [&[data-validation-visible=true]_input:required:invalid]:border-red-500 [&[data-validation-visible=true]_input:required:invalid]:ring-1 [&[data-validation-visible=true]_input:required:invalid]:ring-red-500"
@@ -825,7 +1118,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
           <div className="contents lg:block lg:space-y-0 lg:py-7 lg:pr-10">
             <div className="mx-auto w-full max-w-[500px]">
             {/* Mobile order summary + express checkout */}
-            <section className="mb-4 overflow-hidden rounded-md border border-[#e5e5e5] bg-[#fafafa] lg:hidden">
+            <section id="checkout-order-summary" className="mb-4 overflow-hidden rounded-md border border-[#e5e5e5] bg-[#fafafa] lg:hidden">
               <button
                 type="button"
                 onClick={() => setOrderSummaryOpen((open) => !open)}
@@ -877,7 +1170,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               )}
             </section>
 
-            <section className="mb-5">
+            <section id="checkout-express" className="mb-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold tracking-[-0.01em]">Express Checkout</h2>
                 <img
@@ -893,11 +1186,21 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     fundingSource={FUNDING.PAYPAL}
                     disabled={submitting}
                     style={{ layout: "vertical", shape: "rect", color: "gold", label: "paypal", height: 46, disableMaxWidth: true }}
-                    onClick={async (_data, actions) => actions.resolve()}
+                    onClick={async (_data, actions) => {
+                      trackCheckoutPaymentClick("express", "PayPal");
+                      return actions.resolve();
+                    }}
                     createOrder={async () => createPayPalOrder("PayPal", "express")}
                     onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
-                    onCancel={() => toast.info("PayPal checkout was cancelled.")}
-                    onError={(error) => { console.error("PAYPAL EXPRESS ERROR", error); toast.error("PayPal could not complete the payment."); }}
+                    onCancel={() => {
+                      pushCheckoutBehaviorEvent("checkout_payment_cancelled", { checkout_flow: "express", payment_type: "PayPal" });
+                      toast.info("PayPal checkout was cancelled.");
+                    }}
+                    onError={(error) => {
+                      pushCheckoutBehaviorEvent("checkout_payment_error", { checkout_flow: "express", payment_type: "PayPal" });
+                      console.error("PAYPAL EXPRESS ERROR", error);
+                      toast.error("PayPal could not complete the payment.");
+                    }}
                   />
                 </div>
                 <div className="w-full min-w-0 rounded-lg">
@@ -905,11 +1208,21 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     fundingSource={FUNDING.CARD}
                     disabled={submitting}
                     style={{ layout: "vertical", shape: "rect", label: "pay", height: 46, tagline: false, disableMaxWidth: true }}
-                    onClick={async (_data, actions) => actions.resolve()}
+                    onClick={async (_data, actions) => {
+                      trackCheckoutPaymentClick("express", "Card");
+                      return actions.resolve();
+                    }}
                     createOrder={async () => createPayPalOrder("Card", "express")}
                     onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
-                    onCancel={() => toast.info("Card checkout was cancelled.")}
-                    onError={(error) => { console.error("CARD EXPRESS ERROR", error); toast.error("Card payment could not be completed."); }}
+                    onCancel={() => {
+                      pushCheckoutBehaviorEvent("checkout_payment_cancelled", { checkout_flow: "express", payment_type: "Card" });
+                      toast.info("Card checkout was cancelled.");
+                    }}
+                    onError={(error) => {
+                      pushCheckoutBehaviorEvent("checkout_payment_error", { checkout_flow: "express", payment_type: "Card" });
+                      console.error("CARD EXPRESS ERROR", error);
+                      toast.error("Card payment could not be completed.");
+                    }}
                   />
                 </div>
               </div>
@@ -920,7 +1233,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               </div>
             </section>
 
-            <section className="border-b border-[#e8e8e8] pb-5 pt-1 sm:py-6">
+            <section id="checkout-contact" className="border-b border-[#e8e8e8] pb-5 pt-1 sm:py-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-[18px] font-semibold tracking-[-0.02em]">Contact</h2>
               </div>
@@ -945,7 +1258,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               </div>
             </section>
 
-            <section className="border-b border-[#e8e8e8] py-5 sm:py-6">
+            <section id="checkout-delivery" className="border-b border-[#e8e8e8] py-5 sm:py-6">
               <h2 className="mb-4 text-[18px] font-semibold tracking-[-0.02em]">Delivery</h2>
 
               <div className="space-y-2.5">
@@ -1027,7 +1340,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               </div>
             </section>
 
-            <section className="border-b border-[#e8e8e8] py-5 first:pt-2 sm:py-6">
+            <section id="checkout-shipping" className="border-b border-[#e8e8e8] py-5 first:pt-2 sm:py-6">
               {hasShippingAddress ? (
                 <>
                   <SectionTitle
@@ -1078,7 +1391,13 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     <button
                       type="button"
                       aria-expanded={paymentMethod === "card"}
-                      onClick={() => setPaymentMethod("card")}
+                      onClick={() => {
+                        setPaymentMethod("card");
+                        pushCheckoutBehaviorEvent("checkout_payment_method_selected", {
+                          payment_type: "Card",
+                          payment_location: "payment_section",
+                        });
+                      }}
                       className="flex min-h-[68px] w-full items-center justify-between gap-3 px-3 py-3 text-left sm:px-4"
                     >
                       <span className="flex min-w-0 items-center gap-3">
@@ -1101,9 +1420,10 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                             fundingSource={FUNDING.CARD}
                             disabled={submitting}
                             style={{ layout: "vertical", shape: "rect", label: "pay", height: 44 }}
-                            onClick={async (_data, actions) =>
-                              validateStandardCheckout() ? actions.resolve() : actions.reject()
-                            }
+                            onClick={async (_data, actions) => {
+                              trackCheckoutPaymentClick("standard", "Card");
+                              return validateStandardCheckout() ? actions.resolve() : actions.reject();
+                            }}
                             createOrder={async () => createPayPalOrder("Card", "standard")}
                             onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
                             onCancel={() => toast.info("Card checkout was cancelled.")}
@@ -1122,7 +1442,13 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     <button
                       type="button"
                       aria-expanded={paymentMethod === "paypal"}
-                      onClick={() => setPaymentMethod("paypal")}
+                      onClick={() => {
+                        setPaymentMethod("paypal");
+                        pushCheckoutBehaviorEvent("checkout_payment_method_selected", {
+                          payment_type: "PayPal",
+                          payment_location: "payment_section",
+                        });
+                      }}
                       className={`flex min-h-[58px] w-full items-center justify-between gap-3 px-3 py-3 text-left sm:px-4 ${paymentMethod === "paypal" ? "bg-[#f7f7f7]" : "bg-white"}`}
                     >
                       <span className="flex min-w-0 items-center gap-3">
@@ -1150,12 +1476,18 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                 <h2 className="mb-4 text-[16px] font-semibold leading-5 tracking-[-0.02em] sm:text-[18px] sm:leading-6">Billing address</h2>
                 <div className="overflow-hidden rounded-lg border border-[#d7d7d7]">
                   <label className={`flex min-h-[54px] cursor-pointer items-center gap-3 px-3 py-3 sm:px-4 ${billingSameAsShipping ? "bg-[#f7f7f7]" : "bg-white"}`}>
-                    <input type="radio" name="billing_address_choice" checked={billingSameAsShipping} onChange={() => setBillingSameAsShipping(true)} className="h-4 w-4 accent-[#303030]" />
+                    <input type="radio" name="billing_address_choice" checked={billingSameAsShipping} onChange={() => {
+                      setBillingSameAsShipping(true);
+                      pushCheckoutBehaviorEvent("checkout_billing_address_mode", { billing_address_mode: "same_as_shipping" });
+                    }} className="h-4 w-4 accent-[#303030]" />
                     <span className="text-[13px] font-medium text-[#292929]">Same as shipping address</span>
                   </label>
                   <div className="border-t border-[#d7d7d7]" />
                   <label className={`flex min-h-[54px] cursor-pointer items-center gap-3 px-3 py-3 sm:px-4 ${!billingSameAsShipping ? "bg-[#f7f7f7]" : "bg-white"}`}>
-                    <input type="radio" name="billing_address_choice" checked={!billingSameAsShipping} onChange={() => setBillingSameAsShipping(false)} className="h-4 w-4 accent-[#303030]" />
+                    <input type="radio" name="billing_address_choice" checked={!billingSameAsShipping} onChange={() => {
+                      setBillingSameAsShipping(false);
+                      pushCheckoutBehaviorEvent("checkout_billing_address_mode", { billing_address_mode: "different_billing" });
+                    }} className="h-4 w-4 accent-[#303030]" />
                     <span className="text-[13px] font-medium text-[#292929]">Use a different billing address</span>
                   </label>
                   {!billingSameAsShipping && (
@@ -1185,17 +1517,20 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                   label: "pay",
                   height: 48,
                 }}
-                onClick={async (_data, actions) =>
-                  validateStandardCheckout() ? actions.resolve() : actions.reject()
-                }
+                onClick={async (_data, actions) => {
+                  trackCheckoutPaymentClick("standard", "PayPal");
+                  return validateStandardCheckout() ? actions.resolve() : actions.reject();
+                }}
                 createOrder={async () => createPayPalOrder("PayPal", "standard")}
                 onApprove={async (data) => {
                   await handlePaypalApprove(data.orderID);
                 }}
                 onCancel={() => {
+                  pushCheckoutBehaviorEvent("checkout_payment_cancelled", { checkout_flow: "standard", payment_type: "PayPal" });
                   toast.info("PayPal checkout was cancelled.");
                 }}
                 onError={(error) => {
+                  pushCheckoutBehaviorEvent("checkout_payment_error", { checkout_flow: "standard", payment_type: "PayPal" });
                   console.error("PAYPAL BUTTON ERROR", error);
                   toast.error("PayPal could not complete the payment.");
                 }}
@@ -1270,13 +1605,21 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                   fundingSource={FUNDING.PAYPAL}
                   disabled={submitting}
                   style={{ layout: "vertical", shape: "rect", color: "blue", label: "pay", height: 48 }}
-                  onClick={async (_data, actions) =>
-                    validateStandardCheckout() ? actions.resolve() : actions.reject()
-                  }
+                  onClick={async (_data, actions) => {
+                    trackCheckoutPaymentClick("standard", "PayPal");
+                    return validateStandardCheckout() ? actions.resolve() : actions.reject();
+                  }}
                   createOrder={async () => createPayPalOrder("PayPal", "standard")}
                   onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
-                  onCancel={() => toast.info("PayPal checkout was cancelled.")}
-                  onError={(error) => { console.error("PAYPAL MOBILE SUMMARY ERROR", error); toast.error("PayPal could not complete the payment."); }}
+                  onCancel={() => {
+                    pushCheckoutBehaviorEvent("checkout_payment_cancelled", { checkout_flow: "standard", payment_type: "PayPal", payment_location: "mobile_bottom_summary" });
+                    toast.info("PayPal checkout was cancelled.");
+                  }}
+                  onError={(error) => {
+                    pushCheckoutBehaviorEvent("checkout_payment_error", { checkout_flow: "standard", payment_type: "PayPal", payment_location: "mobile_bottom_summary" });
+                    console.error("PAYPAL MOBILE SUMMARY ERROR", error);
+                    toast.error("PayPal could not complete the payment.");
+                  }}
                 />
               </div>
               <div className="mt-3">
@@ -1330,7 +1673,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                 </div>
               </div>
 
-              <div className={`${orderSummaryOpen ? "block" : "hidden"} mt-5 lg:block`}>
+              <div id="checkout-order-summary-desktop" className={`${orderSummaryOpen ? "block" : "hidden"} mt-5 lg:block`}>
               <div className="space-y-4 border-b border-[#e8e8e8] pb-5">
                 {items.map((item) => (
                   <div
