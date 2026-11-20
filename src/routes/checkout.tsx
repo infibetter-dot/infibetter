@@ -9,6 +9,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronDown,
   Clock3,
+  PackageCheck,
+  RotateCcw,
   Search,
   ShieldCheck,
   ShoppingBag,
@@ -64,6 +66,7 @@ export const Route = createFileRoute("/checkout")({
 });
 
 type ShippingMethod = "standard" | "express";
+type CheckoutFlow = "express" | "standard";
 
 type CountryOption = {
   code: string;
@@ -266,6 +269,7 @@ function CheckoutPage() {
   const [shippingMethod, setShippingMethod] =
     useState<ShippingMethod>("standard");
   const [submitting, setSubmitting] = useState(false);
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"paypal" | "card">("paypal");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -280,6 +284,14 @@ function CheckoutPage() {
     shippingCity.trim().length > 0 &&
     shippingPostalCode.trim().length > 0;
   const [phone, setPhone] = useState("");
+  const hasCompleteDeliveryDetails =
+    email.trim().length > 0 &&
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    shippingAddress.trim().length > 0 &&
+    shippingCity.trim().length > 0 &&
+    shippingPostalCode.trim().length > 0 &&
+    phone.trim().length > 0;
   const [voucherSummary, setVoucherSummary] = useState<VoucherSummary>({
     discountVoucher: null,
     shippingVoucher: null,
@@ -460,7 +472,64 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     );
   }
 
-  function buildPaypalCheckoutPayload() {
+  function validateStandardCheckout(): boolean {
+    setShowValidationErrors(true);
+
+    const form = document.querySelector<HTMLFormElement>("form");
+    if (!form) {
+      toast.error("Checkout form not found.");
+      return false;
+    }
+
+    const formData = new FormData(form);
+    const getValue = (name: string) => String(formData.get(name) ?? "").trim();
+    const requiredFields = [
+      ["email", "Email"],
+      ["first_name", "First name"],
+      ["last_name", "Last name"],
+      ["address", "Address"],
+      ["city", "City"],
+      ["state", "State"],
+      ["postal_code", "ZIP code"],
+      ["phone", "Phone number"],
+    ] as const;
+
+    let firstInvalid: HTMLInputElement | null = null;
+    for (const [name] of requiredFields) {
+      const field = form.elements.namedItem(name);
+      if (!(field instanceof HTMLInputElement)) continue;
+      const value = getValue(name);
+      const invalid = !value || (name === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) || (name === "phone" && (value.replace(/\D/g, "").length < 7 || value.replace(/\D/g, "").length > 15));
+      field.setAttribute("aria-invalid", invalid ? "true" : "false");
+      if (invalid) firstInvalid ??= field;
+    }
+
+    if (!billingSameAsShipping) {
+      const billingRequired = [
+        ["billing_address", "Billing address"],
+        ["billing_city", "Billing city"],
+        ["billing_state", "Billing state"],
+        ["billing_postal_code", "Billing ZIP code"],
+      ] as const;
+      for (const [name] of billingRequired) {
+        const field = form.elements.namedItem(name);
+        if (!(field instanceof HTMLInputElement)) continue;
+        const invalid = !getValue(name);
+        field.setAttribute("aria-invalid", invalid ? "true" : "false");
+        if (invalid) firstInvalid ??= field;
+      }
+    }
+
+    if (firstInvalid) {
+      firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => firstInvalid?.focus(), 250);
+      toast.error("Please complete the highlighted required fields.");
+      return false;
+    }
+    return true;
+  }
+
+  function buildPaypalCheckoutPayload(flow: CheckoutFlow) {
     trackCheckoutNameEntered();
 
     const form = document.querySelector("form");
@@ -485,6 +554,18 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
         `Shipping: ${shippingMethod}`,
         `Estimated delivery: ${deliveryRange}`,
       ].join(" | "),
+      checkout_flow: flow,
+      country_code: countryCode,
+      billing_same_as_shipping: billingSameAsShipping,
+      billing: billingSameAsShipping
+        ? null
+        : {
+            address: [getValue("billing_address"), getValue("billing_address_line_2")].filter(Boolean).join(", "),
+            city: getValue("billing_city"),
+            state: getValue("billing_state"),
+            postal_code: getValue("billing_postal_code"),
+            country_code: countryCode,
+          },
       subtotal: Number(subtotalUsd.toFixed(2)),
       shipping_fee: Number(shippingFeeUsd.toFixed(2)),
       discount_amount: Number(discountAmountUsd.toFixed(2)),
@@ -518,11 +599,19 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     return checkout;
   }
 
-  async function createPayPalOrder(paymentType: "PayPal" | "Card") {
-    const checkout = buildPaypalCheckoutPayload();
+  async function createPayPalOrder(
+    paymentType: "PayPal" | "Card",
+    flow: CheckoutFlow,
+  ) {
+    // Only the standard form-based checkout validates Contact/Delivery.
+    // Express Checkout intentionally bypasses these fields.
+    if (flow === "standard" && !validateStandardCheckout()) {
+      throw new Error("Please complete the required checkout details.");
+    }
+    const checkout = buildPaypalCheckoutPayload(flow);
     const { data, error } = await supabase.functions.invoke(
       "paypal-create-order",
-      { body: { checkout, currency: "USD" } },
+      { body: { checkout, currency: "USD", checkout_flow: flow } },
     );
 
     if (error || !data?.success || !data?.orderId) {
@@ -597,7 +686,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
         city: `${getValue("city")}, ${country.name}`,
         district: getValue("state"),
         ward: getValue("postal_code"),
-        notes: `Shipping: ${country.name} / ${country.zone} / ${shippingMethod} | Estimated delivery: ${deliveryRange}${billingSameAsShipping ? " | Billing: same as shipping" : ` | Billing: ${[getValue("billing_address"), getValue("billing_address_line_2"), getValue("billing_city"), getValue("billing_state"), getValue("billing_postal_code")].filter(Boolean).join(", ")}`} | PayPal Order ID: ${orderID}`,
+        notes: `Shipping: ${country.name} / ${country.zone} / ${shippingMethod} | Estimated delivery: ${deliveryRange}${billingSameAsShipping ? " | Billing: same as shipping" : ` | Billing: ${[getValue("billing_address_desktop") || getValue("billing_address"), getValue("billing_address_line_2_desktop") || getValue("billing_address_line_2"), getValue("billing_city_desktop") || getValue("billing_city"), getValue("billing_state_desktop") || getValue("billing_state"), getValue("billing_postal_code_desktop") || getValue("billing_postal_code")].filter(Boolean).join(", ")}`} | PayPal Order ID: ${orderID}`,
         subtotal: Number(subtotalUsd.toFixed(2)),
         shipping_fee: Number(shippingFeeUsd.toFixed(2)),
         total: Number(totalUsd.toFixed(2)),
@@ -730,12 +819,13 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
         <PayPalScriptProvider options={PAYPAL_OPTIONS}>
           <form
             onSubmit={handleSubmit}
-            className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_410px] lg:gap-0"
+            data-validation-visible={showValidationErrors ? "true" : "false"}
+            className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_410px] lg:gap-0 [&[data-validation-visible=true]_input:required:invalid]:border-red-500 [&[data-validation-visible=true]_input:required:invalid]:ring-1 [&[data-validation-visible=true]_input:required:invalid]:ring-red-500"
           >
           <div className="contents lg:block lg:space-y-0 lg:py-7 lg:pr-10">
             <div className="mx-auto w-full max-w-[500px]">
             {/* Mobile order summary + express checkout */}
-            <section className="mb-4 overflow-hidden rounded-md border border-[#e5e5e5] bg-[#fafafa] lg:hidden">
+            <section className="mb-4 overflow-hidden rounded-md border border-[#e5e5e5] bg-[#fafafa]">
               <button
                 type="button"
                 onClick={() => setOrderSummaryOpen((open) => !open)}
@@ -787,7 +877,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               )}
             </section>
 
-            <section className="mb-5 lg:hidden">
+            <section className="mb-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold tracking-[-0.01em]">Express Checkout</h2>
                 <img
@@ -804,7 +894,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     disabled={submitting}
                     style={{ layout: "vertical", shape: "rect", color: "gold", label: "paypal", height: 46, disableMaxWidth: true }}
                     onClick={async (_data, actions) => actions.resolve()}
-                    createOrder={async () => createPayPalOrder("PayPal")}
+                    createOrder={async () => createPayPalOrder("PayPal", "express")}
                     onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
                     onCancel={() => toast.info("PayPal checkout was cancelled.")}
                     onError={(error) => { console.error("PAYPAL EXPRESS ERROR", error); toast.error("PayPal could not complete the payment."); }}
@@ -816,7 +906,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     disabled={submitting}
                     style={{ layout: "vertical", shape: "rect", label: "pay", height: 46, tagline: false, disableMaxWidth: true }}
                     onClick={async (_data, actions) => actions.resolve()}
-                    createOrder={async () => createPayPalOrder("Card")}
+                    createOrder={async () => createPayPalOrder("Card", "express")}
                     onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
                     onCancel={() => toast.info("Card checkout was cancelled.")}
                     onError={(error) => { console.error("CARD EXPRESS ERROR", error); toast.error("Card payment could not be completed."); }}
@@ -841,11 +931,13 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                   <input
                     name="email"
                     type="email"
+                    required
+                    aria-required="true"
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email"
-                    className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 invalid:border-red-500 invalid:ring-1 invalid:ring-red-500"
+                    className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0"
                   />
                 </label>
 
@@ -872,6 +964,8 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     <input
                       name="first_name"
                       type="text"
+                      required
+                      aria-required="true"
                       autoComplete="given-name"
                       value={firstName}
                       onChange={(e) => {
@@ -880,7 +974,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       }}
                       onBlur={trackCheckoutNameEntered}
                       placeholder="First name"
-                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 invalid:border-red-500 invalid:ring-1 invalid:ring-red-500"
+                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0"
                     />
                   </label>
                   <label className="block">
@@ -888,6 +982,8 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     <input
                       name="last_name"
                       type="text"
+                      required
+                      aria-required="true"
                       autoComplete="family-name"
                       value={lastName}
                       onChange={(e) => {
@@ -896,7 +992,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       }}
                       onBlur={trackCheckoutNameEntered}
                       placeholder="Last name"
-                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 invalid:border-red-500 invalid:ring-1 invalid:ring-red-500"
+                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0"
                     />
                   </label>
                 </div>
@@ -905,6 +1001,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                 <Field
                   name="address"
                   label="Address"
+                  required
                   placeholder="Address"
                   onValueChange={setShippingAddress}
                 />
@@ -916,15 +1013,16 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                 />
 
                 <div className="grid grid-cols-3 gap-2.5">
-                  <Field name="city" label="City" placeholder="City" onValueChange={setShippingCity} />
-                  <Field name="state" label="State" placeholder="State" />
-                  <Field name="postal_code" label="ZIP code" placeholder="ZIP code" onValueChange={setShippingPostalCode} />
+                  <Field name="city" label="City" placeholder="City" required onValueChange={setShippingCity} />
+                  <Field name="state" label="State" placeholder="State" required />
+                  <Field name="postal_code" label="ZIP code" placeholder="ZIP code" required onValueChange={setShippingPostalCode} />
                 </div>
 
                 <PhoneField
                   country={country}
                   value={phone}
                   onChange={setPhone}
+                  showValidationErrors={showValidationErrors}
                 />
               </div>
             </section>
@@ -1003,8 +1101,10 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                             fundingSource={FUNDING.CARD}
                             disabled={submitting}
                             style={{ layout: "vertical", shape: "rect", label: "pay", height: 44 }}
-                            onClick={async (_data, actions) => actions.resolve()}
-                            createOrder={async () => createPayPalOrder("Card")}
+                            onClick={async (_data, actions) =>
+                              validateStandardCheckout() ? actions.resolve() : actions.reject()
+                            }
+                            createOrder={async () => createPayPalOrder("Card", "standard")}
                             onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
                             onCancel={() => toast.info("Card checkout was cancelled.")}
                             onError={(error) => {
@@ -1060,18 +1160,56 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                   </label>
                   {!billingSameAsShipping && (
                     <div className="space-y-2.5 border-t border-[#d7d7d7] bg-white p-3 sm:p-4">
-                      <input name="billing_address" type="text" autoComplete="billing street-address" placeholder="Address" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" />
+                      <input name="billing_address" type="text" required aria-required="true" autoComplete="billing street-address" placeholder="Address" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
                       <input name="billing_address_line_2" type="text" autoComplete="billing address-line2" placeholder="Apartment, suite, etc. (optional)" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
                       <div className="grid grid-cols-2 gap-2.5">
-                        <input name="billing_city" type="text" autoComplete="billing address-level2" placeholder="City" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" />
-                        <input name="billing_state" type="text" autoComplete="billing address-level1" placeholder="State" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
+                        <input name="billing_city" type="text" required aria-required="true" autoComplete="billing address-level2" placeholder="City" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
+                        <input name="billing_state" type="text" required aria-required="true" autoComplete="billing address-level1" placeholder="State" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
                       </div>
-                      <input name="billing_postal_code" type="text" autoComplete="billing postal-code" placeholder="ZIP code" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" />
+                      <input name="billing_postal_code" type="text" required aria-required="true" autoComplete="billing postal-code" placeholder="ZIP code" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
                     </div>
                   )}
                 </div>
               </div>
             </section>
+
+            {/* Desktop PayPal action: directly below Billing address in the left column */}
+            <div className="mt-5 hidden w-full min-w-0 overflow-hidden lg:block">
+              <PayPalButtons
+                fundingSource={FUNDING.PAYPAL}
+                disabled={submitting}
+                style={{
+                  layout: "vertical",
+                  shape: "rect",
+                  color: "blue",
+                  label: "pay",
+                  height: 48,
+                }}
+                onClick={async (_data, actions) =>
+                  validateStandardCheckout() ? actions.resolve() : actions.reject()
+                }
+                createOrder={async () => createPayPalOrder("PayPal", "standard")}
+                onApprove={async (data) => {
+                  await handlePaypalApprove(data.orderID);
+                }}
+                onCancel={() => {
+                  toast.info("PayPal checkout was cancelled.");
+                }}
+                onError={(error) => {
+                  console.error("PAYPAL BUTTON ERROR", error);
+                  toast.error("PayPal could not complete the payment.");
+                }}
+              />
+            </div>
+            <div className="mt-3 hidden w-full lg:block">
+              <button
+                type="button"
+                onClick={() => setLegalModalOpen(true)}
+                className="text-xs font-medium text-neutral-500 underline underline-offset-2 transition hover:text-[#111]"
+              >
+                Terms and policies
+              </button>
+            </div>
 
             {/* Mobile bottom order summary with final payment action */}
             <section className="mt-6 pt-5 lg:hidden">
@@ -1132,8 +1270,10 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                   fundingSource={FUNDING.PAYPAL}
                   disabled={submitting}
                   style={{ layout: "vertical", shape: "rect", color: "blue", label: "pay", height: 48 }}
-                  onClick={async (_data, actions) => actions.resolve()}
-                  createOrder={async () => createPayPalOrder("PayPal")}
+                  onClick={async (_data, actions) =>
+                    validateStandardCheckout() ? actions.resolve() : actions.reject()
+                  }
+                  createOrder={async () => createPayPalOrder("PayPal", "standard")}
                   onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
                   onCancel={() => toast.info("PayPal checkout was cancelled.")}
                   onError={(error) => { console.error("PAYPAL MOBILE SUMMARY ERROR", error); toast.error("PayPal could not complete the payment."); }}
@@ -1303,68 +1443,25 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     USD
                   </p>
                 </div>
-
-                <div className="mt-5 w-full min-w-0 overflow-hidden">
-                  <PayPalButtons
-                    fundingSource={FUNDING.PAYPAL}
-                    disabled={submitting}
-                    style={{
-                      layout: "vertical",
-                      shape: "rect",
-                      color: "blue",
-                      label: "pay",
-                      height: 48,
-                    }}
-                    onClick={async (_data, actions) => {
-                        const checkoutForm = document.querySelector<HTMLFormElement>("form");
-                        if (!checkoutForm) return actions.reject();
-                        const requiredFields = checkoutForm.querySelectorAll<
-                          HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-                        >("[required]");
-                        requiredFields.forEach((field) => {
-                          field.setCustomValidity("");
-                          if (field.validity.valueMissing) {
-                            field.setCustomValidity("Please fill out this field.");
-                          } else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") {
-                            field.setCustomValidity("Please enter a valid email address.");
-                          }
-                        });
-                        const firstInvalid = checkoutForm.querySelector<
-                          HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-                        >(":invalid");
-                        if (firstInvalid) {
-                          firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
-                          window.setTimeout(() => firstInvalid.focus(), 250);
-                          firstInvalid.reportValidity();
-                          return actions.reject();
-                        }
-                        return actions.resolve();
-                      }}
-                    createOrder={async () => createPayPalOrder("PayPal")}
-                    onApprove={async (data) => {
-                      await handlePaypalApprove(data.orderID);
-                    }}
-                    onCancel={() => {
-                      toast.info("PayPal checkout was cancelled.");
-                    }}
-                    onError={(error) => {
-                      console.error("PAYPAL BUTTON ERROR", error);
-                      toast.error("PayPal could not complete the payment.");
-                    }}
-                  />
-                </div>
-                <div className="mt-3 w-full">
-                  <button
-                    type="button"
-                    onClick={() => setLegalModalOpen(true)}
-                    className="text-xs font-medium text-neutral-500 underline underline-offset-2 transition hover:text-[#111]"
-                  >
-                    Terms and policies
-                  </button>
-                </div>
               </div>
               </div>
 
+              {hasCompleteDeliveryDetails && (
+                <div className="mt-8 grid grid-cols-3 items-center gap-2 px-3 py-4 text-center">
+                  <div className="flex min-w-0 flex-col items-center gap-2">
+                    <RotateCcw className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
+                    <span className="text-[12px] font-semibold leading-4 text-[#111]">30 Day Returns</span>
+                  </div>
+                  <div className="flex min-w-0 flex-col items-center gap-2">
+                    <ShieldCheck className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
+                    <span className="text-[12px] font-semibold leading-4 text-[#111]">1 Year Warranty</span>
+                  </div>
+                  <div className="flex min-w-0 flex-col items-center gap-2">
+                    <PackageCheck className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
+                    <span className="text-[12px] font-semibold leading-4 text-[#111]">Fast Shipping</span>
+                  </div>
+                </div>
+              )}
             </div>
 
           </aside>
@@ -2175,6 +2272,7 @@ function Field({
         name={name}
         type={type}
         required={required}
+        aria-required={required ? "true" : undefined}
         placeholder={placeholder}
         onChange={(event) => onValueChange?.(event.target.value)}
         autoComplete={
@@ -2185,7 +2283,7 @@ function Field({
           name === "postal_code" ? "postal-code" : undefined
         }
         inputMode={type === "tel" ? "tel" : undefined}
-        className={`h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 ${required ? "invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" : ""}`}
+        className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0"
       />
     </label>
   );
@@ -2310,21 +2408,29 @@ function PhoneField({
   country,
   value,
   onChange,
+  showValidationErrors,
 }: {
   country: CountryOption;
   value: string;
   onChange: (value: string) => void;
+  showValidationErrors: boolean;
 }) {
+  const phoneDigits = value.replace(/\D/g, "");
+  const phoneInvalid = phoneDigits.length < 7 || phoneDigits.length > 15;
+
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium text-neutral-600">
         Phone number
       </span>
 
-      <div className="flex h-12 overflow-hidden rounded-xl border border-[#d8d8d8] bg-white transition focus-within:border-[#777] focus-within:ring-0">
+      <div className={`flex h-12 overflow-hidden rounded-xl border bg-white transition focus-within:border-[#777] focus-within:ring-0 ${showValidationErrors && phoneInvalid ? "border-red-500 ring-1 ring-red-500" : "border-[#d8d8d8]"}`}>
         <input
           name="phone"
           type="tel"
+          required
+          aria-required="true"
+          aria-invalid={showValidationErrors && phoneInvalid ? "true" : "false"}
           inputMode="tel"
           value={value}
           onChange={(event) => onChange(event.target.value)}
