@@ -814,18 +814,18 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   }
 
   return (
-    <div className="min-h-screen bg-white text-[#111]">
+    <div className="min-h-screen bg-white text-[#111] [&_button]:font-[inherit] [&_input]:font-[inherit] [&_select]:font-[inherit] [&_textarea]:font-[inherit]" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" }}> 
       <main className="mx-auto w-full max-w-[1120px] px-4 py-5 sm:px-5 lg:px-8 lg:py-0">
         <PayPalScriptProvider options={PAYPAL_OPTIONS}>
           <form
             onSubmit={handleSubmit}
             data-validation-visible={showValidationErrors ? "true" : "false"}
-            className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_410px] lg:gap-0 [&[data-validation-visible=true]_input:required:invalid]:border-red-500 [&[data-validation-visible=true]_input:required:invalid]:ring-1 [&[data-validation-visible=true]_input:required:invalid]:ring-red-500"
+            className="grid items-start gap-7 lg:items-stretch lg:grid-cols-[minmax(0,1fr)_410px] lg:gap-0 [&[data-validation-visible=true]_input:required:invalid]:border-red-500 [&[data-validation-visible=true]_input:required:invalid]:ring-1 [&[data-validation-visible=true]_input:required:invalid]:ring-red-500"
           >
           <div className="contents lg:block lg:space-y-0 lg:py-7 lg:pr-10">
             <div className="mx-auto w-full max-w-[500px]">
             {/* Mobile order summary + express checkout */}
-            <section className="mb-4 overflow-hidden rounded-md border border-[#e5e5e5] bg-[#fafafa]">
+            <section className="mb-4 overflow-hidden rounded-md border border-[#e5e5e5] bg-[#fafafa] lg:hidden">
               <button
                 type="button"
                 onClick={() => setOrderSummaryOpen((open) => !open)}
@@ -1079,7 +1079,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       type="button"
                       aria-expanded={paymentMethod === "card"}
                       onClick={() => setPaymentMethod("card")}
-                      className="flex min-h-[58px] w-full items-center justify-between gap-3 px-3 py-3 text-left sm:px-4"
+                      className="flex min-h-[68px] w-full items-center justify-between gap-3 px-3 py-3 text-left sm:px-4"
                     >
                       <span className="flex min-w-0 items-center gap-3">
                         <span aria-hidden="true" className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${paymentMethod === "card" ? "border-[#303030]" : "border-[#b8b8b8]"}`}>
@@ -1090,7 +1090,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       <img
                         src="/payment-methods/all%20card.png"
                         alt="Accepted cards: Visa, Mastercard, American Express and UnionPay"
-                        className="h-[30px] w-auto max-w-[150px] shrink-0 object-contain"
+                        className="h-[42px] w-auto max-w-[190px] shrink-0 object-contain"
                         loading="eager"
                       />
                     </button>
@@ -1282,13 +1282,30 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               <div className="mt-3">
                 <button type="button" onClick={() => setLegalModalOpen(true)} className="text-xs font-medium text-neutral-500 underline underline-offset-2 transition hover:text-[#111]">Terms and policies</button>
               </div>
+
+              {hasCompleteDeliveryDetails && (
+                <div className="mt-7 grid grid-cols-3 items-center gap-2 px-1 py-3 text-center">
+                  <div className="flex min-w-0 flex-col items-center gap-2">
+                    <RotateCcw className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
+                    <span className="text-[11px] font-semibold leading-4 text-[#111] sm:text-xs">30 Day Returns</span>
+                  </div>
+                  <div className="flex min-w-0 flex-col items-center gap-2">
+                    <ShieldCheck className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
+                    <span className="text-[11px] font-semibold leading-4 text-[#111] sm:text-xs">1 Year Warranty</span>
+                  </div>
+                  <div className="flex min-w-0 flex-col items-center gap-2">
+                    <PackageCheck className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
+                    <span className="text-[11px] font-semibold leading-4 text-[#111] sm:text-xs">Fast Shipping</span>
+                  </div>
+                </div>
+              )}
             </section>
 
             </div>
           </div>
 
-          <aside className="hidden lg:relative lg:isolate lg:block lg:min-h-screen lg:self-stretch lg:bg-transparent lg:px-7 lg:py-8 lg:before:absolute lg:before:top-0 lg:before:bottom-[-56px] lg:before:left-0 lg:before:right-[min(-2rem,calc((70rem-100vw)/2))] lg:before:bg-[#f6f6f6] lg:before:content-['']">
-            <div className="relative z-10 order-10 bg-transparent py-5 sm:py-6 lg:order-none lg:py-0">
+          <aside className="relative hidden min-w-0 lg:block lg:self-stretch lg:bg-transparent lg:px-7 lg:py-8 lg:before:absolute lg:before:top-0 lg:before:bottom-[-160px] lg:before:left-0 lg:before:right-[calc((1120px-100vw)/2-2rem)] lg:before:bg-[#f6f6f6] lg:before:content-['']">
+            <div className="relative z-10 order-10 bg-transparent py-5 sm:py-6 lg:sticky lg:top-[120px] lg:order-none lg:py-0">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold tracking-[-0.02em]">
                   Order summary
