@@ -1330,14 +1330,26 @@ function ProductPage() {
 
     }
 
+    // Cart thumbnails should use the product's representative image,
+    // not whichever gallery image the customer last viewed.
+    // Prefer the product cover, then the selected color's first gallery image,
+    // then the first valid product image, with the active image as a last fallback.
+    const selectedColorImage = productImages.find(
+      (item: any) =>
+        item?.image_url &&
+        selectedColor?.id &&
+        String(item?.color_id ?? "") === String(selectedColor.id),
+    )?.image_url;
+
     const image =
-
-      activeImage ||
-
-      product.image_url ||
-
-      productImages[0]?.image_url ||
-
+      (typeof product.image_url === "string" && product.image_url.trim()
+        ? product.image_url.trim()
+        : null) ||
+      selectedColorImage ||
+      productImages.find((item: any) => typeof item?.image_url === "string" && item.image_url.trim())?.image_url ||
+      (typeof activeImage === "string" && activeImage.trim()
+        ? activeImage.trim()
+        : null) ||
       null;
 
     cart.add(
@@ -3071,7 +3083,7 @@ function ProductPage() {
 
       {showStickyAddToCart && inStock && (
         <div className="fixed bottom-5 left-4 right-[76px] z-[90] md:hidden">
-          <div className="flex h-[52px] w-full min-w-0 items-center gap-1.5 rounded-[16px] border border-white/90 bg-white/95 px-2 py-1.5 shadow-[0_6px_22px_rgba(0,0,0,0.12)] backdrop-blur-xl">
+          <div className="flex h-[52px] w-full min-w-0 items-center gap-1.5 rounded-[8px] border border-white/90 bg-white/95 px-2 py-1.5 shadow-[0_6px_22px_rgba(0,0,0,0.12)] backdrop-blur-xl">
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-1.5">
                 <p className="min-w-0 truncate text-[10px] font-bold leading-3 text-[#303846]">
@@ -3091,7 +3103,7 @@ function ProductPage() {
                     <p className="text-[9px] font-medium leading-4 text-[#969BA3] line-through">
                       {formatProductPrice(comparePrice, safeCurrency)}
                     </p>
-                    <span className="rounded-full bg-[#EAF7F0] px-1.5 py-0.5 text-[8px] font-bold leading-3 text-[#168653]">
+                    <span className="rounded-[3px] bg-[#EAF7F0] px-1.5 py-0.5 text-[8px] font-bold leading-3 text-[#168653]">
                       -{discountPercent}%
                     </span>
                   </>
@@ -3104,7 +3116,7 @@ function ProductPage() {
               onClick={addToCart}
               aria-label="Add to cart"
               title="Add to cart"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E8ECF1] bg-white text-[#536273] transition-colors duration-150 hover:border-[#C9D5E2] hover:bg-[#F7F9FB] active:scale-[0.96]"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] border border-[#E8ECF1] bg-white text-[#536273] transition-colors duration-150 hover:border-[#C9D5E2] hover:bg-[#F7F9FB] active:scale-[0.96]"
             >
               <ShoppingBag size={15} strokeWidth={1.7} />
             </button>
@@ -3113,7 +3125,7 @@ function ProductPage() {
               type="button"
               onClick={buyNow}
               aria-label="Buy now"
-              className="flex h-8 shrink-0 items-center justify-center rounded-full border border-[#DCE6F1] bg-[#F3F7FC] px-3.5 text-[10px] font-semibold tracking-[-0.01em] text-[#29435F] transition-colors duration-150 hover:border-[#C7D7E8] hover:bg-[#EAF1F8] active:scale-[0.97]"
+              className="flex h-8 shrink-0 items-center justify-center rounded-[5px] border border-[#DCE6F1] bg-[#F3F7FC] px-3.5 text-[10px] font-semibold tracking-[-0.01em] text-[#29435F] transition-colors duration-150 hover:border-[#C7D7E8] hover:bg-[#EAF1F8] active:scale-[0.97]"
             >
               Buy now
             </button>
