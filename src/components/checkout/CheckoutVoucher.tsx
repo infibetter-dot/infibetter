@@ -3,11 +3,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { calculateVoucherDiscount } from "./voucher-engine/calculator";
-import { Check, ChevronDown, CircleDollarSign, Tag, TicketPercent, Truck } from "lucide-react";
+import { TicketPercent } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-import VoucherCard from "./VoucherCard";
 import { useVoucher } from "./hooks/useVoucher";
 
 import {
@@ -33,9 +32,8 @@ export default function CheckoutVoucher({
   const [voucherCode, setVoucherCode] = useState("");
   const [checkingCode, setCheckingCode] = useState(false);
 
-  const { vouchers, loading } = useVoucher(phone);
+  const { vouchers } = useVoucher(phone);
 
-  const [open, setOpen] = useState(false);
 
   const [selectedDiscount, setSelectedDiscount] =
     useState<VoucherDisplay | null>(null);
@@ -111,14 +109,6 @@ export default function CheckoutVoucher({
   useEffect(() => {
     onChange(summary);
   }, [summary, onChange]);
-
-  const discountVouchers = vouchers.filter(
-    (v) => v.type !== "shipping" && !v.isWelcome,
-  );
-
-  const shippingVouchers = vouchers.filter(
-    (v) => v.type === "shipping",
-  );
 
   const customerVouchers = vouchers.filter(
     (voucher) => voucher.isWelcome === true,
@@ -393,356 +383,40 @@ export default function CheckoutVoucher({
   };
 
   return (
-    <div className="w-full min-w-0 space-y-3 text-[#222222]">
-      {/* ================= HEADER ================= */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F2F3F0] text-[#555555]">
-            <Tag className="h-3.5 w-3.5" strokeWidth={1.8} />
-          </div>
-
-          <div className="min-w-0">
-            <h3 className="text-[12px] font-semibold leading-4 text-[#222222]">
-              Available offers
-            </h3>
-            <p className="mt-0.5 text-[9px] leading-3.5 text-[#666666]">
-              Apply up to 3 vouchers, one from each category
-            </p>
-          </div>
-        </div>
-
+    <section className="w-full min-w-0 rounded-md border border-[#dedede] bg-white px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <TicketPercent
+          className="h-4 w-4 shrink-0 text-[#666666]"
+          strokeWidth={1.7}
+        />
+        <input
+          value={voucherCode}
+          onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void applyVoucherCode();
+            }
+          }}
+          placeholder="Discount code or gift card"
+          aria-label="Discount code or gift card"
+          autoComplete="off"
+          className="h-8 min-w-0 flex-1 border-0 bg-transparent px-1 text-[12px] text-[#222222] uppercase outline-none placeholder:normal-case placeholder:text-[#888888] focus:ring-0"
+        />
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          onClick={() => setOpen((value) => !value)}
-          className="h-8 shrink-0 gap-1.5 rounded-lg border-[#DCDDD7] bg-white px-2.5 text-[10px] font-medium text-[#333333] shadow-none hover:bg-[#F5F5F3] hover:text-[#111111]"
+          disabled={checkingCode || !voucherCode.trim()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void applyVoucherCode();
+          }}
+          className="h-8 shrink-0 rounded-md border-[#e2e2e2] bg-[#f7f7f7] px-3 text-[11px] font-medium text-[#444444] shadow-none hover:bg-[#eeeeee] disabled:cursor-not-allowed"
         >
-          {open ? "Close" : "Choose"}
-          <ChevronDown
-            className={`h-3.5 w-3.5 transition-transform ${
-              open ? "rotate-180" : ""
-            }`}
-            strokeWidth={1.8}
-          />
+          {checkingCode ? "Applying..." : "Apply"}
         </Button>
       </div>
-
-      {/* ================= VOUCHER LIST ================= */}
-      {open && (
-        <div className="space-y-4">
-          <section>
-            <h4 className="mb-2 text-[11px] font-semibold text-[#333333]">
-              Order discount
-            </h4>
-
-            <div className="space-y-2.5">
-              {discountVouchers.map((voucher) => (
-                <VoucherCard
-                  key={voucher.id}
-                  voucher={voucher}
-                  bestVoucher={bestDiscount}
-                  selected={selectedDiscount?.id === voucher.id}
-                  disabled={subtotal < voucher.min_order}
-                  saving={
-                    summary.discountVoucher?.id === voucher.id
-                      ? summary.discountAmount
-                      : 0
-                  }
-                  remain={Math.max(
-                    0,
-                    voucher.min_order - subtotal,
-                  )}
-                  onSelect={(value) => {
-                    if (value === null) {
-                      setAutoSelect(false);
-                      setSelectedDiscount(null);
-                      return;
-                    }
-
-                    setAutoSelect(false);
-                    setSelectedDiscount(value);
-                  }}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <h4 className="mb-2 text-[11px] font-semibold text-[#333333]">
-              Free shipping
-            </h4>
-
-            <div className="space-y-2.5">
-              {shippingVouchers.map((voucher) => (
-                <VoucherCard
-                  key={voucher.id}
-                  voucher={voucher}
-                  bestVoucher={bestShipping}
-                  selected={selectedShipping?.id === voucher.id}
-                  disabled={subtotal < voucher.min_order}
-                  saving={
-                    summary.shippingVoucher?.id === voucher.id
-                      ? summary.shippingDiscount
-                      : 0
-                  }
-                  remain={Math.max(
-                    0,
-                    voucher.min_order - subtotal,
-                  )}
-                  onSelect={(value) => {
-                    if (value === null) {
-                      setSelectedShipping(null);
-                      return;
-                    }
-
-                    setSelectedShipping(value);
-                  }}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <h4 className="mb-2 text-[11px] font-semibold text-[#333333]">
-              Personal voucher
-            </h4>
-
-            <div className="space-y-2.5">
-              {customerVouchers.map((voucher) => (
-                <VoucherCard
-                  key={voucher.id}
-                  voucher={voucher}
-                  bestVoucher={selectedCustomerVoucher}
-                  selected={selectedCustomerVoucher?.id === voucher.id}
-                  disabled={subtotal < voucher.min_order}
-                  saving={
-                    selectedCustomerVoucher?.id === voucher.id
-                      ? customerDiscount
-                      : 0
-                  }
-                  remain={Math.max(
-                    0,
-                    voucher.min_order - subtotal,
-                  )}
-                  onSelect={(value) => {
-                    if (value === null) {
-                      setSelectedCustomerVoucher(null);
-                      return;
-                    }
-
-                    setAutoSelect(false);
-                    setSelectedCustomerVoucher(value);
-                  }}
-                />
-              ))}
-            </div>
-          </section>
-
-          {loading && (
-            <div className="rounded-xl border border-dashed border-[#DADAD6] px-4 py-4 text-center text-[10px] text-[#666666]">
-              Loading vouchers...
-            </div>
-          )}
-
-          {!loading && vouchers.length === 0 && (
-            <div className="rounded-xl border border-dashed border-[#DADAD6] px-4 py-4 text-center">
-              <p className="text-[10px] text-[#666666]">
-                No available vouchers.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ================= PROMO CODE ================= */}
-      <section className="rounded-xl border border-[#E1E1DE] bg-white p-3">
-        <div className="flex items-center gap-2">
-          <TicketPercent
-            className="h-4 w-4 shrink-0 text-[#555555]"
-            strokeWidth={1.7}
-          />
-
-          <p className="text-[10.5px] font-medium text-[#333333]">
-            Have a promo code?
-          </p>
-        </div>
-
-        <div className="mt-2 flex gap-2">
-          <input
-            value={voucherCode}
-            onChange={(e) => {
-              setVoucherCode(e.target.value.toUpperCase());
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                void applyVoucherCode();
-              }
-            }}
-            placeholder="Enter voucher code"
-            autoComplete="off"
-            className="h-9 min-w-0 flex-1 rounded-lg border border-[#DCDDD7] bg-white px-3 text-[10px] text-[#222222] uppercase outline-none placeholder:text-[#999999] focus:border-[#999999]"
-          />
-
-          <Button
-            type="button"
-            disabled={checkingCode}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              void applyVoucherCode();
-            }}
-            className="
-              relative isolate h-9 shrink-0 overflow-hidden rounded-lg
-              border border-white/80
-              bg-white/75 px-4 text-[10.5px] font-semibold text-[#303B2D]
-              shadow-[0_2px_8px_rgba(50,60,45,0.10),inset_0_1px_0_rgba(255,255,255,0.95)]
-              backdrop-blur-md transition-all duration-200
-              hover:border-[#C8D2C3] hover:bg-[#F4F7F2]
-              hover:shadow-[0_4px_12px_rgba(50,60,45,0.14)]
-              active:scale-[0.98]
-              disabled:cursor-not-allowed disabled:!bg-[#D8D8D5] disabled:!text-[#777777]
-            "
-          >
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-lg bg-gradient-to-b from-white/90 to-transparent" />
-            <span className="relative z-10">
-              {checkingCode ? "Checking..." : "Apply"}
-            </span>
-          </Button>
-        </div>
-      </section>
-
-      {/* ================= APPLIED DISCOUNTS ================= */}
-      <section className="rounded-xl border border-[#E1E1DE] bg-white p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <CircleDollarSign
-              className="h-3.5 w-3.5 shrink-0 text-[#5F6F5D]"
-              strokeWidth={1.8}
-            />
-
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold text-[#333333]">
-                Applied offers
-              </p>
-              <p className="text-[9px] text-[#777777]">
-                Discounts applied to this order
-              </p>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setOpen(true)}
-            className="h-7 shrink-0 rounded-md border-[#DCDDD7] bg-white px-2.5 text-[9px] font-medium text-[#444444] shadow-none hover:bg-[#F5F5F3]"
-          >
-            Change
-          </Button>
-        </div>
-
-        <div className="mt-2.5 space-y-1.5">
-          {summary.discountVoucher && (
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-[#F2F5F1] px-3 py-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <Check
-                  className="h-3 w-3 shrink-0 text-[#4F604E]"
-                  strokeWidth={2.2}
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-[10px] font-semibold text-[#333333]">
-                    {summary.discountVoucher.title}
-                  </p>
-                  <p className="truncate text-[8.5px] text-[#777777]">
-                    {summary.discountVoucher.code}
-                  </p>
-                </div>
-              </div>
-
-              <span className="shrink-0 text-[10px] font-semibold text-[#4F604E]">
-                -{formatMoney(summary.discountAmount)}
-              </span>
-            </div>
-          )}
-
-          {summary.shippingVoucher && (
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-[#F2F5F1] px-3 py-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <Truck
-                  className="h-3 w-3 shrink-0 text-[#4F604E]"
-                  strokeWidth={1.8}
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-[10px] font-semibold text-[#333333]">
-                    Free shipping
-                  </p>
-                  <p className="truncate text-[8.5px] text-[#777777]">
-                    {summary.shippingVoucher.code}
-                  </p>
-                </div>
-              </div>
-
-              <span className="shrink-0 text-[10px] font-semibold text-[#4F604E]">
-                -{formatMoney(summary.shippingDiscount)}
-              </span>
-            </div>
-          )}
-
-          {summary.customerVoucher && (
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-[#F2F5F1] px-3 py-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <Check
-                  className="h-3 w-3 shrink-0 text-[#4F604E]"
-                  strokeWidth={2.2}
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-[10px] font-semibold text-[#333333]">
-                    {summary.customerVoucher.title}
-                  </p>
-                  <p className="truncate text-[8.5px] text-[#777777]">
-                    {summary.customerVoucher.code}
-                  </p>
-                </div>
-              </div>
-
-              <span className="shrink-0 text-[10px] font-semibold text-[#4F604E]">
-                -{formatMoney(summary.customerDiscount ?? 0)}
-              </span>
-            </div>
-          )}
-
-          {!summary.discountVoucher &&
-            !summary.shippingVoucher &&
-            !summary.customerVoucher && (
-              <p className="py-2 text-center text-[9px] text-[#888888]">
-                No vouchers applied.
-              </p>
-            )}
-        </div>
-      </section>
-
-      {/* ================= TOTAL ================= */}
-      <section className="rounded-xl bg-[#F3F4F1] px-3.5 py-3">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[8px] font-semibold uppercase tracking-[0.13em] text-[#777777]">
-              Total
-            </p>
-
-            {summary.totalDiscount > 0 && (
-              <p className="mt-1 text-[9px] font-medium text-[#5F6F5D]">
-                You save {formatMoney(summary.totalDiscount)}
-              </p>
-            )}
-          </div>
-
-          <p className="shrink-0 text-[18px] font-bold tracking-[-0.02em] text-[#222222]">
-            {formatMoney(finalTotal)}
-          </p>
-        </div>
-      </section>
-    </div>
+    </section>
   );
 }
