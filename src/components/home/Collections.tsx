@@ -1,20 +1,19 @@
-﻿import TravelMagBanner from "../TravelMagBanner";
-import { Link } from "@tanstack/react-router";
-import FeaturedCaseSection from "@/components/home/FeaturedCaseSection";
-import FeaturedProductSection from "@/components/home/FeaturedProductSection";
-import magfoldFeaturedImage from "@/assets/hero/25w_fast.png";
+﻿import { Link } from "@tanstack/react-router";
 import VoucherSlider from "@/components/home/VoucherSlider";
-import PowerStationSection from "@/components/home/PowerStationSection";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowRight,
   ExternalLink,
   ChevronLeft,
   ChevronRight,
   ShoppingCart,
-  Sparkles,
   Zap,
   BatteryCharging,
   Plane,
+  MessageSquare,
+  Star,
+  BadgeCheck,
+  Play,
 } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { useCart } from "@/lib/cart";
@@ -59,6 +58,19 @@ interface HomepageTile {
   category_name: string;
 }
 
+interface HomepageReview {
+  id: string;
+  customer_name: string | null;
+  rating: number;
+  title: string | null;
+  content: string | null;
+  image_url: string | null;
+  video_url: string | null;
+  verified_purchase: boolean | null;
+  created_at: string;
+  product_id: string;
+}
+
 interface CollectionsProps {
   homepageTiles?: HomepageTile[];
   products?: CollectionProduct[];
@@ -68,7 +80,6 @@ interface CollectionsProps {
 }
 
 const categoryImages = [
-  banner01,
   banner02,
   banner03,
   banner02, // Travel Power uses a charging-product image instead of the unrelated watchband/lifestyle image.
@@ -76,7 +87,6 @@ const categoryImages = [
 
 // Keep these slugs in sync with the category query parameters supported by /shop.
 const collections = [
-  { title: "iPhone Cases", subtitle: "Shop iPhone Cases", slug: "iphone-cases" },
   { title: "Wireless Charging", subtitle: "Shop Wireless Chargers", slug: "wireless-charging" },
   { title: "Power Banks", subtitle: "Shop Power Banks", slug: "power-banks" },
   { title: "Travel Power", subtitle: "Shop Travel Power", slug: "travel-power" },
@@ -91,12 +101,14 @@ function ProductMiniCard({
   floatDelay = 0,
   badgeLabel = "New Arrival",
   fluid = false,
+  editorial = false,
 }: {
   product: CollectionProduct;
   fallbackImage: string;
   floatDelay?: number;
   badgeLabel?: string;
   fluid?: boolean;
+  editorial?: boolean;
 }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>(() =>
     getCurrency(),
@@ -260,35 +272,41 @@ function ProductMiniCard({
       to="/products/$slug"
       params={{ slug: product.slug }}
       className={`
-        group relative flex ${fluid ? "w-full min-w-0" : "w-full min-w-0 snap-start"} flex-col
+        group relative flex w-full min-w-0 flex-col
         overflow-hidden rounded-[20px] border border-[#E8E3DD]
         bg-white shadow-[0_3px_12px_rgba(24,24,27,0.045)]
         transition-all duration-300
         hover:-translate-y-1 hover:shadow-[0_10px_28px_rgba(24,24,27,0.10)]
-        ${fluid ? "" : "sm:w-auto"}
+        ${editorial ? "h-full rounded-[22px] border-transparent bg-[#F8F8F8] shadow-none hover:shadow-[0_14px_34px_rgba(0,0,0,0.10)]" : ""}
+        ${fluid ? "" : "snap-start"}
       `}
     >
       {/* PRODUCT IMAGE */}
-      <div className="relative aspect-square sm:aspect-[4/5] w-full overflow-hidden bg-white">
+      <div className={`relative w-full overflow-hidden ${editorial ? "aspect-square bg-[#E9E9E9]" : "aspect-square bg-white sm:aspect-[4/5]"}`}>
         <img
           src={product.image_url || fallbackImage}
           alt={product.name}
           loading="lazy"
-          className="
+          className={`
             h-full w-full object-contain
-            p-2.5
+            ${editorial ? "p-0" : "p-2.5"}
             transition-transform duration-500 ease-out
             group-hover:scale-[1.035]
-          "
+          `}
         />
 
         {/* PRODUCT BADGES */}
-        <div className="absolute left-2.5 top-2.5 z-10 flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center rounded-full border border-[#BBF7D0] bg-[#ECFDF3] px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.09em] text-[#15803D] shadow-[0_2px_7px_rgba(0,0,0,0.05)]">
-            {badgeLabel}
-          </span>
-
-          {savingsPercent > 0 && (
+        <div className="absolute left-4 top-4 z-10 flex flex-wrap items-center gap-1.5">
+          {editorial && savingsPercent > 0 ? (
+            <span className="inline-flex min-h-9 items-center rounded-full bg-[#E91E4D] px-5 py-2 text-[12px] font-semibold text-white shadow-sm sm:text-[13px]">
+              Save {savingsPercent}%
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full border border-[#BBF7D0] bg-[#ECFDF3] px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.09em] text-[#15803D] shadow-[0_2px_7px_rgba(0,0,0,0.05)]">
+              {badgeLabel}
+            </span>
+          )}
+          {!editorial && savingsPercent > 0 && (
             <span className="inline-flex items-center rounded-[5px] border border-[#FF4D00] bg-[#FF4D00] px-2 py-1 text-[8px] font-bold uppercase tracking-[0.04em] text-white shadow-[0_2px_7px_rgba(0,0,0,0.08)]">
               Save {savingsPercent}%
             </span>
@@ -312,30 +330,20 @@ function ProductMiniCard({
         </span>
       </div>
       {/* PRODUCT DETAILS - HORIZONTAL LAYOUT */}
-      <div className="flex min-h-[88px] items-center justify-between gap-3 px-3.5 py-3 sm:px-4">
-        <h3
-          className="
-            min-w-0 flex-1 line-clamp-2
-            text-[12px] font-medium leading-[1.4]
-            tracking-[-0.015em] text-[#262626]
-            sm:text-[13px]
-          "
-        >
-          {product.name}
-        </h3>
-
-        <div className="flex flex-none flex-col items-end justify-center gap-1 text-right">
-          <span className="whitespace-nowrap text-[13px] font-medium leading-tight text-[#E11D48] sm:text-[14px]">
-            {displayPrice}
-          </span>
-
-          {price !== null &&
-            comparePrice !== null &&
-            comparePrice > price && (
-              <span className="whitespace-nowrap text-[10px] font-normal leading-tight text-neutral-400 line-through sm:text-[11px]">
-                {displayComparePrice}
-              </span>
-            )}
+      <div className={`flex min-w-0 gap-3 ${editorial ? "min-h-[178px] items-start px-7 py-6 sm:min-h-[190px] sm:px-9 sm:py-7" : "min-h-[88px] items-center justify-between px-3.5 py-3 sm:px-4"}`}>
+        {editorial ? (
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-[#929292]">INFIBETTER</span>
+            <h3 className="line-clamp-3 text-[18px] font-medium leading-[1.35] tracking-[-0.02em] text-[#171717] sm:text-[20px]">{product.name}</h3>
+          </div>
+        ) : (
+          <h3 className="min-w-0 flex-1 line-clamp-2 text-[12px] font-medium leading-[1.4] tracking-[-0.015em] text-[#262626] sm:text-[13px]">{product.name}</h3>
+        )}
+        <div className={`flex flex-none flex-col gap-1 ${editorial ? "items-end pt-7 text-right" : "items-end justify-center text-right"}`}>
+          <span className={`${editorial ? "text-[16px] sm:text-[18px]" : "text-[13px] sm:text-[14px]"} whitespace-nowrap font-medium leading-tight text-[#E11D48]`}>{displayPrice}</span>
+          {price !== null && comparePrice !== null && comparePrice > price && (
+            <span className={`${editorial ? "text-[12px] sm:text-[13px]" : "text-[10px] sm:text-[11px]"} whitespace-nowrap font-normal leading-tight text-neutral-400 line-through`}>{displayComparePrice}</span>
+          )}
         </div>
       </div>
     </Link>
@@ -354,6 +362,82 @@ export default function Collections({
 
   const categoryScrollRef = useRef<HTMLDivElement>(null);
   const mobileProductsScrollRef = useRef<HTMLDivElement>(null);
+  const reviewSliderRef = useRef<HTMLDivElement>(null);
+  const everydayPlusSliderRef = useRef<HTMLDivElement>(null);
+  const [homepageReviews, setHomepageReviews] = useState<HomepageReview[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadHomepageReviews() {
+      const { data, error } = await supabase
+        .from("product_reviews")
+        .select(
+          "id, product_id, customer_name, rating, title, content, image_url, video_url, verified_purchase, created_at",
+        )
+        .eq("is_visible", true)
+        .not("title", "ilike", "[SAMPLE]%")
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      if (error) {
+        console.error("Failed to load homepage reviews:", error);
+        return;
+      }
+
+      if (!active) return;
+
+      const rows = (data ?? []) as HomepageReview[];
+      const withImages = rows.filter((review) => Boolean(review.image_url));
+      const withVideo = rows.filter(
+        (review) => !review.image_url && Boolean(review.video_url),
+      );
+      const textOnly = rows.filter(
+        (review) => !review.image_url && !review.video_url,
+      );
+
+      // Prioritize real customer photos, then videos, then text-only reviews.
+      setHomepageReviews([...withImages, ...withVideo, ...textOnly].slice(0, 12));
+    }
+
+    loadHomepageReviews();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const slider = reviewSliderRef.current;
+    if (!slider || homepageReviews.length < 2) return;
+
+    // Auto-advance one review card at a time, then smoothly loop to the start.
+    const interval = window.setInterval(() => {
+      const firstCard = slider.firstElementChild as HTMLElement | null;
+      if (!firstCard) return;
+
+      const styles = window.getComputedStyle(slider);
+      const gap =
+        Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
+      const step = firstCard.getBoundingClientRect().width + gap;
+      const maxScroll = slider.scrollWidth - slider.clientWidth;
+
+      // Nothing to slide if all review cards already fit in the viewport.
+      if (maxScroll <= 8 || step <= 0) return;
+
+      const nextLeft =
+        slider.scrollLeft >= maxScroll - step * 0.65
+          ? 0
+          : Math.min(slider.scrollLeft + step, maxScroll);
+
+      slider.scrollTo({
+        left: nextLeft,
+        behavior: "smooth",
+      });
+    }, 3600);
+
+    return () => window.clearInterval(interval);
+  }, [homepageReviews.length]);
   // Use the actual image from the Travelmag Hybrid product for the Travel Power category card.
   // Product images come from the product data already passed into this component.
   const travelPowerProduct = [...products, ...newArrivals].find((product) => {
@@ -445,7 +529,7 @@ export default function Collections({
       ].join(" ").toLowerCase();
       return !/iphone[-_ ]?cases?|phone[-_ ]?cases?|mobile[-_ ]?cases?/.test(categoryText);
     })
-    .slice(0, 4);
+    .slice(0, 12);
 
   // Desktop: keep a 5-product window. Mobile renders the full list
   // inside a native horizontal scroller so touch-swipe works across all items.
@@ -485,6 +569,23 @@ export default function Collections({
     }
   };
 
+  const scrollEverydayPlus = (direction: "next" | "prev") => {
+    const slider = everydayPlusSliderRef.current;
+    if (!slider) return;
+
+    const firstCard = slider.firstElementChild as HTMLElement | null;
+    if (!firstCard) return;
+
+    const styles = window.getComputedStyle(slider);
+    const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
+    const distance = firstCard.getBoundingClientRect().width + gap;
+
+    slider.scrollBy({
+      left: direction === "next" ? distance : -distance,
+      behavior: "smooth",
+    });
+  };
+
   return (
     <section
       className="
@@ -516,90 +617,32 @@ export default function Collections({
       {/* =====================================================
           SHOP BY CATEGORY
       ====================================================== */}
-
-      <div className="flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h2
-            className="
-              font-sans
-              text-[27px]
-              font-bold
-              leading-[1.08]
-              tracking-[-0.035em]
-              text-[#171717]
-              sm:text-[31px]
-              lg:text-[34px]
-            "
-          >
-            Shop by category
-          </h2>
-
-          <p
-            className="
-              mt-2.5
-              text-[11px]
-              leading-relaxed
-              text-neutral-500
-              sm:text-[12px]
-            "
-          >
-            Find exactly what you're looking for.
-          </p>
-        </div>
-
-        {/* MOBILE CATEGORY NAV */}
-        <div className="flex shrink-0 items-center gap-1.5 sm:hidden">
-          <button
-            type="button"
-            aria-label="Previous category"
-            onClick={() =>
-              categoryScrollRef.current?.scrollBy({
-                left: -280,
-                behavior: "smooth",
-              })
-            }
-            className="
-              flex h-8 w-8 items-center justify-center
-              rounded-full border border-[#E2E6EB] bg-white
-              text-neutral-500 shadow-[0_2px_8px_rgba(15,23,42,0.05)]
-              transition-all active:scale-95 hover:text-[#171717]
-            "
-          >
-            <ChevronLeft size={14} strokeWidth={2} />
-          </button>
-
-          <button
-            type="button"
-            aria-label="Next category"
-            onClick={() =>
-              categoryScrollRef.current?.scrollBy({
-                left: 280,
-                behavior: "smooth",
-              })
-            }
-            className="
-              flex h-8 w-8 items-center justify-center
-              rounded-full border border-[#E2E6EB] bg-white
-              text-[#171717] shadow-[0_2px_8px_rgba(15,23,42,0.05)]
-              transition-all active:scale-95 hover:bg-white
-            "
-          >
-            <ChevronRight size={14} strokeWidth={2} />
-          </button>
-        </div>
+      <div className="mb-6 text-center sm:mb-8">
+        <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#FF4D00] sm:text-[10px]">
+          INFIBETTER COLLECTIONS
+        </p>
+        <h2
+          className="
+            font-sans text-[25px] font-bold leading-[1.08]
+            tracking-[-0.04em] text-[#171717]
+            sm:text-[30px] lg:text-[34px]
+          "
+        >
+          Explore Charging Essentials
+        </h2>
+        <p className="mx-auto mt-2 max-w-[440px] text-[12px] leading-relaxed text-[#737B87] sm:text-[13px]">
+          Find the right power for home, work and everywhere in between.
+        </p>
       </div>
 
-      {/* SHOP BY CATEGORY ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â three balanced feature cards */}
       <div
         ref={categoryScrollRef}
+        aria-label="Shop by category"
         className="
-          mt-5
-          -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto
-          overscroll-x-contain px-4 pb-2
-          [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
-          sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible
-          sm:px-0 sm:pb-0 sm:snap-none
-          lg:mt-6 lg:grid-cols-4 lg:gap-5
+          mx-0 grid grid-cols-3 items-stretch gap-2 overflow-visible
+          px-0 pb-2
+          sm:grid-cols-2 sm:gap-4 sm:pb-0
+          lg:mx-auto lg:max-w-[1160px] lg:grid-cols-3 lg:gap-6
         "
       >
         {collections.map((item, index) => (
@@ -608,75 +651,61 @@ export default function Collections({
             to="/shop"
             search={{ category: item.slug } as never}
             className="
-              group flex min-h-[84px] w-[min(300px,84vw)] flex-none snap-start items-center gap-3
-              rounded-[16px] border border-[#E8E8E8]
-              bg-white p-2.5
-              shadow-[0_4px_14px_rgba(17,24,39,0.055),inset_0_1px_0_rgba(255,255,255,0.95)]
-              backdrop-blur-xl
+              group flex min-w-0 w-full flex-col overflow-hidden rounded-[14px]
+              border border-[#E9EAEC] bg-white
               transition-all duration-300
-              hover:-translate-y-0.5 hover:border-white
-              hover:bg-white
-              hover:shadow-[0_9px_22px_rgba(17,24,39,0.09),inset_0_1px_0_rgba(255,255,255,1)]
-              sm:min-h-[88px] sm:w-auto sm:min-w-0 sm:flex-auto sm:snap-align-none sm:gap-3 sm:p-2.5
-              lg:min-h-[92px] lg:gap-3 lg:p-3
+              hover:-translate-y-1 hover:border-[#DDE3EA]
+              hover:bg-white hover:shadow-[0_14px_34px_rgba(15,23,42,0.09)]
+              sm:rounded-[18px]
+              lg:min-h-[250px]
             "
           >
-            <div
-              className="
-                relative flex h-[58px] w-[58px] flex-none
-                items-center justify-center overflow-hidden
-                rounded-full border border-[#E8E8E8] bg-white
-                shadow-[0_3px_10px_rgba(17,24,39,0.06),inset_0_1px_0_rgba(255,255,255,0.95)]
-                transition-all duration-300
-                group-hover:scale-[1.03] group-hover:shadow-[0_6px_15px_rgba(17,24,39,0.10)]
-                sm:h-[62px] sm:w-[62px]
-                lg:h-[66px] lg:w-[66px]
-              "
-            >
+            <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-white">
               <img
-                src={index === 3 ? travelPowerImage : categoryImages[index]}
+                src={index === 2 ? travelPowerImage : categoryImages[index]}
                 alt={item.title}
                 loading="lazy"
+                draggable={false}
                 className="
-                  h-full w-full object-contain p-1.5
+                  block h-[84%] w-[84%] object-contain object-center
+                  bg-white
                   transition-transform duration-500 ease-out
-                  group-hover:scale-[1.06]
+                  group-hover:scale-[1.02]
                 "
               />
             </div>
 
-            <div className="min-w-0 flex-1">
-              <h3
-                className="
-                  truncate text-[12px] font-bold leading-5
-                  tracking-[-0.025em] text-[#171717]
-                  transition-colors group-hover:text-[#0066E6]
-                  sm:text-[12px] lg:text-[13px]
-                "
-              >
-                {item.title}
-              </h3>
-              <p className="mt-0.5 text-[10px] leading-4 text-[#7A8493] sm:text-[10px] lg:text-[11px]">
-                Explore collection
-              </p>
-            </div>
+            <div className="flex min-h-[58px] items-center justify-between gap-1.5 px-2 py-2 sm:min-h-[76px] sm:gap-3 sm:px-5 sm:py-4">
+              <div className="min-w-0">
+                <h3
+                  className="
+                    text-[10px] font-semibold leading-tight
+                    tracking-[-0.025em] text-[#171717]
+                    transition-colors group-hover:text-[#FF4D00]
+                    sm:text-[17px] lg:text-[18px]
+                  "
+                >
+                  {item.title}
+                </h3>
+                <p className="mt-0.5 truncate text-[8px] leading-tight text-[#7A8493] sm:mt-1 sm:text-[12px]">
+                  {item.subtitle}
+                </p>
+              </div>
 
-            <span
-              className="
-                flex h-8 w-8 flex-none items-center justify-center
-                rounded-full border border-[#E8E8E8] bg-white
-                text-[#344054]
-                shadow-[0_3px_10px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,0.95)]
-                backdrop-blur-xl
-                transition-all duration-300
-                group-hover:scale-105 group-hover:border-white
-                group-hover:bg-white/95 group-hover:text-[#0066E6]
-                group-hover:shadow-[0_5px_14px_rgba(15,23,42,0.15),inset_0_1px_0_rgba(255,255,255,1)]
-              "
-              aria-hidden="true"
-            >
-              <ArrowRight size={13} strokeWidth={1.8} />
-            </span>
+              <span
+                className="
+                  flex h-6 w-6 flex-none items-center justify-center sm:h-9 sm:w-9
+                  rounded-full border border-[#E5E7EB] bg-white
+                  text-[#344054] shadow-[0_3px_10px_rgba(15,23,42,0.07)]
+                  transition-all duration-300
+                  group-hover:border-[#FF4D00] group-hover:bg-[#FF4D00]
+                  group-hover:text-white group-hover:translate-x-0.5
+                "
+                aria-hidden="true"
+              >
+                <ArrowRight size={12} strokeWidth={1.8} className="sm:!h-[15px] sm:!w-[15px]" />
+              </span>
+            </div>
           </Link>
         ))}
       </div>
@@ -684,245 +713,6 @@ export default function Collections({
       {/* VOUCHER SLIDER ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â BELOW SHOP BY CATEGORY */}
       <VoucherSlider />
 
-      {/* =====================================================
-          FIND YOUR NEXT UPGRADE
-      ====================================================== */}
-
-      <div className="mt-7 sm:mt-8">
-          {/* HEADER */}
-          <div className="flex items-end justify-between">
-            <div>
-              <h2
-                className="
-                  font-sans text-[28px] font-bold leading-none
-                  tracking-[-0.03em] text-[#171717]
-                  sm:text-[32px] lg:text-[34px]
-                "
-              >
-                Find your next upgrade
-              </h2>
-
-              <p className="mt-2 flex items-center gap-1.5 text-[10px] text-neutral-500 sm:text-[11px]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
-                The products our customers love most.
-              </p>
-            </div>
-          </div>
-
-          {/* NEW ARRIVALS LEFT, VIEW ALL RIGHT */}
-          <div className="mt-3 flex min-h-12 w-full items-center justify-between gap-3 bg-transparent p-0">
-              <div className="flex min-w-0 flex-1 max-w-full items-center gap-1.5 overflow-x-auto whitespace-nowrap py-2 pl-2 pr-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <button
-  type="button"
-  aria-current={activeCollectionTab === "new-arrivals" ? "true" : undefined}
-  onClick={() => {
-    setActiveCollectionTab("new-arrivals");
-    setDesktopStartIndex(0);
-  }}
-  className={`flex h-7 sm:h-8 flex-none items-center justify-center whitespace-nowrap rounded-[7px] px-2.5 sm:px-4 text-[8px] sm:text-[9px] font-semibold tracking-[-0.01em] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED] ${
-    activeCollectionTab === "new-arrivals"
-      ? "bg-[#EAF8EF] text-[#15803D] ring-[#86EFAC]"
-      : "bg-white text-neutral-500"
-  }`}
->
-  New Arrivals
-</button>
-
-{visibleHomepageTiles.map((tile) => (
-  <button
-    key={tile.id}
-    type="button"
-    aria-current={activeCollectionTab === tile.id ? "true" : undefined}
-    onClick={() => {
-      setActiveCollectionTab(tile.id);
-      setDesktopStartIndex(0);
-    }}
-    className={`flex h-7 sm:h-8 flex-none items-center justify-center whitespace-nowrap rounded-[7px] px-2.5 sm:px-4 text-[8px] sm:text-[9px] font-semibold tracking-[-0.01em] shadow-[0_2px_7px_rgba(15,23,42,0.08)] ring-1 ring-[#E4E8ED] ${
-      activeCollectionTab === tile.id
-        ? "bg-[#EAF8EF] text-[#15803D] ring-[#86EFAC]"
-        : "bg-white text-neutral-500"
-    }`}
-  >
-    <span className="flex items-center gap-1.5">
-      {tile.category_slug.toLowerCase().includes("travel") ? (
-        <Plane size={11} />
-      ) : tile.title.toLowerCase().includes("qi2") ? (
-        <Zap size={11} />
-      ) : (
-        <BatteryCharging size={11} />
-      )}
-      {tile.title}
-    </span>
-  </button>
-))}
-
-              </div>
-            <Link
-              to="/shop"
-              className="group ml-auto hidden h-8 flex-none sm:flex items-center justify-center gap-1.5 rounded-[8px] border border-white/90 bg-white/65 px-3.5 text-[9px] font-semibold text-[#0066E6] shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl transition-all duration-200 hover:bg-white/90 hover:shadow-[0_4px_12px_rgba(15,23,42,0.12)]"
-            >
-              View all
-              <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-
-          {/* PRODUCTS */}
-
-        <div className="relative mt-3">
-          {activeProducts.length > 0 ? (
-            <>
-              {/* MOBILE CAROUSEL */}
-              <div className="relative w-full min-w-0 lg:hidden">
-                <div
-                  ref={mobileProductsScrollRef}
-                  aria-label="New arrival products"
-                  className="
-                    flex w-full min-w-0 snap-x snap-mandatory gap-3
-                    overflow-x-auto overflow-y-hidden overscroll-x-contain
-                    touch-pan-x [-webkit-overflow-scrolling:touch]
-                    pb-3 pr-4 scroll-smooth
-                    [scrollbar-width:none]
-                    [&::-webkit-scrollbar]:hidden
-                  "
-                >
-                  {activeProducts.map((product, index) => (
-                    <div
-                      key={product.id}
-                      data-product-card
-                      className="w-[min(280px,80vw)] flex-none snap-start"
-                    >
-                      <ProductMiniCard
-                        product={product}
-                        floatDelay={(index % 5) * 0.35}
-                        fallbackImage={
-                          demoProductImages[index % demoProductImages.length]
-                        }
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {activeProducts.length > 1 && (
-                  <div className="pointer-events-none absolute right-2 top-[132px] z-20 flex items-center">
-                    <button
-                      type="button"
-                      onClick={() => scrollMobileProducts("next")}
-                      aria-label="Next products"
-                      className="
-                        pointer-events-auto relative flex h-8 w-8 items-center justify-center
-                        overflow-hidden rounded-full border border-white/70
-                        bg-gradient-to-b from-white/75 via-white/55 to-white/40
-                        text-neutral-700/80
-                        shadow-[0_3px_10px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]
-                        backdrop-blur-xl transition-all active:scale-95
-                      "
-                    >
-                      <span aria-hidden="true" className="pointer-events-none absolute inset-x-1 top-px h-1/2 rounded-full bg-gradient-to-b from-white/80 to-transparent" />
-                      <ChevronRight size={14} strokeWidth={1.8} className="relative z-10" />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* DESKTOP PRODUCT GRID */}
-              <div className="hidden lg:block">
-                <div className="grid grid-cols-4 gap-3 xl:grid-cols-5">
-                  {desktopProducts.map((product, index) => (
-                    <ProductMiniCard
-                      key={product.id}
-                      product={product}
-                      floatDelay={((desktopStartIndex + index) % 5) * 0.35}
-                      fallbackImage={
-                        demoProductImages[
-                          (desktopStartIndex + index) % demoProductImages.length
-                        ]
-                      }
-                    />
-                  ))}
-                </div>
-
-                {activeProducts.length > 5 && (
-                  <div className="mt-3 flex items-center justify-end gap-1">
-                    <span className="mr-2 text-[9px] text-neutral-400">
-                       {desktopStartIndex + 1}{"–"}
-                      {Math.min(
-                        desktopStartIndex + 5,
-                        activeProducts.length,
-                      )}{" "}
-                      / {activeProducts.length}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={prevDesktopProducts}
-                      disabled={!canGoDesktopPrev}
-                      aria-label="Previous products"
-                      className="
-                        flex h-8 w-8 items-center justify-center rounded-full
-                        border border-neutral-200 bg-white text-neutral-500
-                        transition-all hover:bg-white
-                        disabled:cursor-not-allowed disabled:opacity-40
-                      "
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={nextDesktopProducts}
-                      disabled={!canGoDesktopNext}
-                      aria-label="Next products"
-                      className="
-                        flex h-8 w-8 items-center justify-center rounded-full
-                        border border-neutral-200 bg-white text-neutral-700
-                        transition-all hover:bg-white
-                        disabled:cursor-not-allowed disabled:opacity-40
-                      "
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <div
-              className="
-                flex min-h-[180px] items-center justify-center
-                rounded-xl border border-dashed border-neutral-200
-                bg-white text-[11px] text-neutral-400
-              "
-            >
-              No products available.
-            </div>
-          )}
-        </div>
-      </div>
-
-
-      {/* =====================================================
-          FEATURED CASE ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ABOVE BEST CHOICE
-      ====================================================== */}
-      <FeaturedCaseSection />
-
-      {/* POWER STATION */}
-      <PowerStationSection />
-
-      {/* =====================================================
-          FEATURED PRODUCT ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ABOVE EVERYDAY PLUS
-      ====================================================== */}
-      {everydayPlusProducts.length > 0 && (
-        <FeaturedProductSection
-          name="MAGFOLD ULTRA 25W"
-          description="A compact 25W magnetic wireless charger, designed for effortless everyday charging."
-          image={magfoldFeaturedImage}
-          slug="magfold-ultra-25w"
-          eyebrow="INFIBETTER FEATURED"
-        />
-      )}
-
-      {/* TRAVELMAG HYBRID 10K BANNER */}
-      <TravelMagBanner />
       {/* =====================================================
           EVERYDAY PLUS ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â EVERYDAY ACCESSORIES
       ====================================================== */}
@@ -940,45 +730,54 @@ export default function Collections({
             </p>
           </div>
 
-          <Link
-            to="/shop"
-            className="group mb-0.5 flex h-8 flex-none items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 text-[9px] font-semibold text-[#0066E6] shadow-[0_2px_8px_rgba(15,23,42,0.045)] transition-all hover:border-[#0066E6]/30 hover:bg-[#F8FBFF]"
-          >
-            View all
-            <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
-          </Link>
+          <div className="mb-0.5 flex flex-none items-center gap-2">
+            <button
+              type="button"
+              onClick={() => scrollEverydayPlus("prev")}
+              aria-label="Previous Everyday Plus products"
+              className="hidden h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#344054] shadow-sm transition hover:border-[#0066E6] hover:text-[#0066E6] sm:inline-flex"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollEverydayPlus("next")}
+              aria-label="Next Everyday Plus products"
+              className="hidden h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#344054] shadow-sm transition hover:border-[#0066E6] hover:text-[#0066E6] sm:inline-flex"
+            >
+              <ChevronRight size={15} />
+            </button>
+            <Link
+              to="/shop"
+              className="group flex h-8 flex-none items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 text-[9px] font-semibold text-[#0066E6] shadow-[0_2px_8px_rgba(15,23,42,0.045)] transition-all hover:border-[#0066E6]/30 hover:bg-[#F8FBFF]"
+            >
+              View all
+              <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
         </div>
 
         {everydayPlusProducts.length > 0 ? (
-          <>
-            {/* MOBILE ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â HORIZONTAL SLIDER */}
-            <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-3 pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden">
-              {everydayPlusProducts.map((product, index) => (
-                <div key={`everyday-plus-mobile-${product.id}`} className="w-[min(280px,80vw)] flex-none snap-start">
-                  <ProductMiniCard
-                    product={product}
-                    floatDelay={(index % 4) * 0.35}
-                    fallbackImage={banner02}
-                    badgeLabel="Everyday Plus"
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* DESKTOP ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â PRODUCT GRID */}
-            <div className="mt-4 hidden w-full min-w-0 grid-cols-4 gap-3 sm:grid sm:gap-4">
-              {everydayPlusProducts.map((product, index) => (
+          <div
+            ref={everydayPlusSliderRef}
+            className="mt-6 flex w-full snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4"
+            aria-label="Everyday Plus products carousel"
+          >
+            {everydayPlusProducts.map((product, index) => (
+              <div
+                key={`everyday-plus-${product.id}`}
+                className="w-full min-w-0 flex-none basis-[78%] snap-start sm:basis-[calc((100%_-_1rem)/2)] lg:basis-[calc((100%_-_3rem)/4)]"
+              >
                 <ProductMiniCard
-                  key={`everyday-plus-desktop-${product.id}`}
                   product={product}
                   floatDelay={(index % 4) * 0.35}
                   fallbackImage={banner02}
                   badgeLabel="Everyday Plus"
-                  fluid
+                  editorial
                 />
-              ))}
-            </div>
-          </>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="mt-4 flex min-h-[88px] items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-white px-4 text-center text-[11px] text-neutral-400">
             No everyday products available yet.
@@ -986,92 +785,155 @@ export default function Collections({
         )}
       </div>
 
-      {/* =====================================================
-          CUSTOMER REVIEWS OVERVIEW
-          Links to the all-reviews page.
-      ====================================================== */}
       <section
         aria-labelledby="customer-reviews-heading"
-        className="
-          mt-9 rounded-[18px] border border-[#E8E8E8] bg-white
-          px-5 py-6 shadow-[0_3px_14px_rgba(17,24,39,0.035)]
-          sm:mt-11 sm:px-7 sm:py-7
-          lg:grid lg:grid-cols-[1.35fr_1fr] lg:gap-8 lg:px-8 lg:py-7
-        "
+        className="relative left-1/2 mt-12 w-screen -translate-x-1/2 overflow-hidden bg-white py-8 sm:mt-14 sm:py-10 lg:py-12"
       >
-        <div className="flex min-w-0 flex-col items-start justify-center">
-          <p className="mb-3 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#0066E6] sm:text-[10px]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
-            Customer feedback
-          </p>
-
-          <h2
-            id="customer-reviews-heading"
-            className="max-w-xl font-sans text-[25px] font-semibold leading-[1.12] tracking-[-0.04em] text-[#111111] sm:text-[30px] lg:text-[34px]"
-          >
-            What customers are saying
-          </h2>
-
-          <p className="mt-3 max-w-[440px] text-[12px] leading-[1.65] text-[#626B78] sm:text-[13px]">
-            Discover feedback on the accessories people use every day, at home, at work, and on the move.
-          </p>
+        <div className="mb-5 flex items-end justify-between gap-4 px-5 sm:mb-7 sm:px-8 lg:px-12">
+          <div className="min-w-0">
+            <p className="mb-2 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#0066E6] sm:text-[10px]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
+              Real customer feedback
+            </p>
+            <h2
+              id="customer-reviews-heading"
+              className="font-sans text-[22px] font-semibold leading-tight tracking-[-0.04em] text-[#111111] sm:text-[28px] lg:text-[32px]"
+            >
+              Loved by customers. Seen in real life.
+            </h2>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-[#697586] sm:text-[13px]">
+              Real experiences from people who use INFIBETTER every day.
+            </p>
+          </div>
 
           <a
             href="/reviews"
-            className="
-              group mt-5 inline-flex min-h-10 items-center justify-center gap-3
-              rounded-[11px] bg-[#171717] px-4 py-2.5
-              text-[11px] font-semibold text-white
-              shadow-[0_2px_5px_rgba(0,0,0,0.12)]
-              transition-all duration-200 hover:-translate-y-0.5
-              hover:bg-[#303030] hover:shadow-[0_5px_12px_rgba(0,0,0,0.15)]
-              focus-visible:outline-none focus-visible:ring-2
-              focus-visible:ring-[#0066E6] focus-visible:ring-offset-2
-            "
+            className="group inline-flex min-h-9 flex-none items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-3.5 text-[10px] font-semibold text-[#263445] transition hover:border-[#0066E6] hover:text-[#0066E6] sm:min-h-10 sm:px-4 sm:text-[11px]"
           >
-            Read all reviews
-            <ArrowRight
-              size={14}
-              strokeWidth={2}
-              className="transition-transform group-hover:translate-x-0.5"
-            />
+            View all
+            <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
           </a>
         </div>
 
-        <div
-          className="
-            mt-6 flex min-w-0 flex-col justify-between gap-6
-            border-t border-[#E5E7EB] pt-5
-            sm:mt-7 sm:pt-6
-            lg:mt-0 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0
-          "
-        >
-          <div>
-            <p className="mb-3 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#0066E6] sm:text-[10px]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#0066E6]" />
-              Our review community
-            </p>
-            <p className="font-sans text-[25px] font-semibold leading-none tracking-[-0.045em] text-[#111111] sm:text-[30px] lg:text-[34px]">
-              All product reviews
-            </p>
-            <p className="mt-2 text-[12px] leading-relaxed text-[#626B78] sm:text-[13px]">
-              One place to explore customer feedback across INFIBETTER.
-            </p>
-          </div>
+        {homepageReviews.length > 0 ? (
+          <div
+            ref={reviewSliderRef}
+            aria-label="Customer reviews slider"
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-5 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-8 lg:gap-5 lg:px-12"
+          >
+            {homepageReviews.map((review) => {
+              const productName =
+                products.find((product) => product.id === review.product_id)?.name ??
+                "INFIBETTER Product";
+              const hasMedia = Boolean(review.image_url || review.video_url);
 
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-[11px] font-medium text-[#303846] sm:text-[12px]">
-            <span className="inline-flex items-center gap-2">
-              <ExternalLink size={14} className="text-[#0066E6]" />
-              Product experiences
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <ShoppingCart size={14} className="text-[#0066E6]" />
-              Product-specific reviews
-            </span>
+              return (
+                <article
+                  key={review.id}
+                  className="group flex w-[280px] flex-none snap-start flex-col overflow-hidden rounded-[18px] border border-[#E7E9ED] bg-white shadow-[0_5px_18px_rgba(15,23,42,0.035)] transition-all duration-300 hover:-translate-y-1 hover:border-[#D8E0EA] hover:shadow-[0_14px_30px_rgba(15,23,42,0.09)] sm:w-[320px] lg:w-[340px]"
+                >
+                  {review.image_url ? (
+                    <a
+                      href={review.image_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group/media relative block aspect-[4/3] overflow-hidden bg-[#F5F7FA]"
+                      aria-label={`View customer photo for ${productName}`}
+                    >
+                      <img
+                        src={review.image_url}
+                        alt={`Customer photo: ${productName}`}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover/media:scale-[1.045]"
+                      />
+                      <span className="absolute bottom-3 left-3 rounded-full border border-white/20 bg-black/55 px-2.5 py-1 text-[9px] font-medium text-white backdrop-blur-md">
+                        Customer photo
+                      </span>
+                    </a>
+                  ) : review.video_url ? (
+                    <a
+                      href={review.video_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_35%,#34465F_0%,#172337_72%)] text-white"
+                    >
+                      <span className="absolute h-24 w-24 rounded-full border border-white/10 bg-white/[0.04]" />
+                      <span className="relative flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/15 shadow-lg backdrop-blur-md transition-transform duration-300 group-hover:scale-110">
+                        <Play size={19} fill="currentColor" />
+                      </span>
+                      <span className="absolute bottom-3 left-3 text-[10px] font-medium text-white/90">
+                        Customer video
+                      </span>
+                    </a>
+                  ) : (
+                    <div className="relative flex min-h-[142px] items-center overflow-hidden bg-[linear-gradient(135deg,#F5F8FC_0%,#EAF0F7_100%)] px-5 py-5 sm:min-h-[154px]">
+                      <span className="absolute -right-4 -top-9 text-[150px] font-serif leading-none text-[#D9E4F1]">
+                        ”
+                      </span>
+                      <div className="relative z-10">
+                        <span className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#2878D0] shadow-sm">
+                          <MessageSquare size={15} />
+                        </span>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#2878D0]">
+                          Customer story
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-1 flex-col p-4 sm:p-[18px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-0.5 text-[#F5A623]">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <Star
+                            key={index}
+                            size={13}
+                            fill={index < review.rating ? "currentColor" : "none"}
+                            strokeWidth={1.8}
+                          />
+                        ))}
+                      </div>
+                      {review.verified_purchase && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-medium text-[#16865D]">
+                          <BadgeCheck size={11} />
+                          Verified buyer
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="mt-2.5 truncate text-[9px] font-semibold uppercase tracking-[0.06em] text-[#0066E6]">
+                      {productName}
+                    </p>
+                    {review.title && (
+                      <h3 className="mt-1 text-[14px] font-semibold leading-snug text-[#202939]">
+                        {review.title}
+                      </h3>
+                    )}
+                    {review.content && (
+                      <p className="mt-2 line-clamp-3 whitespace-pre-line text-[11px] leading-[1.65] text-[#596273]">
+                        {review.content}
+                      </p>
+                    )}
+
+                    <div className="mt-auto flex items-center gap-2 border-t border-[#ECEEF2] pt-3">
+                      <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#EEF4FB] text-[10px] font-bold uppercase text-[#2869A8]">
+                        {(review.customer_name || "C").trim().charAt(0)}
+                      </span>
+                      <span className="truncate text-[10px] font-semibold text-[#344054]">
+                        {review.customer_name || "Customer"}
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
-        </div>
+        ) : (
+          <div className="px-5 py-8 text-center text-[12px] text-[#7A8493] sm:px-8">
+            Customer reviews will appear here once published.
+          </div>
+        )}
       </section>
-
     </section>
   );
 }

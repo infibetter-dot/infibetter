@@ -1,263 +1,120 @@
-﻿
-import React, { useState } from "react";
+﻿import React from "react";
 
-import caseBanner1 from "@/assets/hero/case_banner.png";
-import caseBanner2 from "@/assets/hero/case_banner1.png";
-import caseBanner3 from "@/assets/hero/case_banner2.png";
+import caseBannerDesktop from "@/assets/hero/case_banner.png";
+import caseBannerMobile from "@/assets/hero/case_banner mobile.png";
 
-const caseImages = [caseBanner1, caseBanner2, caseBanner3];
+const PRODUCT_URL = "/products/infi-mag-105w-gan-charging-station";
 
-const PRODUCT_URL = "/products/magcool-x7-25w";
-
-const productUsps = [
-  { label: "Up to 105W", icon: "power" },
-  { label: "Retractable cables", icon: "cable" },
-  { label: "Magnetic wireless", icon: "magnetic" },
+const mobileBenefits = [
+  "Retractable USB-C",
+  "2-in-1 Magnetic",
+  "65W Fast Charging",
 ];
 
-function UspIcon({ type }: { type: string }) {
-  const props = {
-    viewBox: "0 0 24 24",
-    className: "h-[13px] w-[13px]",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.8,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    "aria-hidden": true as const,
-  };
-
-  if (type === "power") {
-    return (
-      <svg {...props}>
-        <path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z" />
-      </svg>
-    );
-  }
-
-  if (type === "cable") {
-    return (
-      <svg {...props}>
-        <path d="M7 3v5a5 5 0 0 0 10 0V3" />
-        <path d="M5 3h4M15 3h4" />
-        <path d="M12 13v3a4 4 0 0 0 4 4h1" />
-        <circle cx="19" cy="20" r="1.5" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg {...props}>
-      <path d="M7 3v7a5 5 0 0 0 10 0V3" />
-      <path d="M7 3H4v7a8 8 0 0 0 16 0V3h-3" />
-      <path d="M4 6h3M17 6h3" />
-    </svg>
-  );
-}
+const desktopUsps = [
+  "Dual Retractable USB-C Cables",
+  "2-in-1 Magnetic Wireless Charging",
+  "Up to 65W USB-C PD",
+  "EU / US / UK Plug Compatibility",
+];
 
 const FeaturedCaseSection: React.FC = () => {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-
-  const prevImage = () => {
-    setActiveIndex((prev) =>
-      prev === 0 ? caseImages.length - 1 : prev - 1
-    );
-  };
-
-  const nextImage = () => {
-    setActiveIndex((prev) =>
-      prev === caseImages.length - 1 ? 0 : prev + 1
-    );
-  };
-
-  const handleTouchStart = (
-    event: React.TouchEvent<HTMLDivElement>
-  ) => {
-    setTouchStart(event.touches[0].clientX);
-  };
-
-  const handleTouchEnd = (
-    event: React.TouchEvent<HTMLDivElement>
-  ) => {
-    if (touchStart === null) return;
-
-    const difference =
-      touchStart - event.changedTouches[0].clientX;
-
-    if (Math.abs(difference) > 45) {
-      difference > 0 ? nextImage() : prevImage();
-    }
-
-    setTouchStart(null);
-  };
-
   return (
-    <section className="relative left-1/2 my-6 w-screen -translate-x-1/2 px-3 sm:static sm:my-10 sm:w-full sm:translate-x-0 sm:px-6 lg:my-12 lg:px-8">
-      <div
-        className="
-          mx-auto grid w-full max-w-[1440px]
-          grid-cols-1 overflow-hidden
-          rounded-[22px] border border-[#E7E7E7]
-          bg-white shadow-sm
-          lg:grid-cols-2
-        "
-      >
-        {/* LEFT — PRODUCT INFORMATION */}
-        <div
-          className="
-            order-2 flex min-w-0 flex-col
-            items-center justify-center
-            px-5 py-7 text-center
-            sm:px-12 sm:py-12
-            lg:order-1 lg:px-10 lg:py-10 xl:px-14
-          "
-        >
-          <span className="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#FF4D00] sm:mb-5 sm:text-[11px]">
-            Qi2.2 Fast Charging
-          </span>
+    <section
+      aria-label="INFI Mag 105W GaN Charging Station"
+      className="relative left-1/2 z-0 -mt-px my-0 w-screen max-w-none -translate-x-1/2 overflow-hidden bg-[#071A35]"
+    >
+      {/* MOBILE */}
+      <div className="relative w-full overflow-hidden sm:hidden">
+        <img
+          src={caseBannerMobile}
+          alt="INFI Mag 105W GaN Charging Station with retractable USB-C cables"
+          fetchPriority="high"
+          loading="eager"
+          draggable={false}
+          className="block h-auto w-full"
+        />
 
-          <h2 className="max-w-[520px] text-[27px] font-bold leading-[1.02] tracking-[-0.045em] text-[#171717] sm:text-[40px] sm:leading-[1.08] lg:text-[clamp(34px,3.1vw,46px)]">
-            MAGCOOL X7 25W
-          </h2>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[48%] bg-gradient-to-b from-[#F3F7FF]/95 via-[#F3F7FF]/75 to-transparent" />
 
-          <p className="mt-3 max-w-[440px] text-[13px] leading-[1.55] text-[#777777] sm:mt-5 sm:text-base sm:leading-[1.8]">
-            7-in-1 Wireless Charging with 25W Qi2.2 Fast Charging & TEC Cooling.
+        <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center px-4 pt-[5.5%] text-center">
+          <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-[#E84B12]">
+            INFIBETTER · 105W GAN CHARGING
           </p>
 
-          {/* THREE USP PILLS */}
-          <div className="featured-case-usps">
-            {productUsps.map((usp) => (
-              <div
-                className="featured-case-usp"
-                key={usp.label}
-              >
-                <span className="featured-case-usp-icon">
-                  <UspIcon type={usp.icon} />
-                </span>
-                <span className="featured-case-usp-label">
-                  {usp.label}
-                </span>
-              </div>
-            ))}
-          </div>
+          <h2 className="mt-2 max-w-[320px] text-[clamp(1.45rem,6vw,1.85rem)] font-extrabold leading-[0.98] tracking-[-0.055em] text-[#10233F]">
+            One Station.
+            <span className="block">Every Charge.</span>
+          </h2>
 
-          {/* SHOP NOW */}
-          <a
-            href={PRODUCT_URL}
-            className="
-              group relative mt-5 inline-flex min-h-[42px] min-w-[150px]
-              items-center justify-center gap-3 overflow-hidden rounded-full
-              border border-white/80 bg-gradient-to-b from-white via-white/90 to-[#EDEDED]/90
-              px-6 py-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#171717]
-              shadow-[0_4px_14px_rgba(0,0,0,0.10),inset_0_1px_1px_rgba(255,255,255,1)]
-              backdrop-blur-xl transition-all duration-300 ease-out
-              hover:-translate-y-0.5 hover:border-white
-              hover:shadow-[0_8px_24px_rgba(0,0,0,0.16),inset_0_1px_2px_white]
-              active:translate-y-0 active:scale-[0.97]
-              sm:mt-7
-              before:absolute before:inset-0 before:rounded-full
-              before:bg-gradient-to-br before:from-white/90 before:via-transparent
-              before:to-white/10 before:opacity-80 before:content-['']
-            "
-          >
-            <span className="pointer-events-none absolute left-[15%] top-0 h-full w-[35%] -skew-x-12 bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-70 blur-[2px]" />
-
-            <span className="relative z-10">
-              Shop Now
-            </span>
-
-            <span className="relative z-10 text-sm transition-transform duration-300 group-hover:translate-x-1">
-              →
-            </span>
-          </a>
+          <p className="mt-2 max-w-[285px] text-[10px] font-medium leading-[1.4] text-[#34465F]">
+            Power your devices. Keep your desk tidy.
+          </p>
         </div>
 
-        {/* RIGHT — IMAGE GALLERY */}
-        <div
-          className="
-            relative order-1 isolate h-[260px] w-full min-w-0
-            overflow-hidden bg-[#F3F3F3]
-            sm:h-[360px]
-            lg:order-2 lg:h-full lg:min-h-[420px]
-            xl:min-h-[460px]
-          "
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          {caseImages.map((src, index) => (
-            <img
-              key={src}
-              src={src}
-              alt={`MAGCOOL X7 25W gallery ${index + 1}`}
-              draggable={false}
-              loading={index === 0 ? "eager" : "lazy"}
-              className={`
-                absolute inset-0 block h-full w-full
-                object-cover object-center
-                transition-opacity duration-500 ease-in-out
-                ${
-                  activeIndex === index
-                    ? "z-10 opacity-100"
-                    : "z-0 opacity-0"
-                }
-              `}
-            />
+        <div className="absolute inset-x-0 top-[25%] z-20 flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 px-3">
+          {mobileBenefits.map((benefit) => (
+            <span
+              key={benefit}
+              className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-white/85 bg-[#F5F8FF]/95 px-2.5 py-1 text-[8px] font-bold text-[#18304F] shadow-[0_3px_12px_rgba(0,20,55,0.15)] backdrop-blur-sm"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-[#1677FF]" />
+              {benefit}
+            </span>
           ))}
+        </div>
 
-          <button
-            type="button"
-            onClick={prevImage}
-            aria-label="Previous image"
-            className="absolute left-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/80 text-[#171717] shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-95 sm:left-4 sm:h-9 sm:w-9"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
+        <a
+          href={PRODUCT_URL}
+          className="absolute inset-x-0 top-[86%] z-20 mx-auto flex min-h-10 w-fit min-w-[170px] -translate-y-1/2 items-center justify-center gap-3 rounded-full border border-white/70 bg-[#F5F8FF]/95 px-8 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-[#10233F] shadow-[0_6px_20px_rgba(0,0,0,0.28)] backdrop-blur-sm transition-transform active:scale-[0.98]"
+        >
+          Shop Now <span className="text-sm">→</span>
+        </a>
+      </div>
+
+      {/* DESKTOP: high-contrast white typography over the dark artwork. */}
+      <div className="relative hidden w-full overflow-hidden sm:block sm:aspect-[16/9] lg:aspect-[16/6.5] xl:aspect-[16/6]">
+        <img
+          src={caseBannerDesktop}
+          alt="INFI Mag 105W GaN Charging Station"
+          fetchPriority="high"
+          loading="eager"
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+
+        <div className="relative z-10 flex h-full w-full items-center px-10 lg:px-[8.5%]">
+          <div className="w-full max-w-[540px] text-left text-white">
+            <p className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-[#FF6A2A] drop-shadow-[0_1px_3px_rgba(0,0,0,0.65)]">
+              INFIBETTER · ALL-IN-ONE DESKTOP CHARGING
+            </p>
+
+            <h2 className="max-w-[520px] text-[clamp(2.1rem,4.5vw,4.5rem)] font-extrabold leading-[0.98] tracking-[-0.055em] text-white [text-shadow:0_3px_14px_rgba(0,0,0,0.5)]">
+              One Station.
+              <span className="block">Every Charge.</span>
+            </h2>
+
+            <p className="mt-5 max-w-[390px] text-base font-medium leading-7 text-white/90 [text-shadow:0_2px_8px_rgba(0,0,0,0.65)]">
+              Power your devices. Keep your desk tidy.
+            </p>
+
+            <div className="mt-6 flex max-w-[470px] flex-wrap gap-2">
+              {desktopUsps.map((usp) => (
+                <span
+                  key={usp}
+                  className="inline-flex min-h-9 items-center rounded-full border border-white/70 bg-[#F5F8FF]/95 px-3 py-2 text-xs font-semibold text-[#10233F] shadow-[0_4px_14px_rgba(0,0,0,0.22)]"
+                >
+                  {usp}
+                </span>
+              ))}
+            </div>
+
+            <a
+              href={PRODUCT_URL}
+              className="mt-7 inline-flex min-h-12 items-center justify-center gap-3 rounded-full border border-white/70 bg-[#F5F8FF] px-8 py-3 text-xs font-bold uppercase tracking-[0.05em] text-[#10233F] shadow-[0_6px_22px_rgba(0,0,0,0.28)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white active:scale-[0.98]"
             >
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </button>
-
-          <button
-            type="button"
-            onClick={nextImage}
-            aria-label="Next image"
-            className="absolute right-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/80 text-[#171717] shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-95 sm:right-4 sm:h-9 sm:w-9"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
-
-          <div className="absolute right-3 top-3 z-20 rounded-full bg-black/45 px-3 py-1.5 text-[10px] font-medium tracking-wider text-white backdrop-blur-md sm:right-4 sm:top-4">
-            {activeIndex + 1} / {caseImages.length}
-          </div>
-
-          <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/30 px-3 py-2 backdrop-blur-md sm:bottom-4">
-            {caseImages.map((_, index) => (
-              <button
-                key={index}
-                type="button"
-                aria-label={`Go to image ${index + 1}`}
-                aria-current={activeIndex === index}
-                onClick={() => setActiveIndex(index)}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  activeIndex === index
-                    ? "w-6 bg-white"
-                    : "w-2 bg-white/55 hover:bg-white/90"
-                }`}
-              />
-            ))}
+              Shop Now <span className="text-base">→</span>
+            </a>
           </div>
         </div>
       </div>

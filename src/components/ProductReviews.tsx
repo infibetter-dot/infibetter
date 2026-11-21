@@ -2,20 +2,21 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type FormEvent,
 } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   Star,
-  X,
   ImagePlus,
+  X,
+  LoaderCircle,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 interface ProductReview {
   id: string;
@@ -145,19 +146,117 @@ export default function ProductReviews({
   const [showAllReviews, setShowAllReviews] =
     useState(false);
 
-  const queryClient = useQueryClient();
-  const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
-  const [reviewName, setReviewName] = useState("");
-  const [reviewEmail, setReviewEmail] = useState("");
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewTitle, setReviewTitle] = useState("");
-  const [reviewContent, setReviewContent] = useState("");
-  const [reviewImage, setReviewImage] = useState<File | null>(null);
-  const [reviewImagePreview, setReviewImagePreview] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [isDesktop, setIsDesktop] =
     useState(false);
+
+  // Review submission state
+  const [formOpen, setFormOpen] = useState(false);
+  const [formRating, setFormRating] = useState(5);
+  const [customerName, setCustomerName] = useState("");
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewContent, setReviewContent] = useState("");
+  const [reviewPhoto, setReviewPhoto] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  function handleReviewPhotoChange(file: File | null) {
+    if (!file) return;
+
+    const isImage =
+      file.type.startsWith("image/") ||
+      /\\.(jpe?g|png|webp|gif|bmp|avif)$/i.test(file.name);
+
+    if (!isImage) {
+      window.alert("Please choose an image file (JPG, PNG, WEBP, GIF, BMP or AVIF).");
+      if (photoInputRef.current) photoInputRef.current.value = "";
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      window.alert("Image size must be 10 MB or less.");
+      if (photoInputRef.current) photoInputRef.current.value = "";
+      return;
+    }
+
+    setReviewPhoto(file);
+  }
+
+  async function handleReviewSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!productId || !customerName.trim() || !reviewContent.trim()) return;
+
+    setSubmitting(true);
+    try {
+      let imageUrl: string | null = null;
+
+      if (reviewPhoto) {
+        const safeName = reviewPhoto.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        // INFIBETTER stores customer review photos in Cloudflare R2,
+        // using the same Worker already used by ProductGallery / product admin.
+        const R2_WORKER_URL =
+          "https://nova-deal-spot-upload.97protech-work.workers.dev";
+
+        const extension =
+          reviewPhoto.name.split(".").pop()?.toLowerCase() || "jpg";
+        const fileName =
+          `${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+        const r2Key = `${productId}/reviews/${fileName}`;
+        const uploadUrl = `${R2_WORKER_URL}/${r2Key
+          .split("/")
+          .map(encodeURIComponent)
+          .join("/")}`;
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "PUT",
+          body: reviewPhoto,
+          headers: {
+            "Content-Type":
+              reviewPhoto.type ||
+              `image/${extension === "jpg" ? "jpeg" : extension}`,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          throw new Error(
+            `Cloudflare R2 upload failed: ${uploadResponse.status} ${errorText}`,
+          );
+        }
+
+        // The Worker URL is also the public image URL used by INFIBETTER.
+        imageUrl = uploadUrl;
+      }
+
+      const { error } = await supabase.from("product_reviews").insert({
+        product_id: productId,
+        customer_name: customerName.trim(),
+        rating: formRating,
+        title: reviewTitle.trim() || null,
+        content: reviewContent.trim(),
+        image_url: imageUrl,
+        is_visible: false,
+        verified_purchase: false,
+      });
+
+      if (error) throw error;
+
+      window.alert("Thank you! Your review and photo have been submitted. The photo is stored on Cloudflare R2 and the review will appear after approval.");
+      setFormOpen(false);
+      setFormRating(5);
+      setCustomerName("");
+      setReviewTitle("");
+      setReviewContent("");
+      setReviewPhoto(null);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+      await reviewsQuery.refetch();
+    } catch (error) {
+      console.error("SUBMIT PRODUCT REVIEW ERROR:", error);
+      window.alert("Unable to submit your review. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   /* =======================================================
      RESPONSIVE REVIEW COUNT
@@ -255,8 +354,20 @@ export default function ProductReviews({
     },
   });
 
-  const reviews =
-    reviewsQuery.data ?? [];
+  const reviews = useMemo(() => {
+    const rows = reviewsQuery.data ?? [];
+
+    // Preserve Admin ordering within each group, but show customer media first.
+    const withPhotos = rows.filter((review) => Boolean(review.image_url));
+    const withVideos = rows.filter(
+      (review) => !review.image_url && Boolean(review.video_url),
+    );
+    const textOnly = rows.filter(
+      (review) => !review.image_url && !review.video_url,
+    );
+
+    return [...withPhotos, ...withVideos, ...textOnly];
+  }, [reviewsQuery.data]);
 
   /* =======================================================
      STATS
@@ -357,120 +468,6 @@ export default function ProductReviews({
     reviews.length >
     initialReviewCount;
 
-  const handleReviewSubmit = async (
-    event: FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
-
-    const customerName = reviewName.trim();
-    const customerEmail = reviewEmail.trim().toLowerCase();
-    const title = reviewTitle.trim();
-    const content = reviewContent.trim();
-
-    if (!customerName || !customerEmail || !content) {
-      toast.error("Please enter your name, order email and review.");
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
-      toast.error("Please enter a valid email address.");
-      return;
-    }
-
-    if (content.length < 10) {
-      toast.error("Please write at least 10 characters.");
-      return;
-    }
-
-    if (reviewImage && !["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"].includes(reviewImage.type)) {
-      toast.error("Please choose a JPEG, PNG, WebP, GIF or AVIF image.");
-      return;
-    }
-
-    if (reviewImage && reviewImage.size > 10 * 1024 * 1024) {
-      toast.error("Image must be 10 MB or smaller.");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      let uploadedImageUrl: string | null = null;
-
-      if (reviewImage) {
-        const uploadData = new FormData();
-        uploadData.append("file", reviewImage);
-        uploadData.append("productId", productId);
-
-        const uploadResponse = await fetch("/api/upload-r2", {
-          method: "POST",
-          body: uploadData,
-        });
-        const uploadResult = await uploadResponse.json();
-
-        if (!uploadResponse.ok || !uploadResult?.success || !uploadResult?.url) {
-          throw new Error(uploadResult?.error || "Image upload failed.");
-        }
-
-        uploadedImageUrl = uploadResult.url;
-      }
-
-      const { error } = await supabase
-        .from("product_reviews")
-        .insert({
-          product_id: productId,
-          customer_name: customerName,
-          customer_email: customerEmail,
-          rating: reviewRating,
-          title: title || null,
-          content,
-          image_url: uploadedImageUrl,
-          video_url: null,
-          verified_purchase: false,
-          is_visible: false,
-          sort_order: 9999,
-        });
-
-      if (error) throw error;
-
-      toast.success("Thanks! Your review has been submitted for approval.");
-      setReviewName("");
-      setReviewEmail("");
-      setReviewRating(5);
-      setReviewTitle("");
-      setReviewContent("");
-      setReviewImage(null);
-      setReviewImagePreview(null);
-      setIsReviewFormOpen(false);
-      await queryClient.invalidateQueries({
-        queryKey: ["product-reviews", productId],
-      });
-    } catch (error) {
-      console.error("PRODUCT REVIEW SUBMIT ERROR:", error);
-      toast.error("Could not submit your review. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  /* =======================================================
-     DATE FORMAT
-  ======================================================= */
-
-  const formatReviewDate = (
-    date: string,
-  ) => {
-    return new Intl.DateTimeFormat(
-      "en-US",
-      {
-        month: "short",
-        year: "numeric",
-      },
-    ).format(
-      new Date(date),
-    );
-  };
-
   /* =======================================================
      LOADING
   ======================================================= */
@@ -498,6 +495,13 @@ export default function ProductReviews({
   /* =======================================================
      EMPTY / ERROR
   ======================================================= */
+
+  if (
+    reviewsQuery.isError ||
+    reviews.length === 0
+  ) {
+    return null;
+  }
 
   /* =======================================================
      MAIN
@@ -568,189 +572,135 @@ export default function ProductReviews({
         <div className="mt-5 flex justify-center">
           <button
             type="button"
-            onClick={() => setIsReviewFormOpen((open) => !open)}
-            aria-expanded={isReviewFormOpen}
-            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[9px] border border-[#00B67A] bg-[#00B67A] px-5 text-[13px] font-medium text-white transition hover:border-[#009F6A] hover:bg-[#009F6A]"
+            onClick={() => setFormOpen((open) => !open)}
+            aria-expanded={formOpen}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#00B67A] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#009E69]"
           >
-            {isReviewFormOpen ? <X size={15} /> : <Star size={14} />}
-            {isReviewFormOpen ? "Close review form" : "Write a Review"}
+            {formOpen ? <X size={16} /> : <Star size={16} />}
+            {formOpen ? "Close review form" : "Write a Review"}
           </button>
         </div>
 
-        {isReviewFormOpen && (
+        {formOpen && (
           <form
             onSubmit={handleReviewSubmit}
-            className="mx-auto mt-5 max-w-[720px] rounded-[14px] border border-[#E5E5E5] bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.035)] sm:p-6"
+            className="mx-auto mt-6 max-w-[900px] rounded-2xl border border-[#E5E5E5] bg-white p-5 sm:p-6"
           >
-            <div className="mb-5">
-              <h3 className="text-[18px] font-semibold tracking-[-0.02em] text-[#111111]">
-                Write a Review
-              </h3>
-              <p className="mt-1 text-[12px] text-[#6B6B6B]">
-                Share your experience with this product.
-              </p>
+            <h3 className="text-base font-semibold text-[#111111]">Share your experience</h3>
+            <p className="mt-1 text-sm text-[#6B6B6B]">Your feedback helps other customers choose.</p>
+
+            <label className="mt-5 block text-xs font-semibold text-[#333333]">Your rating</label>
+            <div className="mt-2 flex items-center gap-1" role="radiogroup" aria-label="Your rating">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  role="radio"
+                  aria-checked={formRating === star}
+                  aria-label={`${star} stars`}
+                  onClick={() => setFormRating(star)}
+                  className="rounded p-1 focus:outline-none focus:ring-2 focus:ring-[#00B67A]"
+                >
+                  <Star size={24} className={star <= formRating ? "fill-[#00B67A] text-[#00B67A]" : "text-[#D1D5DB]"} />
+                </button>
+              ))}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
-                  Your name *
-                </span>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="product-review-name" className="mb-1.5 block text-xs font-medium text-[#333333]">Name *</label>
                 <input
-                  value={reviewName}
-                  onChange={(event) => setReviewName(event.target.value)}
+                  id="product-review-name"
                   required
                   maxLength={80}
-                  autoComplete="name"
-                  placeholder="Enter your name"
-                  className="h-11 w-full rounded-[8px] border border-[#E2E2E2] px-3 text-[13px] outline-none transition focus:border-[#999999]"
+                  value={customerName}
+                  onChange={(event) => setCustomerName(event.target.value)}
+                  placeholder="Your name"
+                  className="h-11 w-full rounded-lg border border-[#D9DDE2] px-3 text-sm outline-none focus:border-[#00B67A]"
                 />
-              </label>
-
-              <label className="block">
-                <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
-                  Order email *
-                </span>
-                <input
-                  type="email"
-                  value={reviewEmail}
-                  onChange={(event) => setReviewEmail(event.target.value)}
-                  required
-                  maxLength={254}
-                  autoComplete="email"
-                  placeholder="Email used for your order"
-                  className="h-11 w-full rounded-[8px] border border-[#E2E2E2] px-3 text-[13px] outline-none transition focus:border-[#999999]"
-                />
-              </label>
-
+              </div>
               <div>
-                <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
-                  Your rating *
-                </span>
-                <div className="flex h-11 items-center gap-1" role="radiogroup" aria-label="Your rating">
-                  {[1, 2, 3, 4, 5].map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={reviewRating === value}
-                      aria-label={`${value} star${value > 1 ? "s" : ""}`}
-                      onClick={() => setReviewRating(value)}
-                      className="flex h-9 w-9 items-center justify-center rounded-md transition hover:bg-[#F5F5F5]"
-                    >
-                      <Star
-                        size={22}
-                        strokeWidth={1.8}
-                        className={reviewRating >= value ? "fill-[#00B67A] text-[#00B67A]" : "text-[#C8C8C8]"}
-                      />
-                    </button>
-                  ))}
-                </div>
+                <label htmlFor="product-review-title" className="mb-1.5 block text-xs font-medium text-[#333333]">Review title (optional)</label>
+                <input
+                  id="product-review-title"
+                  maxLength={120}
+                  value={reviewTitle}
+                  onChange={(event) => setReviewTitle(event.target.value)}
+                  placeholder="Give your review a title"
+                  className="h-11 w-full rounded-lg border border-[#D9DDE2] px-3 text-sm outline-none focus:border-[#00B67A]"
+                />
               </div>
             </div>
 
-            <label className="mt-4 block">
-              <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
-                Review title (optional)
-              </span>
-              <input
-                value={reviewTitle}
-                onChange={(event) => setReviewTitle(event.target.value)}
-                maxLength={120}
-                placeholder="Give your review a title"
-                className="h-11 w-full rounded-[8px] border border-[#E2E2E2] px-3 text-[13px] outline-none transition focus:border-[#999999]"
-              />
-            </label>
-
-            <label className="mt-4 block">
-              <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
-                Your review *
-              </span>
+            <div className="mt-4">
+              <label htmlFor="product-review-content" className="mb-1.5 block text-xs font-medium text-[#333333]">Your review *</label>
               <textarea
+                id="product-review-content"
+                required
+                minLength={5}
+                maxLength={3000}
+                rows={4}
                 value={reviewContent}
                 onChange={(event) => setReviewContent(event.target.value)}
-                required
-                minLength={10}
-                maxLength={2000}
-                rows={5}
-                placeholder="Tell us about your experience..."
-                className="w-full resize-y rounded-[8px] border border-[#E2E2E2] px-3 py-2.5 text-[13px] leading-5 outline-none transition focus:border-[#999999]"
+                placeholder="What did you think about this product?"
+                className="w-full resize-y rounded-lg border border-[#D9DDE2] px-3 py-2.5 text-sm leading-6 outline-none focus:border-[#00B67A]"
               />
-              <span className="mt-1 block text-right text-[10px] text-[#888888]">
-                {reviewContent.length}/2000
-              </span>
-            </label>
+            </div>
 
             <div className="mt-4">
-              <span className="mb-1.5 block text-[12px] font-medium text-[#333333]">
-                Add a photo (optional)
-              </span>
-              <label className="flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-dashed border-[#CFCFCF] px-4 py-3 text-[12px] font-medium text-[#444444] transition hover:border-[#00B67A] hover:bg-[#F5FBF8]">
-                <ImagePlus size={16} className="text-[#00B67A]" />
-                {reviewImage ? "Choose a different photo" : "Upload a photo"}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                  className="sr-only"
-                  disabled={isSubmitting}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] || null;
-                    if (!file) return;
-                    if (file.size > 10 * 1024 * 1024) {
-                      toast.error("Image must be 10 MB or smaller.");
-                      event.target.value = "";
-                      return;
-                    }
-                    setReviewImage(file);
-                    setReviewImagePreview(URL.createObjectURL(file));
-                  }}
-                />
-              </label>
-              <p className="mt-1 text-[10px] text-[#888888]">JPEG, PNG, WebP, GIF or AVIF · Max 10 MB</p>
-              {reviewImagePreview && (
-                <div className="relative mt-3 inline-block">
+              <span className="block text-xs font-medium text-[#333333]">Add a photo (optional)</span>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.bmp,.avif"
+                className="sr-only"
+                onChange={(event) => handleReviewPhotoChange(event.target.files?.[0] ?? null)}
+              />
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-lg border border-dashed border-[#D1D5DB] px-3 py-2 text-xs text-[#333333] hover:border-[#00B67A]"
+              >
+                <ImagePlus size={16} /> Choose photo
+              </button>
+              {reviewPhoto && (
+                <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] p-2.5">
                   <img
-                    src={reviewImagePreview}
-                    alt="Review photo preview"
-                    className="h-28 w-28 rounded-[8px] border border-[#E5E5E5] object-cover"
+                    src={URL.createObjectURL(reviewPhoto)}
+                    alt="Selected review upload preview"
+                    className="h-16 w-16 rounded-lg bg-white object-contain"
                   />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-[#333333]">{reviewPhoto.name}</p>
+                    <p className="mt-1 text-[11px] text-[#777777]">
+                      {(reviewPhoto.size / 1024).toFixed(1)} KB · Ready to upload
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    aria-label="Remove selected photo"
-                    disabled={isSubmitting}
                     onClick={() => {
-                      if (reviewImagePreview) URL.revokeObjectURL(reviewImagePreview);
-                      setReviewImage(null);
-                      setReviewImagePreview(null);
+                      setReviewPhoto(null);
+                      if (photoInputRef.current) photoInputRef.current.value = "";
                     }}
-                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#222222] text-white shadow"
+                    aria-label="Remove photo"
+                    className="rounded-full p-2 text-neutral-500 hover:bg-neutral-200"
                   >
-                    <X size={13} />
+                    <X size={14} />
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setIsReviewFormOpen(false)}
-                disabled={isSubmitting}
-                className="min-h-[42px] rounded-[8px] border border-[#E2E2E2] px-5 text-[13px] font-medium text-[#333333] transition hover:bg-[#F7F7F7] disabled:opacity-50"
-              >
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row">
+              <button type="submit" disabled={submitting} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#00B67A] px-5 py-3 text-sm font-semibold text-white hover:bg-[#009E69] disabled:cursor-not-allowed disabled:opacity-60">
+                {submitting && <LoaderCircle size={16} className="animate-spin" />}
+                {submitting ? "Submitting..." : "Submit Review"}
+              </button>
+              <button type="button" disabled={submitting} onClick={() => setFormOpen(false)} className="min-h-11 rounded-lg border border-[#D9DDE2] px-5 py-3 text-sm text-[#333333] hover:bg-[#F7F7F7]">
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="min-h-[42px] rounded-[8px] bg-[#00B67A] px-6 text-[13px] font-medium text-white transition hover:bg-[#009F6A] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSubmitting ? "Submitting..." : "Submit Review"}
-              </button>
             </div>
-            <p className="mt-3 text-[10px] leading-4 text-[#888888]">
-              Your order email is used to help verify your purchase and is not displayed publicly. Reviews are checked before they appear publicly.
-            </p>
+            <p className="mt-3 text-[11px] leading-5 text-[#777777]">Reviews are checked before they appear publicly.</p>
           </form>
         )}
 
@@ -930,12 +880,6 @@ export default function ProductReviews({
           </div>
         </div>
 
-        {reviews.length === 0 && (
-          <p className="py-10 text-center text-[13px] text-[#6B6B6B]">
-            No reviews yet. Be the first to share your experience.
-          </p>
-        )}
-
         {/* =================================================
             REVIEW LIST
         ================================================= */}
@@ -1064,17 +1008,6 @@ export default function ProductReviews({
                       </div>
                     )}
 
-                    <p
-                      className="
-                        mt-1
-                        text-[10px]
-                        text-[#6B6B6B]
-                      "
-                    >
-                      {formatReviewDate(
-                        review.created_at,
-                      )}
-                    </p>
                   </div>
                 </div>
 

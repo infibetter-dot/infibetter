@@ -403,7 +403,7 @@ function AdminProductsPage() {
 
 
 
-  // Everyday Plus: tối đa 4 sản phẩm, không áp dụng cho Phone Cases.
+  // Everyday Plus: tối đa 12 sản phẩm, không áp dụng cho Phone Cases.
   async function toggleEverydayPlus(product: Product) {
     if (phoneCaseCategoryIds.has(product.category_id ?? "")) {
       window.alert("Everyday Plus không áp dụng cho sản phẩm thuộc danh mục Phone Cases.");
@@ -416,8 +416,8 @@ function AdminProductsPage() {
 
     const nextValue = product.everyday_plus !== true;
     const selectedCount = products.filter((item) => item.everyday_plus === true).length;
-    if (nextValue && selectedCount >= 4) {
-      window.alert("Everyday Plus chỉ được chọn tối đa 4 sản phẩm.");
+    if (nextValue && selectedCount >= 12) {
+      window.alert("Everyday Plus chỉ được chọn tối đa 12 sản phẩm.");
       return;
     }
 
@@ -829,7 +829,7 @@ function AdminProductsPage() {
 
               <p className="mt-2 break-words text-sm text-neutral-500">
 
-                {(error as { message?: string } | null)?.message || "Không đọc được thông tin lỗi từ Supabase. Hãy kiểm tra cột everyday_plus và quyền truy cập bảng products."}
+                {error instanceof Error ? error.message : "Đã xảy ra lỗi không xác định."}
 
               </p>
 

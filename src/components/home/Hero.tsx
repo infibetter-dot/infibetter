@@ -1,312 +1,103 @@
-﻿import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+﻿import { Link } from "@tanstack/react-router";
+import heroDesktop from "@/assets/hero/banner02.png";
+import heroMobile from "@/assets/hero/heromobile.png";
 
-import hero1 from "@/assets/hero/banner02.png";
-import hero2 from "@/assets/hero/banner01.png";
-import hero3 from "@/assets/hero/banner03.png";
-
-const slides = [hero1, hero2, hero3];
-
+/**
+ * INFIBETTER homepage hero
+ * Mobile layout follows the marked reference:
+ * - Hero frame uses the red-box proportion (approximately 0.78:1).
+ * - Copy stays inside the upper green safe area.
+ * - Artwork uses object-contain so the products are never cropped.
+ * - Desktop layout remains independent and unchanged in behavior.
+ */
 export default function Hero() {
-  const [current, setCurrent] = useState(0);
-  const [paused, setPaused] = useState(false);
-
-  /* =====================================================
-     AUTO SLIDE
-  ====================================================== */
-
-  useEffect(() => {
-    if (paused) return;
-
-    const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % slides.length);
-    }, 5000);
-
-    return () => clearInterval(timer);
-  }, [paused]);
-
-  /* =====================================================
-     NAVIGATION
-  ====================================================== */
-
-  const next = () => {
-    setCurrent((prev) => (prev + 1) % slides.length);
-  };
-
-  const prev = () => {
-    setCurrent((prev) =>
-      prev === 0 ? slides.length - 1 : prev - 1
-    );
-  };
-
   return (
     <section
-      className="
-        relative
-        mx-auto
-        w-[calc(100%-32px)]
-        max-w-[1280px]
-        overflow-hidden
-        rounded-[16px]
-        bg-white
-        sm:w-[calc(100%-40px)]
-        sm:rounded-[18px]
-        lg:w-[calc(100%-48px)]
-        lg:aspect-[16/5.4]
-        lg:bg-transparent
-      "
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      aria-label="INFIBETTER Apple Essentials"
+      className="relative left-1/2 z-0 w-screen -translate-x-1/2 overflow-hidden border-0 bg-[#080B12] outline-none"
     >
-      {/* =====================================================
-          MOBILE HERO
-          - Card layout like the reference UI
-          - Image first, content below
-          - No desktop overlay on mobile
-      ====================================================== */}
-      <div className="block lg:hidden">
-        <div className="relative grid w-full overflow-hidden rounded-[12px] bg-[#F3F5F7]">
-          {slides.map((slide, index) => (
-            <img
-              key={`mobile-${slide}`}
-              src={slide}
-              alt=""
-              draggable={false}
-              className={`
-                col-start-1 row-start-1
-                block h-auto w-full
-                object-contain object-center
-                transition-opacity duration-700
-                ${index === current ? "opacity-100" : "opacity-0"}
-              `}
-            />
-          ))}
-        </div>
+      {/* MOBILE HERO */}
+      <div className="relative block aspect-[0.78/1] w-full overflow-hidden bg-[#080B12] sm:hidden">
+        <img
+          src={heroMobile}
+          alt="INFIBETTER smart charging and tech accessories"
+          fetchPriority="high"
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-contain object-center"
+        />
 
-        <div className="px-5 pb-5 pt-4 text-center">
-          <h1 className="text-[27px] font-bold leading-[1.02] tracking-[-0.045em] text-[#171717]">
-            Your Apple <span className="text-[#0877E8]">setup.</span>
-          </h1>
+        {/* Gentle darkening in the copy area for legibility. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-[48%] bg-gradient-to-b from-[#050914]/45 via-[#050914]/20 to-transparent" />
 
-          <p className="mt-2 text-[11px] leading-4 text-neutral-500">
-            Cases, bands &amp; chargers.
-          </p>
+        {/* GREEN SAFE AREA: keep all live copy within this upper region. */}
+        <div className="absolute inset-x-[7%] top-[8.5%] z-10 flex justify-center">
+          <div className="w-full max-w-[88%] text-center text-white">
+            <p className="mb-2 text-[clamp(7px,1.8vw,9px)] font-semibold uppercase tracking-[0.13em] text-white/85">
+              INFIBETTER · APPLE ESSENTIALS
+            </p>
 
-          <div className="mt-3 flex justify-center gap-1.5">
-            {["For travel", "At home", "In the car"].map((label) => (
-              <span
-                key={label}
-                className="
-                  rounded-full
-                  border border-[#D9DDE3]
-                  bg-white
-                  px-3 py-1.5
-                  text-[9px]
-                  font-medium
-                  text-[#4B5563]
-                "
+            <h1 className="text-[clamp(20px,5.8vw,28px)] font-semibold leading-[1.02] tracking-[-0.045em]">
+              Power Up.
+              <br />
+              Stay Connected.
+            </h1>
+
+            <p className="mx-auto mt-2 max-w-[260px] text-[clamp(8px,2.15vw,10px)] leading-[1.4] text-white/90">
+              Smarter charging. Seamless everyday power.
+            </p>
+
+            <div className="mt-3 flex justify-center">
+              <Link
+                to="/shop"
+                className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full border border-white/80 bg-gradient-to-b from-white via-white/95 to-[#E7E7E7] px-3 py-1.5 text-[9px] font-semibold text-[#111827] shadow-[0_4px_14px_rgba(0,0,0,0.18),inset_0_1px_1px_white] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_7px_20px_rgba(0,0,0,0.24)] active:scale-[0.97]"
               >
-                {label}
-              </span>
-            ))}
+                Explore Accessories
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           </div>
-
-          <Link
-            to="/shop"
-            className="
-              group relative isolate mt-3 flex h-11 w-full
-              items-center justify-center gap-2 overflow-hidden
-              rounded-[10px] border border-white/90
-              bg-gradient-to-b from-white via-[#F7F9FC] to-[#E8EDF3]
-              px-4 text-[11px] font-semibold text-[#171717]
-              shadow-[0_7px_18px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(148,163,184,0.16)]
-              transition-all duration-300
-              before:pointer-events-none before:absolute before:inset-y-0 before:left-[-55%]
-              before:w-[45%] before:skew-x-[-20deg]
-              before:bg-gradient-to-r before:from-transparent before:via-white/95 before:to-transparent
-              before:transition-transform before:duration-700
-              hover:before:translate-x-[360%]
-              active:scale-[0.99]
-            "
-          >
-            Shop accessories
-            <ChevronRight
-              size={15}
-              className="transition-transform duration-300 group-hover:translate-x-0.5"
-            />
-          </Link>
-        </div>
-
-        {/* Mobile dots */}
-        <div className="flex items-center justify-center gap-1.5 pb-4">
-          {slides.map((_, index) => (
-            <button
-              key={`mobile-dot-${index}`}
-              type="button"
-              onClick={() => setCurrent(index)}
-              aria-label={`Go to slide ${index + 1}`}
-              className={`
-                h-1 rounded-full transition-all duration-300
-                ${
-                  current === index
-                    ? "w-5 bg-[#0877E8]"
-                    : "w-1.5 bg-[#D1D5DB]"
-                }
-              `}
-            />
-          ))}
         </div>
       </div>
 
-      {/* =====================================================
-          DESKTOP HERO
-      ====================================================== */}
-      <div className="relative hidden h-full lg:block">
-        {slides.map((slide, index) => (
-          <img
-            key={`desktop-${slide}`}
-            src={slide}
-            alt=""
-            draggable={false}
-            className={`
-              absolute inset-0
-              h-full w-full
-              object-cover object-center
-              transition-opacity duration-1000
-              ${index === current ? "opacity-100" : "opacity-0"}
-            `}
-          />
-        ))}
+      {/* DESKTOP / TABLET HERO */}
+      <div className="relative hidden w-full overflow-hidden bg-[#080B12] sm:block">
+        <img
+          src={heroDesktop}
+          alt="INFIBETTER smart charging and tech accessories"
+          fetchPriority="high"
+          draggable={false}
+          className="block h-auto w-full object-contain object-center"
+        />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-white/18 via-white/0 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/65 via-black/25 to-transparent" />
 
-        <div className="container-x relative z-20 flex h-full items-center">
-          <div className="relative max-w-[450px] pl-7 text-[#111827]">
-            <div
-              className="
-                absolute left-0 top-1 bottom-1 w-[2px]
-                rounded-full
-                bg-gradient-to-b
-                from-[#007AFF] via-[#4DA3FF] to-transparent
-              "
-            />
-
-            <div className="mb-3 flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#007AFF] shadow-[0_0_0_4px_rgba(0,122,255,0.10)]" />
-              <span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-[#667085]">
-                INFIBETTER · APPLE ESSENTIALS
-              </span>
-            </div>
-
-            <h1 className="max-w-[410px] text-[48px] font-semibold leading-[1.02] tracking-[-0.045em] text-[#111827]">
-              Power Up.
-              <br />
-              <span className="text-[#007AFF]">Stay Connected.</span>
-            </h1>
-
-            <p className="mt-3 max-w-[350px] text-[12px] leading-5 text-[#667085]">
-              Smart charging solutions designed to keep your devices powered,wherever life takes you.
-              <br />
-              
+        <div className="absolute inset-0 z-10 flex items-center px-10 lg:px-[8.5%]">
+          <div className="w-full max-w-[560px] text-white">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-white/90">
+              INFIBETTER · APPLE ESSENTIALS
             </p>
 
-            <div className="mt-5 flex items-center gap-3">
+            <h1 className="text-[clamp(2.25rem,5.2vw,5rem)] font-semibold leading-[0.98] tracking-[-0.045em]">
+              Power Up.
+              <br />
+              Stay Connected.
+            </h1>
+
+            <p className="mt-5 max-w-[440px] text-base leading-7 text-white/95 lg:text-lg">
+              Smarter charging. Seamless everyday power.
+            </p>
+
+            <div className="mt-8">
               <Link
                 to="/shop"
-                className="
-                  group relative isolate flex h-10 items-center gap-4 overflow-hidden rounded-full
-                  border border-white/90 bg-gradient-to-b from-white via-[#F7F9FC] to-[#E8EDF3]
-                  px-5 text-[11px] font-semibold text-[#171717]
-                  shadow-[0_8px_24px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(148,163,184,0.16)]
-                  transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(15,23,42,0.14)]
-                  before:pointer-events-none before:absolute before:inset-y-0 before:left-[-55%]
-                  before:w-[45%] before:skew-x-[-20deg]
-                  before:bg-gradient-to-r before:from-transparent before:via-white/95 before:to-transparent
-                  before:transition-transform before:duration-700
-                  hover:before:translate-x-[360%]
-                "
+                className="group relative inline-flex min-h-11 items-center justify-center gap-2 overflow-hidden rounded-full border border-white/80 bg-gradient-to-b from-white via-white/95 to-[#E7E7E7] px-6 py-3 text-sm font-semibold text-[#111827] shadow-[0_4px_14px_rgba(0,0,0,0.18),inset_0_1px_1px_white] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.24)] active:translate-y-0 active:scale-[0.97]"
               >
-                Shop accessories
-                <ChevronRight size={13} />
+                <span className="pointer-events-none absolute inset-y-0 left-[-45%] w-[38%] -skew-x-12 bg-gradient-to-r from-transparent via-white to-transparent opacity-80 transition-all duration-700 group-hover:left-[115%]" />
+                <span className="relative z-10">Explore Accessories</span>
+                <span aria-hidden="true" className="relative z-10">→</span>
               </Link>
-
-              <Link
-                to="/shop"
-                className="
-                  flex h-10 items-center rounded-full
-                  border border-black/10 bg-white/55 px-4
-                  text-[11px] font-medium text-[#344054]
-                  backdrop-blur-md transition-all duration-300
-                  hover:border-black/20 hover:bg-white/75
-                "
-              >
-                Explore
-              </Link>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {["Fast Charging", "Wireless Charging", "On the go"].map((label) => (
-                <span
-                  key={label}
-                  className="
-                    rounded-full border border-black/10 bg-white/45
-                    px-3 py-1.5 text-[9px] font-medium text-[#667085]
-                    backdrop-blur-md
-                  "
-                >
-                  {label}
-                </span>
-              ))}
             </div>
           </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={prev}
-          aria-label="Previous slide"
-          className="
-            absolute left-7 top-1/2 z-30 flex h-10 w-10
-            -translate-y-1/2 items-center justify-center rounded-full
-            bg-black/15 text-white backdrop-blur-md transition-all
-            duration-300 hover:bg-white hover:text-black
-          "
-        >
-          <ChevronLeft size={20} />
-        </button>
-
-        <button
-          type="button"
-          onClick={next}
-          aria-label="Next slide"
-          className="
-            absolute right-7 top-1/2 z-30 flex h-10 w-10
-            -translate-y-1/2 items-center justify-center rounded-full
-            bg-black/15 text-white backdrop-blur-md transition-all
-            duration-300 hover:bg-white hover:text-black
-          "
-        >
-          <ChevronRight size={20} />
-        </button>
-
-        <div className="absolute bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2.5">
-          {slides.map((_, index) => (
-            <button
-              key={`desktop-dot-${index}`}
-              type="button"
-              onClick={() => setCurrent(index)}
-              aria-label={`Go to slide ${index + 1}`}
-              className={`
-                h-1 rounded-full transition-all duration-300
-                ${
-                  current === index
-                    ? "w-8 bg-white"
-                    : "w-1 bg-white/40 hover:bg-white/70"
-                }
-              `}
-            />
-          ))}
         </div>
       </div>
     </section>
