@@ -5,6 +5,7 @@ import CartDrawer from "@/components/cart/CartDrawer";
 import {
 
   ArrowRight,
+  Check,
 
   ChevronDown,
 
@@ -23,12 +24,41 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { useCart } from "@/lib/cart";
+import {
+  CURRENCIES,
+  getCurrency,
+  setCurrency as updateCurrency,
+  subscribeToCurrencyChange,
+  type CurrencyCode,
+} from "@/lib/currency-system";
 
 import { supabase } from "@/integrations/supabase/client";
 
 
 type MegaMenuKey = "cases" | "charging" | "lifestyle" | null;
 
+
+
+function CurrencyFlag({ code }: { code: CurrencyCode }) {
+  const flags: Record<CurrencyCode, string> = {
+    USD: "🇺🇸",
+    VND: "🇻🇳",
+    CAD: "🇨🇦",
+    AUD: "🇦🇺",
+    EUR: "🇪🇺",
+    GBP: "🇬🇧",
+    SGD: "🇸🇬",
+  };
+
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex h-[18px] w-[25px] shrink-0 items-center justify-center overflow-hidden rounded-[3px] text-[17px] leading-none"
+    >
+      {flags[code] ?? "🌐"}
+    </span>
+  );
+}
 
 type MegaItem = {
 
@@ -69,6 +99,17 @@ type MegaGroup = {
 
 };
 
+
+type MobileCategory = { name: string; slug: string };
+
+type MobileProduct = {
+  id: string;
+  slug: string;
+  name: string;
+  price: number | string | null;
+  compare_at_price: number | string | null;
+  image_url: string | null;
+};
 
 type MegaSection = {
 
@@ -112,8 +153,16 @@ export function SiteHeader() {
   const [searchValue, setSearchValue] = useState("");
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [currency, setCurrency] = useState<CurrencyCode>(() => getCurrency());
+  const currencyRef = useRef<HTMLDivElement | null>(null);
+  const [mobileScreen, setMobileScreen] = useState<"home" | "collections" | "products">("home");
+  const [mobileSupportOpen, setMobileSupportOpen] = useState(false);
 
   const [mobileExpandedMenu, setMobileExpandedMenu] = useState<MegaMenuKey>(null);
+  const [mobileSelectedCategory, setMobileSelectedCategory] = useState<MobileCategory | null>(null);
+  const [mobileCategoryProducts, setMobileCategoryProducts] = useState<MobileProduct[]>([]);
+  const [mobileProductsLoading, setMobileProductsLoading] = useState(false);
 
   const [megaMenus, setMegaMenus] = useState<MegaSection[]>([]);
 
@@ -464,6 +513,83 @@ export function SiteHeader() {
   };
 
 
+  const openMobileCategory = async (category: MobileCategory) => {
+    setMobileScreen("products");
+    setMobileSelectedCategory(category);
+    setMobileCategoryProducts([]);
+    setMobileProductsLoading(true);
+
+    try {
+      const { data: selectedCategory, error: categoryError } = await supabase
+        .from("categories")
+        .select("id,name,slug,parent_id")
+        .eq("slug", category.slug)
+        .maybeSingle();
+
+      if (categoryError) throw categoryError;
+      if (!selectedCategory) {
+        setMobileCategoryProducts([]);
+        return;
+      }
+
+      const { data: allCategories, error: treeError } = await supabase
+        .from("categories")
+        .select("id,parent_id");
+
+      if (treeError) throw treeError;
+
+      const categoryIds = new Set<string>([selectedCategory.id]);
+      let changed = true;
+
+      while (changed) {
+        changed = false;
+        for (const row of allCategories ?? []) {
+          if (row.parent_id && categoryIds.has(row.parent_id) && !categoryIds.has(row.id)) {
+            categoryIds.add(row.id);
+            changed = true;
+          }
+        }
+      }
+
+      const { data: products, error: productsError } = await supabase
+        .from("products")
+        .select("id,slug,name,price,compare_at_price,image_url,is_active,status,created_at")
+        .eq("is_active", true)
+        .in("category_id", Array.from(categoryIds))
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (productsError) throw productsError;
+
+      setMobileCategoryProducts(
+        ((products ?? []) as any[])
+          .filter((product) => product.status !== "hidden")
+          .map((product) => ({
+            id: product.id,
+            slug: product.slug,
+            name: product.name,
+            price: product.price,
+            compare_at_price: product.compare_at_price,
+            image_url: product.image_url,
+          })),
+      );
+    } catch (error) {
+      console.error("MOBILE MENU CATEGORY PRODUCTS ERROR:", error);
+      setMobileCategoryProducts([]);
+    } finally {
+      setMobileProductsLoading(false);
+    }
+  };
+
+  const closeMobileMenu = () => {
+    setMobileOpen(false);
+    setMobileExpandedMenu(null);
+    setMobileSelectedCategory(null);
+    setMobileScreen("home");
+    setMobileSupportOpen(false);
+    setCurrencyOpen(false);
+  };
+
   const activeMegaMenu =
 
     activeMenu === null
@@ -471,6 +597,104 @@ export function SiteHeader() {
       ? null
 
       : megaMenus.find((menu) => menu.menu_key === activeMenu) ?? null;
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    setCurrency(getCurrency());
+    return subscribeToCurrencyChange((code) => setCurrency(code));
+  }, []);
+
+  useEffect(() => {
+    if (!currencyOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        currencyRef.current &&
+        !currencyRef.current.contains(event.target as Node)
+      ) {
+        setCurrencyOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCurrencyOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [currencyOpen]);
+
+  const selectedCurrency = CURRENCIES[currency];
+
+  // Product prices in Supabase are stored in USD.
+  // Keep the header drawer formatter aligned with the existing INFIBETTER
+  // product-price conversion rules and the shared selected currency state.
+  const HEADER_CURRENCY_RATES: Record<CurrencyCode, number> = {
+    USD: 1,
+    VND: 25500,
+    CAD: 1.38,
+    AUD: 1.52,
+    EUR: 0.88,
+    GBP: 0.75,
+    SGD: 1.28,
+  };
+
+  const HEADER_CURRENCY_LOCALES: Record<CurrencyCode, string> = {
+    USD: "en-US",
+    VND: "vi-VN",
+    CAD: "en-CA",
+    AUD: "en-AU",
+    EUR: "de-DE",
+    GBP: "en-GB",
+    SGD: "en-SG",
+  };
+
+  const formatHeaderProductPrice = (value: unknown): string => {
+    const usd = Number(value);
+    if (!Number.isFinite(usd)) return "—";
+
+    const activeCurrency: CurrencyCode =
+      currency in HEADER_CURRENCY_RATES ? currency : "USD";
+    const converted = usd * HEADER_CURRENCY_RATES[activeCurrency];
+
+    if (!Number.isFinite(converted)) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(usd);
+    }
+
+    const fractionDigits = activeCurrency === "VND" ? 0 : 2;
+    return new Intl.NumberFormat(HEADER_CURRENCY_LOCALES[activeCurrency], {
+      style: "currency",
+      currency: activeCurrency,
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }).format(converted);
+  };
+
+  const selectCurrency = (code: string) => {
+    if (!(code in CURRENCIES)) return;
+    updateCurrency(code as CurrencyCode);
+    setCurrency(code as CurrencyCode);
+    setCurrencyOpen(false);
+  };
+
 
 
   return (
@@ -492,8 +716,6 @@ export function SiteHeader() {
         bg-[#F7F8FA]/95
 
         py-2
-
-        backdrop-blur-xl
 
         sm:py-2.5
 
@@ -1904,201 +2126,396 @@ export function SiteHeader() {
 
 
         {mobileOpen && (
+          <div className="fixed inset-0 z-[200] bg-black/45 lg:hidden">
+            <button
+              type="button"
+              aria-label="Close menu overlay"
+              onClick={closeMobileMenu}
+              className="absolute inset-0 h-full w-full cursor-default"
+            />
 
-          <div
+            <div className="absolute inset-x-0 bottom-0 top-[7vh] flex max-h-[93vh] flex-col overflow-hidden rounded-t-[24px] bg-white shadow-[0_-12px_50px_rgba(0,0,0,0.16)]">
+              <div className="relative flex h-[54px] shrink-0 items-center justify-center bg-white">
+                <span className="h-[4px] w-[44px] rounded-full bg-[#E5E5E5]" />
+                <button
+                  type="button"
+                  onClick={closeMobileMenu}
+                  aria-label="Close menu"
+                  className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-[#17191D]"
+                >
+                  <X size={21} strokeWidth={1.7} />
+                </button>
+              </div>
 
-            className="
+              <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                {mobileScreen === "home" && (
+                  <div className="min-h-full px-5 pb-8 pt-6">
+                    <div className="mb-5">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#F05A28]">
+                        INFIBETTER
+                      </p>
+                      <h2 className="mt-1 text-[25px] font-semibold leading-tight tracking-[-0.055em] text-[#17191D]">
+                        Explore
+                      </h2>
+                      <p className="mt-1 text-[12px] text-[#858B94]">
+                        Find the right gear for your everyday setup.
+                      </p>
+                    </div>
 
-              absolute left-0 right-0 top-[62px]
+                    <div className="flex flex-col gap-2.5">
+                      <Link
+                        to="/shop"
+                        onClick={closeMobileMenu}
+                        className="group flex min-h-[66px] items-center justify-between overflow-hidden rounded-[12px] bg-[#17191D] px-4 text-white shadow-[0_5px_14px_rgba(23,25,29,0.12)] transition-transform active:scale-[0.99]"
+                      >
+                        <span>
+                          <span className="block text-[9px] font-semibold uppercase tracking-[0.15em] text-white/55">
+                            Browse everything
+                          </span>
+                          <span className="mt-0.5 block text-[19px] font-semibold tracking-[-0.04em]">
+                            Shop All
+                          </span>
+                        </span>
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10">
+                          <ArrowRight size={18} />
+                        </span>
+                      </Link>
 
-              overflow-hidden rounded-[14px]
+                      <button
+                        type="button"
+                        onClick={() => setMobileScreen("collections")}
+                        className="flex min-h-[64px] w-full items-center justify-between rounded-[12px] border border-[#E8EAED] bg-white px-4 text-left transition-colors active:bg-[#F8F9FA]"
+                      >
+                        <span>
+                          <span className="block text-[17px] font-semibold tracking-[-0.035em] text-[#17191D]">
+                            Products
+                          </span>
+                          <span className="mt-0.5 block text-[11px] text-[#858B94]">
+                            Explore collections
+                          </span>
+                        </span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F4F5F6] text-[#7C838C]">
+                          <ArrowRight size={16} />
+                        </span>
+                      </button>
 
-              border border-[#DDE2E8] bg-white
-
-              shadow-[0_18px_50px_rgba(15,23,42,0.14)]
-
-              lg:hidden
-
-            "
-
-          >
-
-            <nav className="max-h-[calc(100vh-90px)] overflow-y-auto p-3">
-
-              <Link
-
-                to="/shop"
-
-                onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
-
-                className="flex items-center justify-between rounded-[9px] px-3 py-3 text-[11px] font-semibold text-[#111827] hover:bg-[#F8FAFC]"
-
-              >
-
-                <span>Shop Apple accessories</span>
-
-                <ArrowRight size={13} className="text-[#94A3B8]" />
-
-              </Link>
-
-
-              {(["cases", "charging", "lifestyle"] as const).map((menuKey) => {
-
-                const section = megaMenus.find((menu) => menu.menu_key === menuKey);
-
-                if (!section || section.mega_menu_groups.length === 0) return null;
-
-                const label = section.title;
-
-                const expanded = mobileExpandedMenu === menuKey;
-
-
-                return (
-
-                  <div key={menuKey} className="overflow-hidden border-b border-[#E5E7EB]">
-
-                    <button type="button" onClick={() => setMobileExpandedMenu(expanded ? null : menuKey)} className="flex w-full items-center justify-between rounded-[9px] px-3 py-3 text-left text-[11px] font-medium text-[#111827] hover:bg-[#F8FAFC]">
-
-                      <span>{label}</span>
-
-                      <ChevronDown size={14} className={`text-[#64748B] transition-transform ${expanded ? "rotate-180" : ""}`} />
-
-                    </button>
-
-
-                    {expanded && (
-
-                      <div className="px-2 pb-3">
-
-                        <Link
-
-                          to="/shop"
-
-                          search={section.mega_menu_groups[0]?.category?.slug ? ({ category: section.mega_menu_groups[0].category.slug } as never) : undefined}
-
-                          onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
-
-                          className="group relative mb-3 block h-[105px] overflow-hidden rounded-[10px] border border-[#E1E5EA] bg-[#F1F3F5]"
-
+                      <div className="overflow-hidden rounded-[12px] border border-[#E8EAED] bg-white">
+                        <button
+                          type="button"
+                          aria-expanded={mobileSupportOpen}
+                          onClick={() => setMobileSupportOpen((open) => !open)}
+                          className="flex min-h-[64px] w-full items-center justify-between px-4 text-left transition-colors active:bg-[#F8F9FA]"
                         >
+                          <span>
+                            <span className="block text-[17px] font-semibold tracking-[-0.035em] text-[#17191D]">
+                              Support
+                            </span>
+                            <span className="mt-0.5 block text-[11px] text-[#858B94]">
+                              Help, orders and customer care
+                            </span>
+                          </span>
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F4F5F6] text-[#7C838C]">
+                            <ChevronDown
+                              className={`transition-transform duration-200 ${mobileSupportOpen ? "rotate-180" : ""}`}
+                              size={17}
+                            />
+                          </span>
+                        </button>
 
-                          {section.image_url ? (
-                            <img src={section.image_url} alt={section.title || label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-                          ) : null}
-
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-
-                          <div className="absolute bottom-0 left-0 right-0 p-3">
-
-                            <div className="text-[8px] font-semibold uppercase tracking-[0.12em] text-white/75">Explore</div>
-
-                            <div className="mt-0.5 text-[14px] font-semibold text-white">{section.title || label}</div>
-
-                          </div>
-
-                        </Link>
-
-
-                        <div className="flex flex-col gap-3">
-
-                          {section.mega_menu_groups.map((group) => (
-
-                            <div key={group.id} className="overflow-hidden rounded-[10px] border border-[#E5E7EB] bg-[#FAFBFC]">
-
+                        {mobileSupportOpen && (
+                          <div className="grid grid-cols-2 gap-x-4 border-t border-[#ECEFF2] bg-[#FAFAFA] px-4 py-2">
+                            {[
+                              { label: "FAQs", to: "/faqs" },
+                              { label: "Contact Us", to: "/contact" },
+                              { label: "Order & Payment", to: "/order-payment" },
+                              { label: "Shipping & Returns", to: "/shipping" },
+                              { label: "Warranty", to: "/warranty" },
+                            ].map((item) => (
                               <Link
-
-                                to="/shop"
-
-                                search={group.category?.slug ? ({ category: group.category.slug } as never) : undefined}
-
-                                onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
-
-                                className="flex items-center gap-3 p-2.5"
-
+                                key={item.to}
+                                to={item.to}
+                                onClick={closeMobileMenu}
+                                className="flex min-h-[40px] items-center border-b border-[#ECEFF2] py-2 text-[12px] font-medium text-[#626B76] transition-colors hover:text-[#F05A28]"
                               >
-
-                                <div className="h-[52px] w-[72px] shrink-0 overflow-hidden rounded-[8px] border border-[#E1E5EA] bg-white">
-
-                                  {group.image_url ? (
-                                    <img src={group.image_url} alt={group.title} className="h-full w-full object-cover" />
-                                  ) : null}
-
-                                </div>
-
-                                <div className="min-w-0 flex-1">
-
-                                  <div className="flex items-center gap-1 text-[11px] font-semibold text-[#171A1F]">
-
-                                    <span className="truncate">{group.title}</span><ArrowRight size={10} className="shrink-0 text-[#94A3B8]" />
-
-                                  </div>
-
-                                  <div className="mt-1 text-[9px] text-[#98A2B3]">View collection</div>
-
-                                </div>
-
+                                {item.label}
                               </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
+                    <div className="mt-6 flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-[#F05A28]" />
+                      <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#A0A5AC]">
+                        Power more. Carry less.
+                      </span>
+                    </div>
+                  </div>
+                )}
 
-                              {group.mega_menu_items.length > 0 && (
+                {mobileScreen === "collections" && (
+                  <div className="flex h-full min-h-0 flex-col overflow-hidden animate-[mobileMenuIn_220ms_ease-out]">
+                    <div className="z-10 flex h-[50px] shrink-0 items-center border-b border-[#ECEFF2] bg-white px-3">
+                      <button
+                        type="button"
+                        onClick={() => setMobileScreen("home")}
+                        aria-label="Back to menu"
+                        className="mr-3 flex h-10 w-10 items-center justify-center text-[#777B80]"
+                      >
+                        <ArrowRight className="rotate-180" size={20} strokeWidth={1.6} />
+                      </button>
+                      <span className="min-w-0 flex-1 text-[17px] font-semibold tracking-[-0.03em] text-[#17191D]">
+                        Explore Collections
+                      </span>
+                    </div>
 
-                                <div className="border-t border-[#E5E7EB] bg-white px-3 py-2.5">
-
-                                  <div className="flex flex-wrap gap-x-2 gap-y-1.5">
-
-                                    {group.mega_menu_items.map((item) => {
-
-                                      const itemLabel = item.label_override || item.categories?.name || "Category";
-
-                                      const itemSlug = item.categories?.slug;
-
-                                      if (!itemSlug) return null;
-
-                                      return (
-
-                                        <Link key={item.id} to="/shop" search={{ category: itemSlug } as never} onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="rounded-[6px] bg-[#F5F7FA] px-2 py-1.5 text-[9px] font-medium text-[#667085] hover:bg-[#EEF2F6] hover:text-[#111827]">
-
-                                          {itemLabel}
-
-                                        </Link>
-
-                                      );
-
-                                    })}
-
-                                  </div>
-
-                                </div>
-
-                              )}
-
-                            </div>
-
-                          ))}
-
+                    <div className="px-3.5 pb-4 pt-3">
+                      <div className="relative mb-4 flex h-[88px] min-h-[88px] items-center overflow-hidden rounded-[14px] border border-[#D8E5F6] bg-[radial-gradient(ellipse_at_78%_15%,#E7F1FF_0%,#C6DCF9_48%,#91B4E3_100%)] px-4 py-3 shadow-[0_4px_12px_rgba(64,104,158,0.08)]">
+                        <div className="absolute -right-9 -top-16 h-48 w-48 rounded-full border border-white/55" />
+                        <div className="absolute -right-1 -top-10 h-36 w-36 rounded-full border border-white/45" />
+                        <div className="absolute bottom-[-34px] right-[72px] h-20 w-20 rounded-full bg-white/15 blur-xl" />
+                        <div className="relative">
+                          <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-[#405875]">
+                            INFIBETTER · SHOP BY CATEGORY
+                          </p>
+                          <h2 className="mt-1 text-[19px] font-semibold leading-tight tracking-[-0.05em] text-[#17283E]">
+                            Explore Collections
+                          </h2>
+                          <p className="mt-1 max-w-[250px] text-[10px] leading-[1.35] text-[#405875]">
+                            Find the right accessories for your everyday setup.
+                          </p>
                         </div>
-
                       </div>
 
-                    )}
+                      <div className="mb-2.5 flex items-center justify-between px-0.5">
+                        <span className="text-[11px] font-semibold tracking-[-0.01em] text-[#343A40]">
+                          Choose your collection
+                        </span>
+                        <span className="text-[9px] font-semibold tracking-[0.12em] text-[#A0A6AE]">
+                          03 CATEGORIES
+                        </span>
+                      </div>
 
+                      <div className="flex flex-col gap-2.5">
+                        {megaMenus
+                          .flatMap((section) => section.mega_menu_groups)
+                          .filter((group) => {
+                            const primaryNames = ["wireless charging", "power banks", "travel power"];
+                            return (
+                              primaryNames.includes((group.title || "").trim().toLowerCase()) ||
+                              primaryNames.includes((group.category?.name || "").trim().toLowerCase())
+                            );
+                          })
+                          .map((group) => {
+                            const fallbackItem = group.mega_menu_items.find((item) => item.categories?.slug);
+                            const targetCategory = group.category?.slug
+                              ? { name: group.category.name, slug: group.category.slug }
+                              : fallbackItem?.categories?.slug
+                                ? { name: fallbackItem.label_override || fallbackItem.categories.name, slug: fallbackItem.categories.slug }
+                                : null;
+
+                            return (
+                              <button
+                                key={group.id}
+                                type="button"
+                                disabled={!targetCategory?.slug}
+                                onClick={() => {
+                                  if (targetCategory?.slug) openMobileCategory(targetCategory);
+                                }}
+                                className="group flex h-[76px] w-full items-center gap-3 overflow-hidden rounded-[12px] border border-[#E7E9ED] bg-[#FFFFFF] p-2 text-left shadow-[0_2px_7px_rgba(20,30,45,0.035)] transition-all duration-200 hover:border-[#D4D9E0] hover:shadow-[0_4px_12px_rgba(20,30,45,0.07)] active:scale-[0.99] disabled:opacity-60"
+                              >
+                                <div className="h-[60px] w-[88px] shrink-0 overflow-hidden rounded-[9px] bg-[#F3F5F8]">
+                                  {group.image_url ? (
+                                    <img
+                                      src={group.image_url}
+                                      alt={group.title}
+                                      loading="lazy"
+                                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04] group-active:scale-[1.02]"
+                                    />
+                                  ) : (
+                                    <div className="h-full w-full bg-gradient-to-br from-[#F3F4F5] to-[#E5E7EB]" />
+                                  )}
+                                </div>
+                                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-[-0.02em] text-[#202329]">
+                                  {group.title}
+                                </span>
+                                <span className="mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F5F6F7] text-[#7F8791] transition-colors group-hover:bg-[#FFF0E9] group-hover:text-[#F05A28]"><ArrowRight size={14} /></span>
+                              </button>
+                            );
+                          })}
+                      </div>
+
+                      <Link
+                        to="/shop"
+                        onClick={closeMobileMenu}
+                        className="mt-4 flex h-[48px] w-full items-center justify-center gap-2 rounded-[11px] bg-[#17191D] text-[12px] font-semibold tracking-[0.01em] text-white shadow-[0_5px_14px_rgba(23,25,29,0.12)] transition-all duration-200 hover:bg-[#292C31] active:scale-[0.99]"
+                      >
+                        View All Products
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-[#F6A17F]"><ArrowRight size={14} /></span>
+                      </Link>
+                    </div>
                   </div>
+                )}
 
-                );
+                {mobileScreen === "products" && (
+                  <div className="animate-[mobileMenuIn_220ms_ease-out]">
+                    <div className="sticky top-0 z-10 flex h-[58px] items-center border-b border-[#ECEFF2] bg-white px-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileSelectedCategory(null);
+                          setMobileScreen("collections");
+                        }}
+                        aria-label="Back to collections"
+                        className="mr-3 flex h-10 w-10 items-center justify-center text-[#777B80]"
+                      >
+                        <ArrowRight className="rotate-180" size={20} strokeWidth={1.6} />
+                      </button>
+                      <span className="min-w-0 flex-1 truncate text-[16px] font-semibold text-[#17191D]">
+                        {mobileSelectedCategory?.name ?? "Products"}
+                      </span>
+                    </div>
 
-              })}
+                    <div className="px-4 pb-6 pt-2">
+                      {mobileProductsLoading ? (
+                        <div className="flex min-h-[220px] items-center justify-center text-[13px] text-[#98A2B3]">
+                          Loading products...
+                        </div>
+                      ) : mobileCategoryProducts.length > 0 ? (
+                        <div>
+                          {mobileCategoryProducts.map((product) => (
+                            <a
+                              key={product.id}
+                              href={`/products/${product.slug}`}
+                              onClick={closeMobileMenu}
+                              className="flex min-h-[116px] items-center gap-4 border-b border-[#ECEFF2] py-3"
+                            >
+                              <div className="flex h-[88px] w-[88px] shrink-0 items-center justify-center bg-[#F8F8F8]">
+                                {product.image_url ? (
+                                  <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-contain" />
+                                ) : (
+                                  <span className="text-[10px] text-[#A0A4AA]">No image</span>
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="line-clamp-2 text-[13px] font-medium leading-[1.45] text-[#25282C]">{product.name}</div>
+                                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span className="text-[13px] font-semibold text-[#D92929]">
+                                    {formatHeaderProductPrice(product.price)}
+                                  </span>
+                                  {Number(product.compare_at_price) > Number(product.price) && (
+                                    <span className="text-[11px] text-[#92979D] line-through">
+                                      {formatHeaderProductPrice(product.compare_at_price)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </a>
+                          ))}
+                          <Link
+                            to="/shop"
+                            search={{ category: mobileSelectedCategory?.slug } as never}
+                            onClick={closeMobileMenu}
+                            className="mt-4 flex h-[54px] items-center justify-center gap-3 bg-[#171717] px-4 text-[13px] font-semibold text-white"
+                          >
+                            All {mobileSelectedCategory?.name ?? "Products"}
+                            <ArrowRight size={17} />
+                          </Link>
+                        </div>
+                      ) : (
+                        <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-center">
+                          <p className="text-[13px] text-[#7B8493]">No products found in this collection.</p>
+                          <Link
+                            to="/shop"
+                            search={mobileSelectedCategory ? ({ category: mobileSelectedCategory.slug } as never) : undefined}
+                            onClick={closeMobileMenu}
+                            className="bg-[#171717] px-5 py-3 text-[12px] font-semibold text-white"
+                          >
+                            View all products <ArrowRight size={14} className="ml-2 inline" />
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </nav>
 
+              <div className="relative z-30 shrink-0 border-t border-[#ECEFF2] bg-white">
+                <div ref={currencyRef} className="relative">
+                  <button
+                    type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded={currencyOpen}
+                    onClick={() => setCurrencyOpen((open) => !open)}
+                    className="flex h-[52px] w-full items-center justify-between gap-3 px-5 text-left text-[12px] font-medium text-[#30343A] transition-colors hover:bg-[#FAFBFC] active:bg-[#F5F6F7]"
+                  >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <CurrencyFlag code={currency} />
+                      <span className="min-w-0 truncate">
+                        {currency === "VND"
+                          ? "Vietnam (VND)"
+                          : `${selectedCurrency.name} (${selectedCurrency.code})`}
+                      </span>
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      strokeWidth={1.6}
+                      className={`shrink-0 text-[#7D8792] transition-transform duration-200 ${currencyOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
 
-              <Link to="/account" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="mt-1 flex items-center justify-between border-t border-[#E5E7EB] px-3 py-3 text-[11px] text-[#64748B]">
-
-                <span>Account</span><User size={14} strokeWidth={1.7} />
-
-              </Link>
-
-            </nav>
-
+                  {currencyOpen && (
+                    <div
+                      role="listbox"
+                      aria-label="Select currency"
+                      className="absolute bottom-[calc(100%+8px)] left-3 right-3 z-[260] max-h-[min(55vh,360px)] overflow-y-auto rounded-[14px] border border-[#E1E5EA] bg-white p-1.5 shadow-[0_14px_38px_rgba(15,23,42,0.18)]"
+                    >
+                      <div className="px-3 pb-2 pt-1.5">
+                        <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#98A1AC]">
+                          Select currency
+                        </p>
+                      </div>
+                      {Object.values(CURRENCIES).map((option) => {
+                        const selected = option.code === currency;
+                        return (
+                          <button
+                            key={option.code}
+                            type="button"
+                            role="option"
+                            aria-selected={selected}
+                            onClick={() => selectCurrency(option.code)}
+                            className={`flex min-h-[48px] w-full items-center gap-3 rounded-[9px] px-3 py-2 text-left transition-colors ${
+                              selected
+                                ? "bg-[#F1F5FA] text-[#17191D]"
+                                : "text-[#59636F] hover:bg-[#F8F9FA]"
+                            }`}
+                          >
+                            <span className="flex h-8 w-9 shrink-0 items-center justify-center rounded-md border border-[#E7EAF0] bg-white">
+                              <CurrencyFlag code={option.code} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[12px] font-semibold">
+                                {option.code}
+                              </span>
+                              <span className="block truncate text-[10px] text-[#8B95A1]">
+                                {option.name}
+                              </span>
+                            </span>
+                            {selected && (
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#17191D] text-white">
+                                <Check size={13} strokeWidth={2.4} />
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-
         )}
 
       </div>
