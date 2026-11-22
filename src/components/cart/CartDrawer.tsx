@@ -143,7 +143,7 @@ export default function CartDrawer({
                 text-[#111111]
               "
             >
-              Cart
+              Your Cart
             </h2>
 
             <span
@@ -847,56 +847,42 @@ export default function CartDrawer({
               {/* BENEFITS */}
               <div
                 className="
-                  flex
-                  items-center
-                  justify-center
-                  gap-x-3
-                  gap-y-1
+                  grid
+                  grid-cols-2
+                  gap-x-2
+                  gap-y-1.5
                   border-t
                   border-[#DDDDDD]
                   px-3
-                  py-1.5
-                  text-center
+                  py-2
+                  sm:grid-cols-4
                 "
               >
-                <span
-                  className="
-                    text-[9px]
-                    font-medium
-                    text-[#555555]
-                  "
-                >
-                  <span className="mr-1 text-[#00A86B]">
-                    ✓
+                {[
+                  "Free shipping worldwide",
+                  "30-day returns",
+                  "Secure payments",
+                  "1-year warranty",
+                ].map((benefit) => (
+                  <span
+                    key={benefit}
+                    className="
+                      flex
+                      items-center
+                      justify-center
+                      whitespace-nowrap
+                      text-center
+                      text-[9px]
+                      font-medium
+                      text-[#555555]
+                    "
+                  >
+                    <span className="mr-1 shrink-0 text-[#00A86B]">
+                      ✓
+                    </span>
+                    {benefit}
                   </span>
-                  Free shipping
-                </span>
-
-                <span
-                  className="
-                    text-[9px]
-                    font-medium
-                    text-[#555555]
-                  "
-                >
-                  <span className="mr-1 text-[#00A86B]">
-                    ✓
-                  </span>
-                  30-day returns
-                </span>
-
-                <span
-                  className="
-                    text-[9px]
-                    font-medium
-                    text-[#555555]
-                  "
-                >
-                  <span className="mr-1 text-[#00A86B]">
-                    ✓
-                  </span>
-                  Secure payments
-                </span>
+                ))}
               </div>
             </div>
           </div>

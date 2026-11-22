@@ -24,11 +24,10 @@ import {
   type CurrencyCode,
 } from "@/lib/currency-system";
 
-import banner01 from "@/assets/hero/iphonecase.png";
 import banner02 from "@/assets/hero/wireless charger.png";
 import banner03 from "@/assets/hero/powerbank.png";
-import hero1 from "@/assets/hero/watchband.png";
 import hero2 from "@/assets/hero/hero_2.png";
+import travelCategoryImage from "@/assets/hero/danhmuc travel.png";
 
 interface CollectionProduct {
   id: string;
@@ -93,7 +92,7 @@ const collections = [
 ];
 
 // Fallback images used by product cards when a product has no image_url.
-const demoProductImages = [banner02, banner03, banner01, hero1, hero2];
+const demoProductImages = [banner02, banner03, banner02, banner02, hero2];
 
 function ProductMiniCard({
   product,
@@ -330,7 +329,7 @@ function ProductMiniCard({
         </span>
       </div>
       {/* PRODUCT DETAILS - HORIZONTAL LAYOUT */}
-      <div className={`flex min-w-0 gap-3 ${editorial ? "min-h-[178px] items-start px-7 py-6 sm:min-h-[190px] sm:px-9 sm:py-7" : "min-h-[88px] items-center justify-between px-3.5 py-3 sm:px-4"}`}>
+      <div className={`flex min-w-0 gap-3 ${editorial ? "min-h-[132px] items-start px-5 py-4 sm:min-h-[148px] sm:px-7 sm:py-5" : "min-h-[88px] items-center justify-between px-3.5 py-3 sm:px-4"}`}>
         {editorial ? (
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-[#929292]">INFIBETTER</span>
@@ -438,22 +437,15 @@ export default function Collections({
 
     return () => window.clearInterval(interval);
   }, [homepageReviews.length]);
-  // Use the actual image from the Travelmag Hybrid product for the Travel Power category card.
-  // Product images come from the product data already passed into this component.
-  const travelPowerProduct = [...products, ...newArrivals].find((product) => {
-    const name = product.name.toLowerCase();
-    const slug = product.slug.toLowerCase();
-    return name.includes("travelmag hybrid") || slug.includes("travelmag-hybrid");
-  });
-  const travelPowerImage = travelPowerProduct?.image_url || banner02;
-
+  // Use the dedicated Travel Power category artwork.
   const displayCollections = homepageTiles.map((tile, index) => ({
     id: tile.id,
     title: tile.title || tile.category_name,
     slug: tile.category_slug,
     image:
-      tile.image_url ||
-      (index === 2 ? travelPowerImage : categoryImages[index] || banner02),
+      tile.category_slug === "travel-power"
+        ? travelCategoryImage
+        : tile.image_url || categoryImages[index] || banner02,
   }));
 
   // New Arrivals remains its own section.
@@ -662,7 +654,7 @@ export default function Collections({
           >
             <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-white">
               <img
-                src={index === 2 ? travelPowerImage : categoryImages[index]}
+                src={index === 2 ? travelCategoryImage : categoryImages[index]}
                 alt={item.title}
                 loading="lazy"
                 draggable={false}

@@ -6,6 +6,7 @@ import { trackViewItemList } from "@/lib/analytics";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductCard } from "@/components/product-card";
 import banner02 from "@/assets/hero/banner in 01.png";
+import bannerMobile from "@/assets/hero/banner in mobile 01.png";
 
 import {
   ArrowRight,
@@ -855,6 +856,7 @@ function ShopPage() {
 
       return {
         all: productList.length,
+        categoryIdsBySlug,
 
         iphone: countProductsForCategory(
           categoryIdsBySlug["iphone-cases"] ?? [],
@@ -887,7 +889,55 @@ function ShopPage() {
       charging: 0,
       "power-banks": 0,
       "travel-power": 0,
+      categoryIdsBySlug: {},
     };
+
+  const shopCategorySections = useMemo(() => {
+    const categoryConfig = [
+      {
+        slug: "iphone-cases",
+        title: "iPhone Cases",
+        subtitle: "Everyday protection, made personal.",
+      },
+      {
+        slug: "watch-bands",
+        title: "Apple Watch",
+        subtitle: "Comfort and style for every day.",
+      },
+      {
+        slug: "wireless-charging",
+        title: "Wireless Charging",
+        subtitle: "A cleaner way to power your devices.",
+      },
+      {
+        slug: "power-banks",
+        title: "Power Banks",
+        subtitle: "Portable power, wherever you go.",
+      },
+      {
+        slug: "travel-power",
+        title: "Travel Power",
+        subtitle: "Charging essentials for life on the move.",
+      },
+    ];
+
+    const categoryIdsBySlug = deviceCountsQ.data?.categoryIdsBySlug ?? {};
+
+    return categoryConfig
+      .map((category) => {
+        const ids = new Set<string>(
+          categoryIdsBySlug[category.slug] ?? [],
+        );
+
+        const items = filteredProducts.filter(
+          (product: any) =>
+            product.category_id && ids.has(product.category_id),
+        );
+
+        return { ...category, items };
+      })
+      .filter((category) => category.items.length > 0);
+  }, [deviceCountsQ.data, filteredProducts]);
 
   /* =======================================================
      NAVIGATION
@@ -1004,44 +1054,59 @@ function ShopPage() {
 
   const currentCategoryTitle = sp.category
     ? categoryBannerTitle[sp.category] ?? sp.category.replace(/-/g, " ")
-    : "Everyday tech, refined";
+    : "Power More. Carry Less.";
 
   /* =======================================================
      RENDER
   ======================================================= */
 
   return (
-    <main className="min-h-screen bg-white text-[#1D1D1F]">
+    <main className="relative block min-h-screen w-full min-w-0 bg-white text-[#1D1D1F]">
 
       {/* ===================================================
           HERO
       =================================================== */}
 
-      <section className="bg-white px-5 pb-8 pt-6 md:px-8 md:pb-10 md:pt-8">
-        <div className="mx-auto max-w-[1240px]">
-          <div
-            className="
-              relative isolate min-h-[300px] overflow-hidden rounded-[28px]
-              border border-[#EEF0F3]
-              bg-[#F4F5F7]
-              shadow-[0_12px_32px_rgba(15,23,42,0.08)]
-              sm:min-h-[330px] md:min-h-[380px]
-            "
-          >
+      <section className="relative left-1/2 w-screen max-w-none -translate-x-1/2 overflow-hidden bg-white px-0 py-0">
+        <div className="w-full max-w-none">
+          <div className="relative isolate w-full overflow-hidden bg-[#F4F5F7]">
+            {/* Separate artwork: mobile composition has dedicated top-safe space for copy. */}
+            <img
+              src={bannerMobile}
+              alt={`${currentCategoryTitle} mobile banner`}
+              className="relative z-0 block h-auto w-full object-contain object-center sm:hidden"
+            />
             <img
               src={banner02}
               alt={`${currentCategoryTitle} banner`}
-              className="absolute inset-0 -z-20 h-full w-full object-cover object-center md:object-contain lg:object-contain"
+              className="relative z-0 hidden h-auto w-full object-contain object-center sm:block"
             />
-            <div
-              aria-hidden="true"
-              className="
-                absolute inset-0 -z-10
-                bg-gradient-to-r from-white/90 via-white/65 to-white/0
-                md:from-white/90 md:via-white/55 md:to-transparent
-              "
-            />
-            <div className="relative z-10 flex min-h-[300px] max-w-[600px] flex-col items-start justify-center px-6 py-8 sm:min-h-[330px] sm:px-9 md:min-h-[380px] md:px-12">
+
+            {/* Mobile copy stays in the clear upper area of the dedicated mobile artwork. */}
+            <div className="absolute inset-x-0 top-0 z-20 flex flex-col items-center px-5 pt-[11%] text-center sm:hidden">
+              <p className="mb-2 text-[8px] font-semibold uppercase tracking-[0.2em] text-[#667085]">
+                INFIBETTER · SHOP BY CATEGORY
+              </p>
+              <h1 className="max-w-[340px] text-[clamp(22px,6.2vw,30px)] font-semibold leading-[1.02] tracking-[-0.05em] text-[#17191D]">
+                {currentCategoryTitle}
+              </h1>
+              <p className="mt-2 max-w-[320px] text-[10px] leading-[1.45] text-[#566174]">
+                {sp.category === "power-banks"
+                  ? "Reliable power, wherever your day takes you."
+                  : sp.category === "wireless-charging" || sp.category === "wireless-chargers"
+                    ? "A simpler way to power your everyday setup."
+                    : sp.category === "watch-bands"
+                      ? "Comfort and style for every day."
+                      : sp.category === "travel-power"
+                        ? "Compact charging essentials for life on the move."
+                        : sp.category
+                          ? "Thoughtful protection and everyday functionality."
+                          : "Discover smarter Qi2 charging essentials, designed for everyday power."}
+              </p>
+            </div>
+
+            {/* Desktop copy remains left-aligned over the desktop banner. */}
+            <div className="absolute inset-y-0 left-0 z-20 hidden w-full max-w-[600px] flex-col items-start justify-center px-6 py-6 sm:flex sm:px-9 md:px-12 lg:ml-[max(4vw,calc((100vw-1240px)/2))]">
               <p className="mb-3 text-[9px] font-semibold uppercase tracking-[0.22em] text-[#667085] sm:text-[10px]">
                 INFIBETTER · SHOP BY CATEGORY
               </p>
@@ -1059,25 +1124,132 @@ function ShopPage() {
                         ? "Stay powered on the move with compact charging essentials designed for work, travel, and everything between."
                         : sp.category
                           ? "Thoughtful protection, refined details, and everyday functionality — find the case that fits your style."
-                          : "Smart tech accessories designed to work beautifully together, wherever your day takes you."}
+                          : "Discover smarter Qi2 charging essentials, designed for everyday power."}
               </p>
-              <Link
-                to="/shop"
-                className="
-                  mt-5 inline-flex h-9 items-center gap-2 rounded-full
-                  border border-white/90 bg-white/70 px-4
-                  text-[11px] font-semibold text-[#20242B]
-                  shadow-[0_4px_12px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,0.95)]
-                  backdrop-blur-xl transition-colors duration-200
-                  hover:bg-white/90
-                "
-              >
-                Explore collection <ArrowRight size={13} />
-              </Link>
             </div>
           </div>
         </div>
       </section>
+
+      {/* ===================================================
+          BEST SELLERS — directly below the hero banner
+      =================================================== */}
+
+      {!sp.category && !isLoading && (
+        <section className="bg-white py-8 sm:py-10">
+          <div className="mx-auto w-full max-w-[1240px] px-5 md:px-8">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A94A3]">
+                  CUSTOMER FAVORITES
+                </p>
+                <h2 className="text-[21px] font-semibold leading-tight tracking-[-0.04em] text-[#17191D] sm:text-[26px]">
+                  Best Sellers
+                </h2>
+              </div>
+              <Link
+                to="/shop"
+                search={{ sort: "best" } as never}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3.5 text-[10px] font-semibold text-[#263445] shadow-sm transition hover:border-[#FF4D00] hover:text-[#FF4D00] sm:h-10 sm:px-4 sm:text-[11px]"
+              >
+                View all <ArrowRight size={13} />
+              </Link>
+            </div>
+
+            {(() => {
+              const bestSellers = (productsQ.data ?? [])
+                .filter((product: any) => product.best_seller)
+                .slice(0, 8);
+
+              if (bestSellers.length === 0) return null;
+
+              return (
+                <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-5 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:gap-4 sm:px-0">
+                  {bestSellers.map((product: any, index: number) => {
+                    const currentPrice = Number(product.price) || 0;
+                    const comparePrice = Number(
+                      product.compare_at_price ?? product.old_price ?? 0,
+                    );
+                    const hasDiscount = comparePrice > currentPrice && currentPrice > 0;
+                    const discountPercent = hasDiscount
+                      ? Math.round(((comparePrice - currentPrice) / comparePrice) * 100)
+                      : 0;
+                    const ratingValue = Number(
+                      product.rating ?? product.average_rating ?? product.rating_average ?? 0,
+                    );
+                    const hasRating = Number.isFinite(ratingValue) && ratingValue > 0;
+
+                    return (
+                      <div
+                        key={product.id}
+                        className="w-[72vw] max-w-[280px] min-w-0 flex-none snap-start sm:w-[calc((100%_-_1rem)/2)] sm:max-w-none md:w-[calc((100%_-_2rem)/3)] lg:w-[calc((100%_-_3rem)/4)]"
+                      >
+                        <Link
+                          to="/products/$slug"
+                          params={{ slug: product.slug }}
+                          className="group block h-full overflow-hidden rounded-[18px] border border-[#ECEEF1] bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+                          aria-label={`View ${product.name}`}
+                        >
+                          <div className="relative aspect-[4/5] overflow-hidden bg-white">
+                            {product.image_url ? (
+                              <img
+                                src={product.image_url}
+                                alt={product.name}
+                                loading="lazy"
+                                draggable={false}
+                                className="absolute inset-0 block h-full w-full bg-white object-contain object-center px-1 pb-1 pt-7 sm:px-2 sm:pb-2 sm:pt-8"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-xs text-[#98A2B3]">
+                                Product image
+                              </div>
+                            )}
+
+                            <div className="absolute left-2.5 top-2.5 z-10 flex max-w-[calc(100%-3.5rem)] items-center gap-1.5">
+                              {hasDiscount && (
+                                <span className="inline-flex items-center bg-[#FF4D00] px-2.5 py-1.5 text-[10px] font-bold leading-none text-white shadow-sm sm:px-3 sm:py-1.5 sm:text-[11px]">
+                                  Save {discountPercent}%
+                                </span>
+                              )}
+                              {hasRating && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-[#ECEEF1] bg-white/95 px-2 py-1 text-[9px] font-semibold leading-none text-[#344054] shadow-sm sm:text-[10px]">
+                                  <span className="text-[#F59E0B]">★</span>
+                                  {ratingValue.toFixed(1)}
+                                </span>
+                              )}
+                            </div>
+
+                            <span className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-[#24364B] shadow-sm transition-transform group-hover:translate-x-0.5">
+                              <ArrowRight size={15} />
+                            </span>
+                          </div>
+
+                          <div className="px-3 pb-4 pt-3 sm:px-4 sm:pb-5">
+                            <h3 className="min-h-[38px] text-[13px] font-semibold leading-[1.35] tracking-[-0.02em] text-[#20242B] sm:text-[15px]">
+                              {product.name}
+                            </h3>
+
+                            <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                              <span className="text-[14px] font-bold tracking-[-0.02em] text-[#0877F9] sm:text-[16px]">
+                                ${currentPrice.toFixed(2)} USD
+                              </span>
+                              {hasDiscount && (
+                                <span className="text-[10px] font-medium text-[#98A2B3] line-through sm:text-[11px]">
+                                  ${comparePrice.toFixed(2)} USD
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        </section>
+      )}
 
       {/* ===================================================
           DEVICE NAVIGATION
@@ -1468,41 +1640,88 @@ function ShopPage() {
             PRODUCT GRID
         ================================================= */}
 
-        {!isLoading &&
-          filteredProducts.length >
-            0 && (
-            <div
-              className="
-                grid
-                grid-cols-2
-                gap-x-4
-                gap-y-8
-                md:grid-cols-3
-                lg:grid-cols-4
-              "
-            >
-
-              {filteredProducts.map(
-  (
-    product: any,
-    index: number,
-  ) => (
-    <ProductCard
-      key={product.id}
-      product={product}
-      variant={
-        product.best_seller
-          ? "best-seller"
-          : "default"
-      }
-      itemListName="Shop"
-      itemIndex={index + 1}
-    />
-  ),
-)}
-
+        {!isLoading && filteredProducts.length > 0 && (
+          sp.category ? (
+            <div className="grid w-full grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-4 sm:gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+              {filteredProducts.map((product: any, index: number) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  variant={product.best_seller ? "best-seller" : "default"}
+                  itemListName={`Shop - ${sp.category}`}
+                  itemIndex={index + 1}
+                />
+              ))}
             </div>
-          )}
+          ) : (
+            <div className="space-y-12 sm:space-y-14 lg:space-y-16">
+              {shopCategorySections.map((category) => (
+                <section
+                  key={category.slug}
+                  aria-labelledby={`shop-category-${category.slug}`}
+                  className="border-b border-[#ECEEF2] pb-9 last:border-b-0 last:pb-0 sm:pb-11"
+                >
+                  <div className="mb-5 flex items-end justify-between gap-3 sm:mb-6">
+                    <div className="min-w-0">
+                      <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#8A94A3] sm:text-[10px]">
+                        INFIBETTER COLLECTION
+                      </p>
+                      <h2
+                        id={`shop-category-${category.slug}`}
+                        className="text-[21px] font-semibold leading-tight tracking-[-0.04em] text-[#17191D] sm:text-[26px] lg:text-[30px]"
+                      >
+                        {category.title}
+                      </h2>
+                      <p className="mt-1 text-[11px] leading-relaxed text-[#737B87] sm:text-[13px]">
+                        {category.subtitle}
+                      </p>
+                    </div>
+
+                    <Link
+                      to="/shop"
+                      search={{ category: category.slug } as never}
+                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3.5 text-[10px] font-semibold text-[#263445] shadow-sm transition hover:border-[#FF4D00] hover:text-[#FF4D00] sm:h-10 sm:px-4 sm:text-[11px]"
+                    >
+                      View all <ArrowRight size={13} />
+                    </Link>
+                  </div>
+
+                  <div className="grid w-full grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-4 sm:gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+                    {category.items.slice(0, 4).map((product: any, index: number) => {
+                      const currentPrice = Number(product.price) || 0;
+                      const comparePrice = Number(
+                        product.old_price ?? product.compare_at_price ?? 0,
+                      );
+                      const hasDiscount =
+                        comparePrice > currentPrice && currentPrice > 0;
+                      const discountPercent = hasDiscount
+                        ? Math.round(
+                            ((comparePrice - currentPrice) / comparePrice) * 100,
+                          )
+                        : 0;
+
+                      return (
+                        <div key={product.id} className="relative min-w-0">
+                          {hasDiscount && (
+                            <span className="absolute left-3 top-3 z-20 inline-flex items-center bg-[#FF4D00] px-2.5 py-1.5 text-[10px] font-bold leading-none text-white shadow-sm sm:px-3 sm:py-1.5 sm:text-[11px]">
+                              Save {discountPercent}%
+                            </span>
+                          )}
+                          <ProductCard
+                            product={product}
+                            variant="default"
+                            itemListName={`Shop - ${category.title}`}
+                            itemIndex={index + 1}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )
+        )}
 
       </section>
 

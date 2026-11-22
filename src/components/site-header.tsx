@@ -1,21 +1,23 @@
-﻿import {
-  Link } from "@tanstack/react-router";
+﻿import { Link } from "@tanstack/react-router";
 
 import CartDrawer from "@/components/cart/CartDrawer";
 
 import {
 
   ArrowRight,
+
   ChevronDown,
+
   Menu,
-  PartyPopper,
+
   Search,
+
   ShoppingBag,
+
   User,
+
   X,
-  PackageCheck,
-  Truck,
-  ShieldCheck
+
 } from "lucide-react";
 
 import { useEffect, useRef, useState } from "react";
@@ -25,17 +27,7 @@ import { useCart } from "@/lib/cart";
 import { supabase } from "@/integrations/supabase/client";
 
 
-
-import banner01 from "@/assets/hero/banner01.png";
-
-import banner02 from "@/assets/hero/banner02.png";
-
-import banner03 from "@/assets/hero/banner03.png";
-
-
-
 type MegaMenuKey = "cases" | "charging" | "lifestyle" | null;
-
 
 
 type MegaItem = {
@@ -53,7 +45,6 @@ type MegaItem = {
   categories: { id: string; name: string; slug: string; parent_id: string | null } | null;
 
 };
-
 
 
 type MegaGroup = {
@@ -79,7 +70,6 @@ type MegaGroup = {
 };
 
 
-
 type MegaSection = {
 
   id: string;
@@ -99,52 +89,6 @@ type MegaSection = {
 };
 
 
-
-type HeaderPromotion = {
-  id: string;
-  name: string;
-  nav_label: string;
-  slug: string;
-  starts_at: string | null;
-  ends_at: string | null;
-  sort_order: number;
-};
-const fallbackImages = [banner01, banner02, banner03];
-
-
-
-function getSectionFallback(menuKey: string) {
-
-  if (menuKey === "cases") return banner02;
-
-  if (menuKey === "charging") return banner03;
-
-  return banner01;
-
-}
-
-
-
-function getGroupFallback(menuKey: string, index: number) {
-
-  if (menuKey === "charging") {
-
-    return [banner03, banner02, banner01, banner03][index] ?? banner03;
-
-  }
-
-  if (menuKey === "cases") {
-
-    return [banner01, banner02, banner03][index] ?? banner01;
-
-  }
-
-  return fallbackImages[index % fallbackImages.length];
-
-}
-
-
-
 function getMegaGridColumns(groupCount: number) {
 
   return Math.max(1, Math.min(groupCount, 4));
@@ -152,11 +96,9 @@ function getMegaGridColumns(groupCount: number) {
 }
 
 
-
 export function SiteHeader() {
 
   const { count } = useCart();
-
 
 
   const [cartOpen, setCartOpen] = useState(false);
@@ -174,8 +116,6 @@ export function SiteHeader() {
   const [mobileExpandedMenu, setMobileExpandedMenu] = useState<MegaMenuKey>(null);
 
   const [megaMenus, setMegaMenus] = useState<MegaSection[]>([]);
-  const [headerPromotions, setHeaderPromotions] = useState<HeaderPromotion[]>([]);
-
 
 
   const loadMegaMenus = async () => {
@@ -211,7 +151,6 @@ export function SiteHeader() {
       .order("sort_order");
 
 
-
     if (error) {
 
       console.error("Mega Menu load error:", error);
@@ -219,7 +158,6 @@ export function SiteHeader() {
       return;
 
     }
-
 
 
     const normalized = ((data ?? []) as any[]).map((section) => ({
@@ -249,11 +187,9 @@ export function SiteHeader() {
     }));
 
 
-
     setMegaMenus(normalized as MegaSection[]);
 
   };
-
 
 
   useEffect(() => {
@@ -273,54 +209,9 @@ export function SiteHeader() {
   }, []);
 
 
-
-  // INFIBETTER_PROMOTION_HEADER
-  const loadHeaderPromotions = async () => {
-    const { data, error } = await supabase
-      .from("promotions")
-      .select("id,name,nav_label,slug,starts_at,ends_at,sort_order")
-      .eq("is_active", true)
-      .eq("show_in_header", true)
-      .order("sort_order", { ascending: true });
-
-    if (error) {
-      console.error("Promotion Header load error:", error);
-      return;
-    }
-
-    const now = Date.now();
-
-    const active = ((data ?? []) as HeaderPromotion[]).filter((item) => {
-      const starts = item.starts_at ? new Date(item.starts_at).getTime() : null;
-      const ends = item.ends_at ? new Date(item.ends_at).getTime() : null;
-
-      return (
-        (starts === null || starts <= now) &&
-        (ends === null || ends >= now)
-      );
-    });
-
-    setHeaderPromotions(active);
-  };
-
-  useEffect(() => {
-    loadHeaderPromotions();
-
-    const handlePromotionUpdated = () => loadHeaderPromotions();
-
-    window.addEventListener("infibetter:promotion-updated", handlePromotionUpdated);
-
-    const interval = window.setInterval(loadHeaderPromotions, 60000);
-
-    return () => {
-      window.removeEventListener("infibetter:promotion-updated", handlePromotionUpdated);
-      window.clearInterval(interval);
-    };
-  }, []);
   const headerRef =
 
     useRef<HTMLDivElement>(null);
-
 
 
   /*
@@ -332,7 +223,6 @@ export function SiteHeader() {
    * ============================================================
 
    */
-
 
 
   useEffect(() => {
@@ -366,7 +256,6 @@ export function SiteHeader() {
     };
 
 
-
     document.addEventListener(
 
       "mousedown",
@@ -374,7 +263,6 @@ export function SiteHeader() {
       handleClickOutside,
 
     );
-
 
 
     return () => {
@@ -392,7 +280,6 @@ export function SiteHeader() {
   }, []);
 
 
-
   /*
 
    * ============================================================
@@ -402,7 +289,6 @@ export function SiteHeader() {
    * ============================================================
 
    */
-
 
 
   useEffect(() => {
@@ -428,7 +314,6 @@ export function SiteHeader() {
     };
 
 
-
     document.addEventListener(
 
       "keydown",
@@ -436,7 +321,6 @@ export function SiteHeader() {
       handleEscape,
 
     );
-
 
 
     return () => {
@@ -452,7 +336,6 @@ export function SiteHeader() {
     };
 
   }, []);
-
 
 
   /*
@@ -482,7 +365,6 @@ export function SiteHeader() {
    */
 
 
-
   useEffect(() => {
 
     const handleOpenCart = () => {
@@ -492,7 +374,6 @@ export function SiteHeader() {
     };
 
 
-
     window.addEventListener(
 
       "infibetter:open-cart",
@@ -500,7 +381,6 @@ export function SiteHeader() {
       handleOpenCart,
 
     );
-
 
 
     return () => {
@@ -518,7 +398,6 @@ export function SiteHeader() {
   }, []);
 
 
-
   /*
 
    * ============================================================
@@ -530,7 +409,6 @@ export function SiteHeader() {
    */
 
 
-
   const handleSearchSubmit = (
 
     event: React.FormEvent<HTMLFormElement>,
@@ -540,13 +418,10 @@ export function SiteHeader() {
     event.preventDefault();
 
 
-
     const keyword = searchValue.trim();
 
 
-
     if (!keyword) return;
-
 
 
     window.location.href = `/shop?q=${encodeURIComponent(
@@ -556,7 +431,6 @@ export function SiteHeader() {
     )}`;
 
   };
-
 
 
   /*
@@ -570,7 +444,6 @@ export function SiteHeader() {
    */
 
 
-
   const toggleMenu = (
 
     menu: Exclude<MegaMenuKey, null>,
@@ -582,7 +455,6 @@ export function SiteHeader() {
     setMobileOpen(false);
 
 
-
     setActiveMenu((current) =>
 
       current === menu ? null : menu,
@@ -592,7 +464,6 @@ export function SiteHeader() {
   };
 
 
-
   const activeMegaMenu =
 
     activeMenu === null
@@ -600,7 +471,6 @@ export function SiteHeader() {
       ? null
 
       : megaMenus.find((menu) => menu.menu_key === activeMenu) ?? null;
-
 
 
   return (
@@ -620,69 +490,68 @@ export function SiteHeader() {
         w-full
 
         bg-[#F7F8FA]/95
+
+        py-2
+
         backdrop-blur-xl
+
+        sm:py-2.5
 
       "
 
     >
 
-      {/* TOP ANNOUNCEMENT — PREMIUM TECH */}
-      <div className="w-full overflow-hidden border-b border-white/10 bg-[#17191D] text-white">
-        <style>{`
-          @keyframes infibetter-announcement-marquee {
-            from { transform: translateX(0); }
-            to { transform: translateX(-50%); }
-          }
-          @media (prefers-reduced-motion: reduce) {
-            .infibetter-announcement-track {
-              animation: none !important;
-              transform: none !important;
-            }
-          }
-        `}</style>
+      {/* TOP ANNOUNCEMENT */}
 
-        <div className="flex h-[40px] items-center overflow-hidden sm:h-[42px]">
-          <div className="infibetter-announcement-track flex w-max shrink-0 items-center animate-[infibetter-announcement-marquee_32s_linear_infinite]">
-            {[0, 1].map((copy) => (
-              <div
-                key={copy}
-                aria-hidden={copy === 1 ? true : undefined}
-                className="flex shrink-0 items-center"
-              >
-                <div className="flex items-center gap-2.5 px-6 sm:px-9">
-                  <PackageCheck size={14} strokeWidth={1.8} className="shrink-0 text-[#D6E5FF]" />
-                  <span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.13em] text-white/95 sm:text-[10px]">
-                    Free 30-Day Returns
-                  </span>
-                </div>
 
-                <span className="h-3.5 w-px bg-white/20" aria-hidden="true" />
+      <div
 
-                <div className="flex items-center gap-2.5 px-6 sm:px-9">
-                  <Truck size={14} strokeWidth={1.8} className="shrink-0 text-[#D6E5FF]" />
-                  <span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.13em] text-white/95 sm:text-[10px]">
-                    Free Tracking
-                  </span>
-                </div>
+        className="
 
-                <span className="h-3.5 w-px bg-white/20" aria-hidden="true" />
+          mb-1.5
 
-                <div className="flex items-center gap-2.5 px-6 sm:px-9">
-                  <ShieldCheck size={14} strokeWidth={1.8} className="shrink-0 text-[#D6E5FF]" />
-                  <span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.13em] text-white/95 sm:text-[10px]">
-                    1-Year Warranty
-                  </span>
-                </div>
+          flex
 
-                <span className="mx-2 h-1 w-1 rounded-full bg-white/35" aria-hidden="true" />
-              </div>
-            ))}
-          </div>
-        </div>
+          h-4
+
+          items-center
+
+          justify-center
+
+          gap-2
+
+          text-[7px]
+
+          font-semibold
+
+          uppercase
+
+          tracking-[0.08em]
+
+          text-[#334155]
+
+        "
+
+      >
+
+        <span>Free tracked shipping</span>
+
+
+        <span className="text-[#94A3B8]">
+
+          ·
+
+        </span>
+
+
+        <span>30-day returns</span>
+
       </div>
 
+
       {/* HEADER CAPSULE */}
-      <div className="py-2 sm:py-2.5">
+
+
       <div className="relative mx-auto w-[calc(100%-24px)] max-w-[1320px]">
 
         <div
@@ -722,7 +591,6 @@ export function SiteHeader() {
           {/* LOGO */}
 
 
-
           <Link
 
             to="/"
@@ -758,9 +626,7 @@ export function SiteHeader() {
           </Link>
 
 
-
           {/* DESKTOP NAV */}
-
 
 
           <nav
@@ -777,7 +643,7 @@ export function SiteHeader() {
 
               items-center
 
-              gap-2.5
+              gap-1
 
               rounded-full
 
@@ -840,7 +706,6 @@ export function SiteHeader() {
               Shop Apple accessories
 
 
-
               <ArrowRight
 
                 size={10}
@@ -852,25 +717,6 @@ export function SiteHeader() {
             </Link>
 
 
-
-            {/* INFIBETTER PROMOTION LINKS - DESKTOP */}
-            {headerPromotions.map((promotion) => (
-              <Link
-                key={promotion.id}
-                to={`/${promotion.slug}` as never}
-                onClick={() => setActiveMenu(null)}
-                className="group rounded-full bg-[#17191D] px-4 py-2 text-[11px] font-bold whitespace-nowrap text-white ring-1 ring-[#FF4D00]/60 shadow-[0_0_8px_rgba(255,77,0,0.55),0_0_18px_rgba(255,77,0,0.30)] animate-pulse transition-all hover:bg-[#FF4D00] hover:shadow-[0_0_20px_rgba(255,77,0,0.75)]"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="rounded bg-[#FF4D00] px-1.5 py-0.5 text-[9px] font-extrabold tracking-wider text-white group-hover:bg-white group-hover:text-[#FF4D00]">
-                    EARLY
-                  </span>
-                  <span className="font-extrabold tracking-wide">
-                    {promotion.nav_label}
-                  </span>
-                </span>
-              </Link>
-            ))}
             {megaMenus.some((menu) => menu.menu_key === "cases" && menu.mega_menu_groups.length > 0) && (
             <button
 
@@ -923,7 +769,6 @@ export function SiteHeader() {
               {megaMenus.find((menu) => menu.menu_key === "cases")?.title ?? "Cases & Bands"}
 
 
-
               <ChevronDown
 
                 size={12}
@@ -944,7 +789,6 @@ export function SiteHeader() {
 
             </button>
             )}
-
 
 
             {megaMenus.some((menu) => menu.menu_key === "charging" && menu.mega_menu_groups.length > 0) && (
@@ -999,7 +843,6 @@ export function SiteHeader() {
               {megaMenus.find((menu) => menu.menu_key === "charging")?.title ?? "Charging"}
 
 
-
               <ChevronDown
 
                 size={12}
@@ -1020,7 +863,6 @@ export function SiteHeader() {
 
             </button>
             )}
-
 
 
             {megaMenus.some((menu) => menu.menu_key === "lifestyle" && menu.mega_menu_groups.length > 0) && (
@@ -1075,7 +917,6 @@ export function SiteHeader() {
               {megaMenus.find((menu) => menu.menu_key === "lifestyle")?.title ?? "Lifestyle Gear"}
 
 
-
               <ChevronDown
 
                 size={12}
@@ -1100,34 +941,10 @@ export function SiteHeader() {
           </nav>
 
 
-
           {/* ACTIONS */}
 
 
-
           <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
-
-            {/* PROMOTION PILL - MOBILE HEADER */}
-            {headerPromotions.slice(0, 1).map((promotion) => (
-              <Link
-                key={promotion.id}
-                to={`/${promotion.slug}` as never}
-                onClick={() => {
-                  setMobileOpen(false);
-                  setMobileExpandedMenu(null);
-                  setActiveMenu(null);
-                }}
-                className="mr-1 shrink-0 rounded-full bg-[#17191D] px-2 py-1.5 text-[9px] font-extrabold text-white ring-1 ring-[#FF4D00]/60 shadow-[0_0_9px_rgba(255,77,0,0.5),0_0_16px_rgba(255,77,0,0.22)] animate-pulse lg:hidden"
-                aria-label={promotion.name}
-              >
-                <span className="flex items-center gap-1 whitespace-nowrap">
-                  <span className="rounded bg-[#FF4D00] px-1 py-0.5 text-[7px] font-extrabold tracking-wide text-white">
-                    EARLY
-                  </span>
-                  <span>{promotion.nav_label}</span>
-                </span>
-              </Link>
-            ))}
 
             {searchOpen && (
 
@@ -1208,9 +1025,7 @@ export function SiteHeader() {
             )}
 
 
-
             {/* SEARCH */}
-
 
 
             <button
@@ -1280,9 +1095,55 @@ export function SiteHeader() {
             </button>
 
 
+            {/* ACCOUNT */}
+
+
+            <Link
+
+              to="/account"
+
+              aria-label="Account"
+
+              className="
+
+                hidden
+
+                h-8
+
+                w-8
+
+                items-center
+
+                justify-center
+
+                rounded-full
+
+                text-[#334155]
+
+                transition
+
+                hover:bg-[#F1F5F9]
+
+                hover:text-[#0877E8]
+
+                sm:flex
+
+              "
+
+            >
+
+              <User
+
+                size={16}
+
+                strokeWidth={1.7}
+
+              />
+
+            </Link>
+
 
             {/* CART */}
-
 
 
             <button
@@ -1332,7 +1193,6 @@ export function SiteHeader() {
                 strokeWidth={1.7}
 
               />
-
 
 
               {count > 0 && (
@@ -1386,9 +1246,7 @@ export function SiteHeader() {
             </button>
 
 
-
             {/* MOBILE MENU */}
-
 
 
             <button
@@ -1446,9 +1304,7 @@ export function SiteHeader() {
         </div>
 
 
-
         {/* MEGA MENU */}
-
 
 
         {activeMegaMenu && (
@@ -1492,7 +1348,6 @@ export function SiteHeader() {
             <div className="grid grid-cols-[minmax(0,1fr)_190px] gap-3 p-3">
 
               {/* CATEGORY CARDS */}
-
 
 
               <div
@@ -1583,13 +1438,8 @@ export function SiteHeader() {
 
                         >
 
-                          <img
-
-                            src={column.image_url || getGroupFallback(activeMegaMenu.menu_key, columnIndex)}
-
-                            alt={column.title}
-
-                            className="
+                          {column.image_url ? (
+                            <img src={column.image_url} alt={column.title} className="
 
                               h-full
 
@@ -1603,12 +1453,10 @@ export function SiteHeader() {
 
                               group-hover:scale-[1.04]
 
-                            "
-
-                          />
+                            " />
+                          ) : null}
 
                         </div>
-
 
 
                         <div
@@ -1642,7 +1490,6 @@ export function SiteHeader() {
                           {column.title}
 
 
-
                           <ArrowRight
 
                             size={9}
@@ -1666,9 +1513,7 @@ export function SiteHeader() {
                       </Link>
 
 
-
                       {/* ITEMS */}
-
 
 
                       <p className="px-3 pt-1 text-[10px] leading-4 text-[#7B8493]">{column.title.toLowerCase().includes("case") ? "Stylish protection for every device." : column.title.toLowerCase().includes("charging") ? "Effortless power for everyday life." : column.title.toLowerCase().includes("bank") ? "Compact power, bigger possibilities." : column.title.toLowerCase().includes("travel") ? "Stay powered wherever you go." : "Smart accessories for everyday life."}</p>
@@ -1686,7 +1531,6 @@ export function SiteHeader() {
                             "Category";
 
                           const itemSlug = item.categories?.slug;
-
 
 
                           return (
@@ -1752,9 +1596,7 @@ export function SiteHeader() {
                       </div>
 
 
-
                       {/* VIEW ALL */}
-
 
 
                       <Link
@@ -1836,7 +1678,6 @@ export function SiteHeader() {
                         View all
 
 
-
                         <ArrowRight size={11} />
 
                       </Link>
@@ -1850,9 +1691,7 @@ export function SiteHeader() {
               </div>
 
 
-
               {/* FEATURE CARD */}
-
 
 
               <Link
@@ -1905,17 +1744,8 @@ export function SiteHeader() {
 
               >
 
-                <img
-
-                  src={activeMegaMenu.image_url || getSectionFallback(activeMegaMenu.menu_key)}
-
-                  alt={
-
-                    activeMegaMenu.title
-
-                  }
-
-                  className="
+                {activeMegaMenu.image_url ? (
+                  <img src={activeMegaMenu.image_url} alt={activeMegaMenu.title} className="
 
                     absolute
 
@@ -1933,10 +1763,8 @@ export function SiteHeader() {
 
                     group-hover:scale-[1.03]
 
-                  "
-
-                />
-
+                  " />
+                ) : null}
 
 
                 <div
@@ -1958,7 +1786,6 @@ export function SiteHeader() {
                   "
 
                 />
-
 
 
                 <div
@@ -2000,7 +1827,6 @@ export function SiteHeader() {
                   </p>
 
 
-
                   <h3
 
                     className="
@@ -2024,7 +1850,6 @@ export function SiteHeader() {
                     {activeMegaMenu.title}
 
                   </h3>
-
 
 
                   <span
@@ -2060,7 +1885,6 @@ export function SiteHeader() {
                     Shop now
 
 
-
                     <ArrowRight size={10} />
 
                   </span>
@@ -2076,9 +1900,7 @@ export function SiteHeader() {
         )}
 
 
-
         {/* MOBILE MENU */}
-
 
 
         {mobileOpen && (
@@ -2109,7 +1931,7 @@ export function SiteHeader() {
 
                 onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }}
 
-                className="flex min-h-[44px] items-center justify-between rounded-lg px-3 py-2.5 text-[12px] font-semibold text-[#172033] transition-colors hover:bg-[#F7F8FA]"
+                className="flex items-center justify-between rounded-[9px] px-3 py-3 text-[11px] font-semibold text-[#111827] hover:bg-[#F8FAFC]"
 
               >
 
@@ -2118,7 +1940,6 @@ export function SiteHeader() {
                 <ArrowRight size={13} className="text-[#94A3B8]" />
 
               </Link>
-
 
 
               {(["cases", "charging", "lifestyle"] as const).map((menuKey) => {
@@ -2132,19 +1953,17 @@ export function SiteHeader() {
                 const expanded = mobileExpandedMenu === menuKey;
 
 
-
                 return (
 
-                  <div key={menuKey} className="overflow-hidden border-b border-[#E9EDF2]">
+                  <div key={menuKey} className="overflow-hidden border-b border-[#E5E7EB]">
 
-                    <button type="button" onClick={() => setMobileExpandedMenu(expanded ? null : menuKey)} className="flex min-h-[44px] w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[12px] font-semibold text-[#172033] transition-colors hover:bg-[#F7F8FA]">
+                    <button type="button" onClick={() => setMobileExpandedMenu(expanded ? null : menuKey)} className="flex w-full items-center justify-between rounded-[9px] px-3 py-3 text-left text-[11px] font-medium text-[#111827] hover:bg-[#F8FAFC]">
 
                       <span>{label}</span>
 
-                      <ChevronDown size={16} strokeWidth={1.7} className={`text-[#64748B] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+                      <ChevronDown size={14} className={`text-[#64748B] transition-transform ${expanded ? "rotate-180" : ""}`} />
 
                     </button>
-
 
 
                     {expanded && (
@@ -2163,7 +1982,9 @@ export function SiteHeader() {
 
                         >
 
-                          <img src={section.image_url || getSectionFallback(section.menu_key)} alt={section.title || label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                          {section.image_url ? (
+                            <img src={section.image_url} alt={section.title || label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                          ) : null}
 
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
@@ -2178,10 +1999,9 @@ export function SiteHeader() {
                         </Link>
 
 
-
                         <div className="flex flex-col gap-3">
 
-                          {section.mega_menu_groups.map((group, groupIndex) => (
+                          {section.mega_menu_groups.map((group) => (
 
                             <div key={group.id} className="overflow-hidden rounded-[10px] border border-[#E5E7EB] bg-[#FAFBFC]">
 
@@ -2199,7 +2019,9 @@ export function SiteHeader() {
 
                                 <div className="h-[52px] w-[72px] shrink-0 overflow-hidden rounded-[8px] border border-[#E1E5EA] bg-white">
 
-                                  <img src={group.image_url || getGroupFallback(section.menu_key, groupIndex)} alt={group.title} className="h-full w-full object-cover" />
+                                  {group.image_url ? (
+                                    <img src={group.image_url} alt={group.title} className="h-full w-full object-cover" />
+                                  ) : null}
 
                                 </div>
 
@@ -2218,7 +2040,6 @@ export function SiteHeader() {
                               </Link>
 
 
-
                               {group.mega_menu_items.length > 0 && (
 
                                 <div className="border-t border-[#E5E7EB] bg-white px-3 py-2.5">
@@ -2235,7 +2056,7 @@ export function SiteHeader() {
 
                                       return (
 
-                                        <Link key={item.id} to="/shop" search={{ category: itemSlug } as never} onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="rounded-[8px] border border-[#D5E9D8] bg-[#EAF5EC] px-2 py-1.5 text-[9px] font-medium text-[#477A50] shadow-sm transition-colors hover:border-[#B8D9BE] hover:bg-[#DFF0E2] hover:text-[#315B3B]">
+                                        <Link key={item.id} to="/shop" search={{ category: itemSlug } as never} onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="rounded-[6px] bg-[#F5F7FA] px-2 py-1.5 text-[9px] font-medium text-[#667085] hover:bg-[#EEF2F6] hover:text-[#111827]">
 
                                           {itemLabel}
 
@@ -2268,8 +2089,11 @@ export function SiteHeader() {
               })}
 
 
+              <Link to="/account" onClick={() => { setMobileOpen(false); setMobileExpandedMenu(null); }} className="mt-1 flex items-center justify-between border-t border-[#E5E7EB] px-3 py-3 text-[11px] text-[#64748B]">
 
+                <span>Account</span><User size={14} strokeWidth={1.7} />
 
+              </Link>
 
             </nav>
 
@@ -2278,14 +2102,13 @@ export function SiteHeader() {
         )}
 
       </div>
-      </div>
+
 
       {/* ========================================================
 
           CART DRAWER
 
           ======================================================== */}
-
 
 
       <CartDrawer
@@ -2303,15 +2126,8 @@ export function SiteHeader() {
 />
 
 
-
     </header>
 
   );
 
 }
-
-
-
-
-
-

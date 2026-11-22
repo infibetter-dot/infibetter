@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronUp, Eye, ExternalLink, Save } from "lucide-react";
+import { ChevronUp, Eye, ExternalLink, Save, Smartphone, ImagePlus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ProductEditorRichText from "./ProductEditorRichText";
@@ -118,6 +118,60 @@ const [topSeller, setTopSeller] = useState(
   const [imageUrl, setImageUrl] = useState(
     product.image_url ?? ""
   );
+
+  // Mobile-only gallery URLs; image files are stored on Cloudflare R2.
+  const [mobileGalleryImages, setMobileGalleryImages] = useState<string[]>(() =>
+    Array.isArray(product.mobile_gallery)
+      ? product.mobile_gallery.filter((url: unknown): url is string =>
+          typeof url === "string" && url.trim().length > 0
+        )
+      : []
+  );
+  const [uploadingMobileGallery, setUploadingMobileGallery] = useState(false);
+
+  async function uploadMobileGalleryImages(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    const files = Array.from(input.files ?? []);
+    if (!files.length) return;
+    if (files.some((file) => !file.type.startsWith("image/"))) {
+      toast.error("Vui lòng chỉ chọn file hình ảnh."); input.value = ""; return;
+    }
+    if (files.some((file) => file.size > 10 * 1024 * 1024)) {
+      toast.error("Mỗi ảnh không được vượt quá 10MB."); input.value = ""; return;
+    }
+    try {
+      setUploadingMobileGallery(true);
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("productId", product.id);
+        formData.append("galleryType", "mobile");
+        const response = await fetch("/api/upload-r2", { method: "POST", body: formData });
+        const result = await response.json();
+        if (!response.ok || !result.success || !result.url) {
+          throw new Error(result.error || result.detail || "Upload ảnh mobile lên Cloudflare R2 thất bại.");
+        }
+        uploadedUrls.push(result.url);
+      }
+      setMobileGalleryImages((current) => [...current, ...uploadedUrls]);
+      toast.success(`Đã tải ${uploadedUrls.length} ảnh mobile lên Cloudflare R2.`);
+    } catch (error: any) {
+      toast.error(error?.message || "Upload ảnh mobile thất bại.");
+    } finally {
+      setUploadingMobileGallery(false); input.value = "";
+    }
+  }
+
+  function moveMobileGalleryImage(index: number, direction: -1 | 1) {
+    setMobileGalleryImages((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
 
   // Included in the Box: stored as JSONB on public.products.included_in_box.
   const [includedItems, setIncludedItems] = useState<IncludedBoxItem[]>(() => {
@@ -517,6 +571,7 @@ async function save() {
   slug: createSlug(name),
 
   image_url: imageUrl,
+  mobile_gallery: mobileGalleryImages,
 
 
 
@@ -1188,6 +1243,47 @@ if (error) throw error;
         <p className="mt-3 text-[10px] text-neutral-400">
           Dữ liệu được lưu vào products.included_in_box khi nhấn Lưu sản phẩm.
         </p>
+      </section>
+
+      {/* MOBILE-ONLY PRODUCT GALLERY */}
+      <section className="rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm md:p-5">
+        <div className="mb-4 flex flex-col gap-3 border-b border-[#ECE7DF] pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800"><Smartphone size={19} /></div>
+            <div>
+              <h2 className="text-base font-bold tracking-tight text-[#222]">Mobile Gallery</h2>
+              <p className="mt-0.5 text-[11px] text-neutral-500">Bộ ảnh riêng cho điện thoại. Website ưu tiên ảnh này trên mobile để không phải crop ảnh desktop.</p>
+            </div>
+          </div>
+          <label className={`inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#2D6A4F] px-4 text-xs font-semibold text-white transition hover:bg-[#245640] ${uploadingMobileGallery ? "pointer-events-none opacity-60" : ""}`}>
+            <ImagePlus size={15} />{uploadingMobileGallery ? "Đang tải ảnh..." : "Thêm ảnh mobile"}
+            <input type="file" accept="image/*" multiple disabled={uploadingMobileGallery} onChange={uploadMobileGalleryImages} className="hidden" />
+          </label>
+        </div>
+        {mobileGalleryImages.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[#D9D4CC] bg-[#FAF8F5] px-4 py-8 text-center">
+            <Smartphone className="mx-auto mb-2 text-neutral-400" size={24} />
+            <p className="text-sm font-semibold text-neutral-700">Chưa có ảnh mobile riêng</p>
+            <p className="mt-1 text-xs text-neutral-400">Thêm ảnh dọc tối ưu cho điện thoại. Nếu chưa có, website tiếp tục dùng Desktop Gallery.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {mobileGalleryImages.map((url, index) => (
+              <div key={`${url}-${index}`} className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+                <div className="aspect-[4/5] overflow-hidden bg-neutral-50"><img src={url} alt={`${name || "Product"} mobile image ${index + 1}`} className="h-full w-full object-contain" loading="lazy" /></div>
+                <div className="flex items-center justify-between gap-1 border-t border-neutral-100 px-2 py-2">
+                  <span className="text-[10px] font-semibold text-neutral-500">Ảnh {index + 1}</span>
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => moveMobileGalleryImage(index, -1)} disabled={index === 0} title="Di chuyển lên" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-30"><ArrowUp size={13} /></button>
+                    <button type="button" onClick={() => moveMobileGalleryImage(index, 1)} disabled={index === mobileGalleryImages.length - 1} title="Di chuyển xuống" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-30"><ArrowDown size={13} /></button>
+                    <button type="button" onClick={() => setMobileGalleryImages((current) => current.filter((_, i) => i !== index))} title="Xóa ảnh mobile" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50"><Trash2 size={13} /></button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-3 text-[10px] text-neutral-400">Ảnh upload lên Cloudflare R2; products.mobile_gallery chỉ lưu URL và thứ tự ảnh. Nhấn Lưu sản phẩm để lưu thay đổi.</p>
       </section>
 
       {/* GALLERY + MÀU SẮC / BIẾN THỂ */}

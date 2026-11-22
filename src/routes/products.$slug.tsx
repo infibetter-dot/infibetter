@@ -231,6 +231,8 @@ const productOptions = (slug: string) =>
 
           image_url,
 
+          mobile_gallery,
+
           dimensions,
 
           material,
@@ -614,6 +616,52 @@ function ProductPage() {
   const modelSelectRef = useRef<HTMLDivElement | null>(null);
 
   const videoCarouselRef = useRef<HTMLDivElement | null>(null);
+  const lifestyleGalleryRef = useRef<HTMLDivElement | null>(null);
+
+  // Scroll-linked zoom: each "See it in real life" image gently enlarges
+  // as it approaches the center of the viewport, then eases back as the user
+  // scrolls past it. This is tied to scroll position rather than a one-time trigger.
+  useEffect(() => {
+    const gallery = lifestyleGalleryRef.current;
+    if (!gallery) return;
+
+    const images = Array.from(
+      gallery.querySelectorAll<HTMLImageElement>("img[data-lifestyle-scroll-zoom]"),
+    );
+    if (!images.length || typeof window === "undefined") return;
+
+    let frame = 0;
+    const updateZoom = () => {
+      frame = 0;
+      const viewportCenter = window.innerHeight * 0.5;
+      const influenceRange = Math.max(window.innerHeight * 0.72, 1);
+
+      images.forEach((image) => {
+        const rect = image.getBoundingClientRect();
+        const imageCenter = rect.top + rect.height * 0.5;
+        const distance = Math.abs(imageCenter - viewportCenter);
+        const progress = Math.max(0, 1 - distance / influenceRange);
+        const easedProgress = progress * progress * (3 - 2 * progress);
+        const scale = 1 + easedProgress * 0.10;
+        image.style.setProperty("--scroll-zoom-scale", scale.toFixed(4));
+      });
+    };
+
+    const requestUpdate = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateZoom);
+    };
+
+    updateZoom();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+
+    return () => {
+      window.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("resize", requestUpdate);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [product.id]);
 
   const [quantity, setQuantity] = useState(1);
   const [isShortDescriptionExpanded, setIsShortDescriptionExpanded] = useState(false);
@@ -794,6 +842,40 @@ function ProductPage() {
 
   );
 
+  // Images uploaded in Admin > Mobile Gallery are used by the
+  // "See it in real life" section on mobile. Supports URL arrays and
+  // object arrays so existing saved data remains compatible.
+  const mobileGalleryImages = useMemo(() => {
+    const raw = product.mobile_gallery;
+    let entries: any[] = [];
+
+    if (Array.isArray(raw)) {
+      entries = raw;
+    } else if (typeof raw === "string" && raw.trim()) {
+      try {
+        const parsed = JSON.parse(raw);
+        entries = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        entries = [];
+      }
+    }
+
+    return entries
+      .map((item: any, index: number) => {
+        const imageUrl = typeof item === "string"
+          ? item
+          : item?.image_url || item?.url || item?.src;
+        return imageUrl
+          ? { id: item?.id ?? `mobile-gallery-${index}`, image_url: imageUrl }
+          : null;
+      })
+      .filter((item: any): item is { id: string; image_url: string } => Boolean(item));
+  }, [product.mobile_gallery]);
+
+  const realLifeMobileImages = mobileGalleryImages.length > 0
+    ? mobileGalleryImages
+    : lifestyleImages;
+
   // Lifestyle images gently zoom in while entering the viewport,
   // then return to their original scale when scrolled out.
   useEffect(() => {
@@ -819,7 +901,7 @@ function ProductPage() {
     images.forEach((image) => observer.observe(image));
 
     return () => observer.disconnect();
-  }, [product.id, lifestyleImages.length]);
+  }, [product.id, lifestyleImages.length, mobileGalleryImages.length]);
 
   // Product videos are displayed in their own horizontal carousel below Lifestyle.
 
@@ -1532,9 +1614,12 @@ function ProductPage() {
 
           <div className="min-w-0">
 
-            <div className="relative w-full overflow-hidden rounded-[26px] bg-white">
+            <div className="relative w-full overflow-hidden rounded-[18px] bg-white lg:rounded-[26px]">
 
-              <div className="aspect-square w-full">
+              {/* Mobile keeps each source image's natural aspect ratio so tall
+                  product-detail artwork is fully visible without being cropped.
+                  Desktop retains the square gallery frame. */}
+              <div className="w-full lg:aspect-square">
 
                 {activeImage ? (
 
@@ -1554,7 +1639,7 @@ function ProductPage() {
 
                       aria-label={`${product.name} video`}
 
-                      className="h-full w-full bg-white object-contain"
+                      className="block h-auto w-full bg-white object-contain lg:h-full"
 
                     />
 
@@ -1566,7 +1651,7 @@ function ProductPage() {
 
                       alt={product.name}
 
-                      className="h-full w-full object-contain scale-100 p-0 transition-transform duration-300"
+                      className="block h-auto w-full object-contain scale-100 p-0 transition-transform duration-300 lg:h-full"
 
                     />
 
@@ -2590,15 +2675,15 @@ function ProductPage() {
 
 {/* Lifestyle gallery â€” only Lifestyle images */}
 
-      {lifestyleImages.length > 0 && (
+      {(lifestyleImages.length > 0 || mobileGalleryImages.length > 0) && (
 
-        <section className="bg-white">
+        <section className="w-full overflow-hidden bg-white">
 
-          <div className="mx-auto max-w-[1240px] px-5 pb-14 md:px-8 md:pb-20">
+          <div className="mx-auto w-full max-w-[1234px]">
 
-            <div className="mx-auto w-full max-w-full">
+            <div className="w-full px-0 pb-6 pt-2 md:px-0 md:pb-8">
 
-              <div className="mb-6 text-center">
+              <div className="mb-6 px-5 text-center">
 
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
 
@@ -2614,47 +2699,59 @@ function ProductPage() {
 
               </div>
 
-              <div
+            </div>
 
-                className={
-  lifestyleImages.length === 1
-    ? "mx-auto w-full max-w-full"
-    : "grid grid-cols-1 gap-6"
-}
+            <div
+              ref={lifestyleGalleryRef}
+              className="mx-auto flex w-full max-w-[1234px] flex-col gap-0"
+            >
+              <style>{`
+                [data-lifestyle-scroll-zoom] {
+                  transform: scale(var(--scroll-zoom-scale, 1));
+                  transform-origin: center center;
+                  will-change: transform;
+                }
+                @media (prefers-reduced-motion: reduce) {
+                  [data-lifestyle-scroll-zoom] {
+                    transform: none !important;
+                    will-change: auto;
+                  }
+                }
+              `}</style>
 
-              >
-
-                {lifestyleImages.map((image: any, index: number) => (
-
+                {/* Mobile: Admin-uploaded Mobile Gallery takes priority. */}
+                {realLifeMobileImages.map((image: any, index: number) => (
                   <div
-
-                    key={`${image.id ?? index}-${image.image_url}`}
-
-                    className="w-full min-w-0 overflow-hidden rounded-[12px] bg-[#F5F5F7] shadow-[0_8px_24px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.05] sm:rounded-[16px]"
-
+                    key={`mobile-real-life-${image.id ?? index}-${image.image_url}`}
+                    className="relative mx-3 block aspect-[4/5] w-[calc(100%-1.5rem)] min-w-0 overflow-hidden rounded-none bg-white shadow-none ring-0 md:hidden"
                   >
-
                     <img
-
                       src={image.image_url}
-
-                      alt={`${product.name} lifestyle ${index + 1}`}
-
-                      data-lifestyle-zoom
-
-                      className="block h-auto w-full origin-center scale-100 object-contain transform-gpu transition-transform duration-700 ease-out will-change-transform"
-
+                      alt={`${product.name} in real life ${index + 1}`}
+                      data-lifestyle-scroll-zoom
+                      className="absolute inset-0 block h-full w-full max-w-none object-cover object-center"
                       loading="lazy"
-
                     />
-
                   </div>
+                ))}
 
+                {/* Desktop retains the existing Lifestyle gallery. */}
+                {lifestyleImages.map((image: any, index: number) => (
+                  <div
+                    key={`desktop-lifestyle-${image.id ?? index}-${image.image_url}`}
+                    className="relative hidden mx-3 aspect-[4/5] w-[calc(100%-1.5rem)] min-w-0 overflow-hidden rounded-none bg-white shadow-none ring-0 md:mx-0 md:block md:aspect-auto md:w-full"
+                  >
+                    <img
+                      src={image.image_url}
+                      alt={`${product.name} lifestyle ${index + 1}`}
+                      data-lifestyle-scroll-zoom
+                      className="absolute inset-0 block h-full w-full max-w-none object-cover object-center md:static md:h-auto md:object-contain"
+                      loading="lazy"
+                    />
+                  </div>
                 ))}
 
               </div>
-
-            </div>
 
           </div>
 
