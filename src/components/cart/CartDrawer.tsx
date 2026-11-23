@@ -878,8 +878,8 @@ export default function CartDrawer({
             </button>
 
             {/* PAYPAL PAYMENT BRANDING */}
-            <div className="mt-2 flex flex-col items-center justify-center">
-              <div className="mb-2 flex items-center justify-center">
+            <div className="mt-1 flex flex-col items-center justify-center">
+              <div className="mb-0 flex items-center justify-center">
                 <span className="text-[10px] italic font-medium text-[#777777]">
                   Powered by
                 </span>
@@ -890,66 +890,16 @@ export default function CartDrawer({
               </div>
 
               <div
-                className="flex items-center justify-center gap-[6px]"
+                className="-mt-1.5 flex w-full items-center justify-center gap-1.5"
                 aria-label="Accepted payment methods"
               >
-                <div
-                  className="flex h-[20px] w-[25px] items-center justify-center"
-                  aria-label="PayPal"
-                >
-                  <svg
-                    viewBox="0 0 32 24"
-                    className="h-[18px] w-[24px]"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fill="#003087"
-                      d="M10.1 4.2h8.1c4.1 0 6.2 2.2 5.5 5.5-.7 3.4-3.5 5.3-7.3 5.3h-2.5l-1 4.8H8.1l2-15.6Z"
-                    />
-                    <path
-                      fill="#009CDE"
-                      d="M8.3 6.4h7.9c3.7 0 5.8 1.8 5.4 4.5-.5 2.8-3 4.6-6.6 4.6h-2.5l-.7 3.5H7.2L8.3 6.4Z"
-                    />
-                  </svg>
-                </div>
-
-                <div
-                  className="
-                    flex
-                    h-[21px]
-                    min-w-[34px]
-                    items-center
-                    justify-center
-                    rounded-[5px]
-                    bg-[#1434CB]
-                  "
-                  aria-label="Visa"
-                >
-                  <span className="text-[9px] font-black italic tracking-[-0.08em] text-white">
-                    VISA
-                  </span>
-                </div>
-
-                <div
-                  className="
-                    flex
-                    h-[21px]
-                    min-w-[34px]
-                    items-center
-                    justify-center
-                    rounded-[5px]
-                    bg-[#F3F3F3]
-                  "
-                  aria-label="Mastercard"
-                >
-                  <div className="relative h-[15px] w-[25px]">
-                    <span className="absolute left-0 top-1/2 h-[15px] w-[15px] -translate-y-1/2 rounded-full bg-[#EB001B]" />
-                    <span className="absolute right-0 top-1/2 h-[15px] w-[15px] -translate-y-1/2 rounded-full bg-[#F79E1B]" />
-                    <span className="absolute left-1/2 top-1/2 h-[15px] w-[7px] -translate-x-1/2 -translate-y-1/2 bg-[#FF5F00]" />
-                  </div>
-                </div>
-
-                <span className="ml-[2px] text-[11px] font-medium text-[#777777]">
+                <img
+                  src="/payment-methods/all%20card.png"
+                  alt="Accepted payment methods"
+                  className="-my-1 block h-auto w-[280px] max-w-[calc(100%-48px)] object-contain"
+                  loading="lazy"
+                />
+                <span className="shrink-0 whitespace-nowrap text-[12px] font-semibold text-[#6B7280]">
                   +more
                 </span>
               </div>
@@ -958,7 +908,7 @@ export default function CartDrawer({
             {/* WARRANTY */}
             <div
               className="
-                mt-2
+                mt-1
                 flex
                 min-h-[38px]
                 items-center
