@@ -79,17 +79,41 @@ interface CollectionsProps {
   everydayPlusProducts?: CollectionProduct[];
 }
 
-const categoryImages = [
-  banner02,
-  banner03,
-  banner02, // Travel Power uses a charging-product image instead of the unrelated watchband/lifestyle image.
-];
-
-// Keep these slugs in sync with the category query parameters supported by /shop.
+// Homepage collection cards mirror the four categories shown in the desktop header.
+// Chargers uses the Shop filter slug "charging-stations".
 const collections = [
-  { title: "Wireless Charging", subtitle: "Shop Wireless Chargers", slug: "wireless-charging" },
-  { title: "Power Banks", subtitle: "Shop Power Banks", slug: "power-banks" },
-  { title: "Travel Power", subtitle: "Shop Travel Power", slug: "travel-power" },
+  {
+    title: "Wireless Charging",
+    subtitle: "Shop Wireless Chargers",
+    slug: "wireless-charging",
+    matchSlugs: ["wireless-charging", "wireless-chargers"],
+    matchNames: ["wireless charging", "wireless chargers", "wireless charger"],
+    fallbackImage: banner02,
+  },
+  {
+    title: "Power Banks",
+    subtitle: "Shop Power Banks",
+    slug: "power-banks",
+    matchSlugs: ["power-banks"],
+    matchNames: ["power banks", "power bank", "powerbank"],
+    fallbackImage: banner03,
+  },
+  {
+    title: "Chargers",
+    subtitle: "Shop Chargers",
+    slug: "charging-stations",
+    matchSlugs: ["charging-stations", "chargers", "power-station"],
+    matchNames: ["chargers", "charger", "charging stations", "charging station"],
+    fallbackImage: hero2,
+  },
+  {
+    title: "Travel Power",
+    subtitle: "Shop Travel Power",
+    slug: "travel-power",
+    matchSlugs: ["travel-power"],
+    matchNames: ["travel power", "travel"],
+    fallbackImage: hero1,
+  },
 ];
 
 // Fallback images used by product cards when a product has no image_url.
@@ -437,14 +461,67 @@ export default function Collections({
 
     return () => window.clearInterval(interval);
   }, [homepageReviews.length]);
-  // Use the actual image from the Travelmag Hybrid product for the Travel Power category card.
-  // Product images come from the product data already passed into this component.
-  const travelPowerProduct = [...products, ...newArrivals].find((product) => {
-    const name = product.name.toLowerCase();
-    const slug = product.slug.toLowerCase();
-    return name.includes("travelmag hybrid") || slug.includes("travelmag-hybrid");
-  });
-  const travelPowerImage = travelPowerProduct?.image_url || banner02;
+  // Resolve one real product image per category so unrelated cards never
+  // reuse the same image merely because they share an array index.
+  const collectionProducts = [...products, ...newArrivals].filter(
+    (product, index, all) => all.findIndex((item) => item.id === product.id) === index,
+  );
+
+  const getCollectionImage = (collection: (typeof collections)[number]) => {
+    const normalizedCollectionTitle = collection.title.trim().toLowerCase();
+
+    // Use the exact Power Banks hero product shown in the desktop mega menu:
+    // INFI Sant Pro 10000mAh Power Bank MagSafe. Do not let an earlier
+    // charging-station item in the same broad category win the image lookup.
+    if (normalizedCollectionTitle === "power banks") {
+      const preferredPowerBank = collectionProducts.find((product) => {
+        const name = product.name.trim().toLowerCase();
+        return Boolean(
+          product.image_url &&
+          (
+            name.includes("sant pro") ||
+            (name.includes("magsafe") && name.includes("power bank") && name.includes("10000"))
+          )
+        );
+      });
+
+      if (preferredPowerBank?.image_url) return preferredPowerBank.image_url;
+    }
+
+    const matchingProduct = collectionProducts.find((product) => {
+      const categorySlug =
+        product.category_slug ||
+        (typeof product.category === "object" ? product.category?.slug : "") ||
+        "";
+      const categoryName =
+        product.category_name ||
+        (typeof product.category === "object" ? product.category?.name : "") ||
+        "";
+      const normalizedSlug = String(categorySlug).trim().toLowerCase();
+      const normalizedName = String(categoryName).trim().toLowerCase();
+      const normalizedProductName = product.name.trim().toLowerCase();
+
+      const matchesCategory =
+        collection.matchSlugs.includes(normalizedSlug) ||
+        collection.matchNames.includes(normalizedName) ||
+        collection.matchNames.some((name) => normalizedProductName.includes(name));
+
+      // Keep Power Banks cards from selecting a desktop charger or charging station.
+      const isPowerBankCard = normalizedCollectionTitle === "power banks";
+      const isChargingProduct =
+        normalizedProductName.includes("charging station") ||
+        normalizedProductName.includes("desktop charger") ||
+        normalizedProductName.includes("gan charger");
+
+      return Boolean(
+        product.image_url &&
+        matchesCategory &&
+        !(isPowerBankCard && isChargingProduct)
+      );
+    });
+
+    return matchingProduct?.image_url || collection.fallbackImage;
+  };
 
   const displayCollections = homepageTiles.map((tile, index) => ({
     id: tile.id,
@@ -626,10 +703,10 @@ export default function Collections({
           [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
           sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible
           sm:px-0 sm:pb-0 sm:snap-none
-          lg:mx-auto lg:max-w-[1160px] lg:grid-cols-3 lg:gap-6
+          lg:mx-auto lg:max-w-[1240px] lg:grid-cols-4 lg:gap-5
         "
       >
-        {collections.map((item, index) => (
+        {collections.map((item) => (
           <Link
             key={item.slug}
             to="/shop"
@@ -647,7 +724,7 @@ export default function Collections({
           >
             <div className="relative aspect-square w-full overflow-hidden bg-white">
               <img
-                src={index === 2 ? travelPowerImage : categoryImages[index]}
+                src={getCollectionImage(item)}
                 alt={item.title}
                 loading="lazy"
                 draggable={false}
@@ -727,19 +804,21 @@ export default function Collections({
         {everydayPlusProducts.length > 0 ? (
           <div
             className="
-              -mx-4 mt-5 flex flex-nowrap snap-x snap-mandatory gap-3
-              overflow-x-auto overscroll-x-contain scroll-smooth px-4 pb-4
+              mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto
+              overflow-y-hidden pb-4
               [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
-              sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible
-              sm:px-0 sm:pb-4 sm:snap-none
-              xl:grid-cols-4
+              sm:gap-4
+              cursor-grab active:cursor-grabbing
             "
-            aria-label="Everyday Plus products slider"
+            aria-label="Everyday Plus products — swipe to explore"
           >
             {everydayPlusProducts.map((product, index) => (
               <div
                 key={`everyday-plus-${product.id}`}
-                className="w-[72vw] max-w-[270px] min-w-0 shrink-0 snap-start sm:w-auto sm:max-w-none sm:shrink"
+                className="
+                  w-[252px] min-w-[252px] max-w-[252px] flex-none
+                  snap-start sm:w-[252px] sm:min-w-[252px] sm:max-w-[252px]
+                "
               >
                 <ProductMiniCard
                   product={product}
