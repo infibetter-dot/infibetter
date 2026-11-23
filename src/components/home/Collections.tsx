@@ -84,12 +84,12 @@ const categoryImages = [
   banner02, // Travel Power uses a charging-product image instead of the unrelated watchband/lifestyle image.
 ];
 
-// Keep these slugs in sync with the category query parameters supported by /shop.
-const collections = [
-  { title: "Wireless Charging", subtitle: "Shop Wireless Chargers", slug: "wireless-charging" },
-  { title: "Power Banks", subtitle: "Shop Power Banks", slug: "power-banks" },
-  { title: "Travel Power", subtitle: "Shop Travel Power", slug: "travel-power" },
-];
+interface HeaderCollection {
+  id: string;
+  title: string;
+  slug: string;
+  image_url: string | null;
+}
 
 // Fallback images used by product cards when a product has no image_url.
 const demoProductImages = [banner02, banner03, banner02, banner02, hero2];
@@ -364,6 +364,120 @@ export default function Collections({
   const reviewSliderRef = useRef<HTMLDivElement>(null);
   const everydayPlusSliderRef = useRef<HTMLDivElement>(null);
   const [homepageReviews, setHomepageReviews] = useState<HomepageReview[]>([]);
+  const [headerCollections, setHeaderCollections] = useState<HeaderCollection[]>([]);
+
+  // Load the same visible Mega Menu groups as SiteHeader.
+  // The homepage cards therefore always use the category name, slug and image
+  // configured in Header > Mega Menu, instead of a separate hard-coded list.
+  useEffect(() => {
+    let active = true;
+
+    const loadHeaderCollections = async () => {
+      const { data, error } = await supabase
+        .from("mega_menu_sections")
+        .select(`
+          id, menu_key, title, image_url, sort_order, is_visible,
+          mega_menu_groups (
+            id, section_id, title, category_id, image_url, sort_order, is_visible,
+            categories ( id, name, slug, parent_id ),
+            mega_menu_items (
+              id, category_id, label_override, sort_order, is_visible,
+              categories ( id, name, slug, parent_id )
+            )
+          )
+        `)
+        .eq("is_visible", true)
+        .order("sort_order");
+
+      if (error) {
+        console.error("Homepage collections Mega Menu load error:", error);
+        return;
+      }
+      if (!active) return;
+
+      // Keep this list aligned with the four category groups shown in SiteHeader.
+      const primaryGroupNames = [
+        "wireless charging",
+        "power banks",
+        "chargers",
+        "travel power",
+      ];
+
+      const groups = (data ?? [])
+        .flatMap((section: any) => section.mega_menu_groups ?? [])
+        .filter((group: any) => group.is_visible)
+        .sort((a: any, b: any) => a.sort_order - b.sort_order);
+
+      const mapped = Array.from(
+        new Map(
+          groups.flatMap((group: any) => {
+            const groupCategory = Array.isArray(group.categories)
+              ? group.categories[0]
+              : group.categories;
+            const groupName = String(group.title || "").trim().toLowerCase();
+            const categoryName = String(groupCategory?.name || "").trim().toLowerCase();
+
+            if (
+              !primaryGroupNames.includes(groupName) &&
+              !primaryGroupNames.includes(categoryName)
+            ) {
+              return [];
+            }
+
+            const fallbackItem = (group.mega_menu_items ?? [])
+              .filter((item: any) => item.is_visible && item.category_id)
+              .sort((a: any, b: any) => a.sort_order - b.sort_order)
+              .find((item: any) => {
+                const category = Array.isArray(item.categories)
+                  ? item.categories[0]
+                  : item.categories;
+                return Boolean(category?.slug);
+              });
+
+            const fallbackCategory = fallbackItem
+              ? (Array.isArray(fallbackItem.categories)
+                  ? fallbackItem.categories[0]
+                  : fallbackItem.categories)
+              : null;
+
+            const category = groupCategory?.slug ? groupCategory : fallbackCategory;
+            if (!category?.slug) return [];
+
+            const title = group.title || category.name || fallbackItem?.label_override;
+
+            // The Shop page uses "charging-stations" for its Charging filter.
+            // The Mega Menu label is "Chargers", so map that group to the
+            // exact Shop filter slug instead of passing the underlying category slug.
+            const isChargersGroup =
+              groupName === "chargers" || categoryName === "chargers";
+            const destinationSlug = isChargersGroup
+              ? "charging-stations"
+              : category.slug;
+
+            const card: HeaderCollection = {
+              id: group.id,
+              title: title || category.name || "Shop Collection",
+              slug: destinationSlug,
+              image_url: group.image_url || null,
+            };
+
+            return [[card.slug, card] as const];
+          }),
+        ).values(),
+      );
+
+      setHeaderCollections(mapped);
+    };
+
+    loadHeaderCollections();
+    const handleMegaMenuUpdated = () => loadHeaderCollections();
+    window.addEventListener("infibetter:mega-menu-updated", handleMegaMenuUpdated);
+
+    return () => {
+      active = false;
+      window.removeEventListener("infibetter:mega-menu-updated", handleMegaMenuUpdated);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -437,17 +551,6 @@ export default function Collections({
 
     return () => window.clearInterval(interval);
   }, [homepageReviews.length]);
-  // Use the dedicated Travel Power category artwork.
-  const displayCollections = homepageTiles.map((tile, index) => ({
-    id: tile.id,
-    title: tile.title || tile.category_name,
-    slug: tile.category_slug,
-    image:
-      tile.category_slug === "travel-power"
-        ? travelCategoryImage
-        : tile.image_url || categoryImages[index] || banner02,
-  }));
-
   // New Arrivals remains its own section.
   // Keep all Admin-configured homepage tabs visible.
   const visibleHomepageTiles = homepageTiles;
@@ -631,15 +734,15 @@ export default function Collections({
         ref={categoryScrollRef}
         aria-label="Shop by category"
         className="
-          mx-0 grid grid-cols-3 items-stretch gap-2 overflow-visible
+          mx-0 grid grid-cols-2 items-stretch gap-3 overflow-visible
           px-0 pb-2
           sm:grid-cols-2 sm:gap-4 sm:pb-0
-          lg:mx-auto lg:max-w-[1160px] lg:grid-cols-3 lg:gap-6
+          lg:mx-auto lg:max-w-[1240px] lg:grid-cols-4 lg:gap-5
         "
       >
-        {collections.map((item, index) => (
+        {headerCollections.map((item, index) => (
           <Link
-            key={item.slug}
+            key={item.id}
             to="/shop"
             search={{ category: item.slug } as never}
             className="
@@ -654,7 +757,12 @@ export default function Collections({
           >
             <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-white">
               <img
-                src={index === 2 ? travelCategoryImage : categoryImages[index]}
+                src={
+                  item.image_url ||
+                  (item.slug === "travel-power"
+                    ? travelCategoryImage
+                    : categoryImages[index % categoryImages.length])
+                }
                 alt={item.title}
                 loading="lazy"
                 draggable={false}
@@ -680,7 +788,7 @@ export default function Collections({
                   {item.title}
                 </h3>
                 <p className="mt-0.5 truncate text-[8px] leading-tight text-[#7A8493] sm:mt-1 sm:text-[12px]">
-                  {item.subtitle}
+                  Shop {item.title}
                 </p>
               </div>
 
