@@ -1521,11 +1521,17 @@ export function SiteHeader() {
                         className="group min-w-0"
                       >
                         <div className="relative mb-4 flex aspect-[4/3] items-center justify-center overflow-hidden bg-white">
-                          {index === 0 && (
-                            <span className="absolute left-3 top-3 z-10 bg-[#E65A5A] px-2 py-1 text-[9px] font-semibold text-white">
-                              Featured
-                            </span>
-                          )}
+                          {product.compare_at_price &&
+                            Number(product.compare_at_price) > Number(product.price) &&
+                            Number(product.compare_at_price) > 0 &&
+                            Number(product.price) >= 0 && (
+                              <span className="absolute left-3 top-3 z-10 inline-flex items-center rounded-[2px] bg-[#E3262E] px-2.5 py-1 text-[10px] font-bold tracking-[0.01em] text-white shadow-sm">
+                                -{Math.round(
+                                  ((Number(product.compare_at_price) - Number(product.price)) /
+                                    Number(product.compare_at_price)) * 100,
+                                )}%
+                              </span>
+                            )}
                           {product.image_url ? (
                             <img
                               src={product.image_url}

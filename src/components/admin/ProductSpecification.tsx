@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Check,
+  ChevronUp,
   Layers3,
   Plus,
   Trash2,
@@ -10,6 +11,7 @@ import {
 
 interface Props {
   productId: string;
+  onToggleCollapse?: () => void;
 }
 
 interface Specification {
@@ -21,6 +23,7 @@ interface Specification {
 
 export default function ProductSpecification({
   productId,
+  onToggleCollapse,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<Specification[]>([]);
@@ -180,40 +183,29 @@ export default function ProductSpecification({
           </div>
         </div>
 
-        {/* ADD */}
-
-        <button
-          type="button"
-          onClick={addRow}
-          className="
-            flex
-            h-9
-            shrink-0
-            items-center
-            gap-1.5
-            rounded-xl
-            border
-            border-neutral-200
-            bg-white
-            px-3
-            text-xs
-            font-semibold
-            text-neutral-700
-            shadow-sm
-            transition
-            hover:border-neutral-300
-            hover:bg-neutral-50
-            active:scale-[0.98]
-          "
-        >
-          <Plus className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">
-            Thêm thông số
-          </span>
-          <span className="sm:hidden">
-            Thêm
-          </span>
-        </button>
+        {/* HEADER ACTIONS */}
+        <div className="flex shrink-0 items-center justify-end gap-2">
+          {onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label="Thu gọn thông số kỹ thuật"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.98]"
+            >
+              Thu gọn
+              <ChevronUp className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={addRow}
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.98]"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Thêm thông số</span>
+            <span className="sm:hidden">Thêm</span>
+          </button>
+        </div>
       </div>
 
       {/* ============================================

@@ -19,6 +19,7 @@ import {
   LampDesk,
   Sofa,
   Check,
+  ChevronUp,
   Plus,
   Trash2,
   WandSparkles,
@@ -29,6 +30,7 @@ import { toast } from "sonner";
 
 interface Props {
   productId: string;
+  onToggleCollapse?: () => void;
 }
 
 interface USPItem {
@@ -128,6 +130,7 @@ const ICONS = [
 
 export default function ProductUSP({
   productId,
+  onToggleCollapse,
 }: Props) {
   const [items, setItems] = useState<USPItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -383,39 +386,29 @@ export default function ProductUSP({
           </div>
         </div>
 
-        {/* ADD */}
-
-        <button
-          type="button"
-          onClick={addUSP}
-          className="
-            flex
-            h-9
-            shrink-0
-            items-center
-            gap-1.5
-            rounded-xl
-            bg-neutral-900
-            px-3
-            text-xs
-            font-semibold
-            text-white
-            shadow-sm
-            transition
-            hover:bg-black
-            active:scale-[0.98]
-          "
-        >
-          <Plus className="h-3.5 w-3.5" />
-
-          <span className="hidden sm:inline">
-            Thêm USP
-          </span>
-
-          <span className="sm:hidden">
-            Thêm
-          </span>
-        </button>
+        {/* HEADER ACTIONS */}
+        <div className="flex shrink-0 items-center justify-end gap-2">
+          {onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label="Thu gọn USP sản phẩm"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.98]"
+            >
+              Thu gọn
+              <ChevronUp className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={addUSP}
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-neutral-900 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-black active:scale-[0.98]"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Thêm USP</span>
+            <span className="sm:hidden">Thêm</span>
+          </button>
+        </div>
       </div>
 
       {/* =====================================================

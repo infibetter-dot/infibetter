@@ -55,6 +55,7 @@ export default function ProductSeo({
   ========================================================= */
 
   const [keywordInput, setKeywordInput] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
 
   const [tags, setTags] = useState<string[]>(() =>
     seoKeywords
@@ -184,21 +185,21 @@ export default function ProductSeo({
       ? {
           label: "Tốt",
           className:
-            "bg-emerald-500 text-white",
-          bar: "bg-emerald-500",
+            "bg-[#00B67A] text-white",
+          bar: "bg-[#00B67A]",
         }
       : seoScore >= 70
         ? {
             label: "Khá",
             className:
-              "bg-amber-500 text-white",
-            bar: "bg-amber-500",
+              "bg-[#B8B8B8] text-[#252525]",
+            bar: "bg-[#777777]",
           }
         : {
             label: "Cần tối ưu",
             className:
-              "bg-red-500 text-white",
-            bar: "bg-red-500",
+              "border border-[#D9DDE2] bg-[#F5F5F5] text-[#555555]",
+            bar: "bg-[#B8B8B8]",
           };
 
   /* =========================================================
@@ -251,719 +252,190 @@ export default function ProductSeo({
      RENDER
   ========================================================= */
 
+  const pageUrl = `https://infibetter.com/products/${createSlug(name)}`;
+
   return (
-    <section
-      className="
-        overflow-hidden
-        rounded-2xl
-        border
-        border-[#E7E2DA]
-        bg-white
-        shadow-sm
-      "
-    >
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
-
-      <div
-        className="
-          flex
-          items-center
-          justify-between
-          gap-4
-          border-b
-          border-[#EEEAE4]
-          px-5
-          py-4
-        "
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <div
-            className="
-              flex
-              h-9
-              w-9
-              shrink-0
-              items-center
-              justify-center
-              rounded-xl
-              bg-[#F5F3EE]
-              text-neutral-700
-            "
-          >
-            <Search
-              className="h-4 w-4"
-              strokeWidth={1.8}
-            />
+    <section className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+      <header className="relative flex flex-wrap items-center justify-between gap-3 overflow-hidden px-4 py-4 sm:px-5">
+        <div className="absolute inset-y-0 left-0 w-1 bg-[#00B67A]" aria-hidden="true" />
+        <div className="flex min-w-0 items-center gap-3 pl-1">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#BFEBDD] bg-[#EAF8F2] text-[#00A86B] shadow-sm">
+            <Sparkles size={17} strokeWidth={1.8} />
           </div>
-
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-neutral-900">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-tight text-[#252525]">
+                <Search size={14} strokeWidth={2} className="text-[#00A86B]" />
                 SEO Optimization
               </h2>
-
-              <span
-                className={`
-                  rounded-full
-                  px-2
-                  py-0.5
-                  text-[10px]
-                  font-semibold
-                  ${scoreConfig.className}
-                `}
-              >
-                {seoScore}/100
+              <span className="inline-flex items-center rounded-full border border-[#00A86B] bg-[#00B67A] px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm">
+                {seoScore}/100 · {scoreConfig.label}
               </span>
             </div>
-
-            <p className="mt-0.5 text-[11px] text-neutral-400">
-              Tối ưu hiển thị sản phẩm trên Google
-            </p>
+            <p className="mt-1 text-[11px] text-[#777777]">Quản lý cách sản phẩm xuất hiện trên công cụ tìm kiếm</p>
           </div>
         </div>
 
-        {/* SCORE */}
-
-        <div className="hidden items-center gap-2 sm:flex">
-          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-neutral-100">
-            <div
-              className={`
-                h-full
-                rounded-full
-                transition-all
-                ${scoreConfig.bar}
-              `}
-              style={{
-                width: `${seoScore}%`,
-              }}
-            />
+        <div className="flex shrink-0 items-center gap-3">
+          <div className="hidden w-24 sm:block">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[#F5F5F5]">
+              <div className="h-full rounded-full bg-[#00B67A] transition-all" style={{ width: `${seoScore}%` }} />
+            </div>
           </div>
-
-          <span className="text-[10px] font-medium text-neutral-400">
-            {scoreConfig.label}
-          </span>
-        </div>
-      </div>
-
-      {/* =====================================================
-          GOOGLE PREVIEW
-      ===================================================== */}
-
-      <div className="border-b border-[#EEEAE4] p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
-              Google Preview
-            </p>
-
-            <p className="mt-0.5 text-[9px] text-neutral-400">
-              Xem trước cách sản phẩm có thể xuất hiện trên Google
-            </p>
-          </div>
-
-          <ExternalLink
-            size={12}
-            className="text-neutral-300"
-          />
-        </div>
-
-        <div
-          className="
-            rounded-xl
-            border
-            border-neutral-200
-            bg-[#FAFAFA]
-            px-4
-            py-3
-          "
-        >
-          {/* TITLE */}
-
-          <div
-            className="
-              truncate
-              text-[14px]
-              font-medium
-              text-[#1A0DAB]
-            "
+          <button
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Mở rộng SEO Optimization" : "Thu gọn SEO Optimization"}
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 text-[11px] font-semibold text-[#252525] transition hover:bg-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8B8B8]"
           >
-            {seoTitle ||
-              "Tiêu đề SEO sẽ hiển thị tại đây"}
-          </div>
-
-          {/* URL */}
-
-          <div
-            className="
-              mt-1
-              truncate
-              text-[10px]
-              text-[#188038]
-            "
-          >
-            https://olivelivingvn.com/products/
-            {createSlug(name)}
-          </div>
-
-          {/* DESCRIPTION */}
-
-          <div
-            className="
-              mt-1.5
-              line-clamp-2
-              text-[10px]
-              leading-5
-              text-[#5F6368]
-            "
-          >
-            {seoDescription ||
-              "Meta description sẽ hiển thị tại đây."}
-          </div>
+            {collapsed ? "Mở rộng" : "Thu gọn"}
+            <span className={`text-sm leading-none transition-transform ${collapsed ? "rotate-180" : ""}`}>⌃</span>
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* =====================================================
-          FORM
-      ===================================================== */}
-
-      <div className="space-y-4 p-4">
-        {/* ===================================================
-            SEO TITLE
-        =================================================== */}
-
+      <div className="border-t border-[#D8F0E6] bg-[#F4FBF7] p-4 sm:p-5">
         <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-[11px] font-semibold text-neutral-700">
-              SEO Title
-            </label>
-
-            <span
-              className={`
-                text-[10px]
-                font-semibold
-                ${
-                  titleGood
-                    ? "text-emerald-600"
-                    : titleLength > 60
-                      ? "text-red-500"
-                      : "text-amber-500"
-                }
-              `}
-            >
-              {titleLength}/60
-            </span>
-          </div>
-
-          <input
-            value={seoTitle}
-            onChange={(e) =>
-              setSeoTitle(e.target.value)
-            }
-            maxLength={70}
-            placeholder="Ví dụ: Ghế Butterfly Stool Gỗ Óc Chó | Olive Living"
-            className="
-              h-9
-              w-full
-              rounded-lg
-              border
-              border-neutral-200
-              bg-white
-              px-3
-              text-[11px]
-              text-neutral-700
-              outline-none
-              transition
-              placeholder:text-neutral-400
-              focus:border-[#6F8B5E]
-              focus:ring-2
-              focus:ring-[#6F8B5E]/15
-            "
-          />
-
-          {/* PROGRESS */}
-
-          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-neutral-100">
-            <div
-              className={`
-                h-full
-                rounded-full
-                transition-all
-                ${
-                  titleGood
-                    ? "bg-emerald-500"
-                    : titleLength > 60
-                      ? "bg-red-500"
-                      : "bg-amber-400"
-                }
-              `}
-              style={{
-                width: `${Math.min(
-                  (titleLength / 60) * 100,
-                  100,
-                )}%`,
-              }}
-            />
-          </div>
+            <div className="mb-2 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#008F62]">Search preview</p>
+                <p className="mt-1 text-[11px] text-[#777777]">Bản xem trước nội dung tìm kiếm</p>
+              </div>
+              <ExternalLink size={14} className="text-[#00A86B]" />
+            </div>
+            <div className="rounded-xl border border-[#CDEBDD] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+              <p className="truncate text-[11px] font-semibold text-[#008F62]">INFIBETTER</p>
+              <p className="mt-1 line-clamp-1 text-base font-medium leading-6 text-[#252525]">{seoTitle || "Tiêu đề SEO sẽ hiển thị tại đây"}</p>
+              <p className="mt-1 truncate text-[11px] text-[#008F62]">{pageUrl}</p>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#555555]">{seoDescription || "Meta description sẽ hiển thị tại đây."}</p>
+            </div>
         </div>
 
-        {/* ===================================================
-            META DESCRIPTION
-        =================================================== */}
-
-        <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-[11px] font-semibold text-neutral-700">
-              Meta Description
-            </label>
-
-            <span
-              className={`
-                text-[10px]
-                font-semibold
-                ${
-                  descriptionGood
-                    ? "text-emerald-600"
-                    : descLength > 160
-                      ? "text-red-500"
-                      : "text-amber-500"
-                }
-              `}
-            >
-              {descLength}/160
-            </span>
-          </div>
-
-          <textarea
-            rows={3}
-            maxLength={180}
-            value={seoDescription}
-            onChange={(e) =>
-              setSeoDescription(
-                e.target.value,
-              )
-            }
-            placeholder="Viết mô tả hấp dẫn để Google hiển thị..."
-            className="
-              w-full
-              resize-none
-              rounded-lg
-              border
-              border-neutral-200
-              bg-white
-              px-3
-              py-2.5
-              text-[11px]
-              leading-5
-              text-neutral-700
-              outline-none
-              transition
-              placeholder:text-neutral-400
-              focus:border-[#6F8B5E]
-              focus:ring-2
-              focus:ring-[#6F8B5E]/15
-            "
-          />
-
-          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-neutral-100">
-            <div
-              className={`
-                h-full
-                rounded-full
-                transition-all
-                ${
-                  descriptionGood
-                    ? "bg-emerald-500"
-                    : descLength > 160
-                      ? "bg-red-500"
-                      : "bg-amber-400"
-                }
-              `}
-              style={{
-                width: `${Math.min(
-                  (descLength / 160) * 100,
-                  100,
-                )}%`,
-              }}
-            />
-          </div>
-        </div>
-
-        {/* ===================================================
-            KEYWORD + URL
-        =================================================== */}
-
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {/* KEYWORD */}
-
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-neutral-700">
-                Từ khóa chính
-              </label>
-
-              {tags.length > 0 && (
-                <span className="text-[9px] text-neutral-400">
-                  {tags.length} từ khóa
-                </span>
-              )}
+        {!collapsed && (
+          <div className="mt-5 space-y-5">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="lg:col-span-2">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <label className="text-xs font-semibold text-[#252525]">SEO Title</label>
+                <span className={`text-[11px] font-semibold tabular-nums ${titleGood ? "text-[#252525]" : "text-[#777777]"}`}>{titleLength}/60</span>
+              </div>
+              <input
+                value={seoTitle}
+                onChange={(e) => setSeoTitle(e.target.value)}
+                maxLength={70}
+                placeholder="Ví dụ: INFI Magnetic Power Bank 10000mAh"
+                className="h-11 w-full rounded-xl border border-[#D9DDE2] bg-white px-3.5 text-sm text-[#252525] outline-none transition placeholder:text-[#B8B8B8] focus:border-[#777777] focus:ring-2 focus:ring-[#B8B8B8]/20"
+              />
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#F5F5F5]">
+                <div className="h-full rounded-full bg-[#00B67A] transition-all" style={{ width: `${Math.min((titleLength / 60) * 100, 100)}%` }} />
+              </div>
+              <p className="mt-1.5 text-[10px] text-[#999999]">Độ dài khuyến nghị: 40–60 ký tự</p>
             </div>
 
-            <div
-              className="
-                flex
-                min-h-[36px]
-                flex-wrap
-                items-center
-                gap-1.5
-                rounded-lg
-                border
-                border-neutral-200
-                bg-white
-                px-2
-                py-1.5
-                transition
-                focus-within:border-[#6F8B5E]
-                focus-within:ring-2
-                focus-within:ring-[#6F8B5E]/15
-              "
-            >
-              {tags.map((tag, index) => (
-                <div
-                  key={`${tag}-${index}`}
-                  className="
-                    flex
-                    items-center
-                    gap-1
-                    rounded-full
-                    bg-[#2D6A4F]
-                    px-2
-                    py-1
-                    text-[9px]
-                    font-medium
-                    text-white
-                  "
-                >
-                  <span>{tag}</span>
+            <div className="lg:col-span-2">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <label className="text-xs font-semibold text-[#252525]">Meta Description</label>
+                <span className={`text-[11px] font-semibold tabular-nums ${descriptionGood ? "text-[#252525]" : "text-[#777777]"}`}>{descLength}/160</span>
+              </div>
+              <textarea
+                rows={3}
+                maxLength={180}
+                value={seoDescription}
+                onChange={(e) => setSeoDescription(e.target.value)}
+                placeholder="Mô tả ngắn gọn lợi ích và điểm nổi bật của sản phẩm..."
+                className="w-full resize-y rounded-xl border border-[#D9DDE2] bg-white px-3.5 py-3 text-sm leading-6 text-[#252525] outline-none transition placeholder:text-[#B8B8B8] focus:border-[#777777] focus:ring-2 focus:ring-[#B8B8B8]/20"
+              />
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#F5F5F5]">
+                <div className="h-full rounded-full bg-[#00B67A] transition-all" style={{ width: `${Math.min((descLength / 160) * 100, 100)}%` }} />
+              </div>
+              <p className="mt-1.5 text-[10px] text-[#999999]">Độ dài khuyến nghị: 120–160 ký tự</p>
+            </div>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeKeyword(index)
-                    }
-                    className="
-                      flex
-                      h-3
-                      w-3
-                      items-center
-                      justify-center
-                      rounded-full
-                      text-white/70
-                      transition
-                      hover:bg-white/15
-                      hover:text-white
-                    "
-                  >
-                    <X size={9} />
-                  </button>
-                </div>
-              ))}
-
-              <input
-                value={keywordInput}
-                onChange={(e) =>
-                  setKeywordInput(
-                    e.target.value,
-                  )
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addKeyword();
-                  }
-
-                  if (
-                    e.key === "," ||
-                    e.key === "Tab"
-                  ) {
-                    if (
-                      keywordInput.trim()
-                    ) {
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-xs font-semibold text-[#252525]">Từ khóa chính</label>
+                <span className="text-[10px] text-[#999999]">{tags.length} từ khóa</span>
+              </div>
+              <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-xl border border-[#D9DDE2] bg-white p-2.5 transition focus-within:border-[#777777] focus-within:ring-2 focus-within:ring-[#B8B8B8]/20">
+                {tags.map((tag, index) => (
+                  <span key={`${tag}-${index}`} className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-[#F5F5F5] px-2.5 py-1.5 text-[11px] font-medium text-[#252525]">
+                    {tag}
+                    <button type="button" onClick={() => removeKeyword(index)} aria-label={`Xóa từ khóa ${tag}`} className="grid h-4 w-4 place-items-center rounded text-[#777777] hover:bg-[#E5E7EB] hover:text-[#252525]">
+                      <X size={11} />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  value={keywordInput}
+                  onChange={(e) => setKeywordInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") {
                       e.preventDefault();
                       addKeyword();
                     }
-                  }
-                }}
-                placeholder={
-                  tags.length
-                    ? "Thêm từ khóa..."
-                    : "Nhập từ khóa + Enter"
-                }
-                className="
-                  min-w-[100px]
-                  flex-1
-                  border-none
-                  bg-transparent
-                  px-1
-                  text-[10px]
-                  text-neutral-700
-                  outline-none
-                  placeholder:text-neutral-400
-                "
-              />
-            </div>
-          </div>
-
-          {/* URL */}
-
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-neutral-700">
-                URL sản phẩm
-              </label>
-
-              <span className="text-[9px] text-emerald-600">
-                Tự động
-              </span>
-            </div>
-
-            <div
-              className="
-                flex
-                min-h-[36px]
-                items-center
-                rounded-lg
-                border
-                border-neutral-200
-                bg-neutral-50
-                px-3
-                text-[10px]
-                text-neutral-500
-              "
-            >
-              <span className="truncate">
-                https://olivelivingvn.com/products/
-                {createSlug(name)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* =====================================================
-          CHECKLIST + SUGGESTIONS
-      ===================================================== */}
-
-      <div className="grid grid-cols-1 border-t border-[#EEEAE4] lg:grid-cols-2">
-        {/* ===================================================
-            CHECKLIST
-        =================================================== */}
-
-        <div className="p-4 lg:border-r lg:border-[#EEEAE4]">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold text-neutral-700">
-                SEO Checklist
-              </p>
-
-              <p className="mt-0.5 text-[9px] text-neutral-400">
-                Kiểm tra nhanh trước khi lưu
-              </p>
-            </div>
-
-            <span
-              className={`
-                rounded-full
-                px-2
-                py-1
-                text-[9px]
-                font-semibold
-                ${scoreConfig.className}
-              `}
-            >
-              {seoScore}/100
-            </span>
-          </div>
-
-          <div className="space-y-1.5">
-            {/* TITLE */}
-
-            <ChecklistRow
-              valid={titleGood}
-              label="SEO Title 40–60 ký tự"
-              value={`${titleLength}/60`}
-            />
-
-            {/* DESCRIPTION */}
-
-            <ChecklistRow
-              valid={descriptionGood}
-              label="Meta Description 120–160 ký tự"
-              value={`${descLength}/160`}
-            />
-
-            {/* KEYWORD */}
-
-            <ChecklistRow
-              valid={keyword !== ""}
-              label="Có từ khóa chính"
-            />
-
-            {/* TITLE KEYWORD */}
-
-            <ChecklistRow
-              valid={hasKeywordInTitle}
-              label="Từ khóa trong Title"
-            />
-
-            {/* DESCRIPTION KEYWORD */}
-
-            <ChecklistRow
-              valid={hasKeywordInDesc}
-              label="Từ khóa trong Description"
-            />
-
-            {/* SLUG */}
-
-            <ChecklistRow
-              valid={name.trim() !== ""}
-              label="URL Slug tự động"
-            />
-          </div>
-        </div>
-
-        {/* ===================================================
-            SUGGESTIONS
-        =================================================== */}
-
-        <div className="bg-[#FFFCF4] p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <div
-              className="
-                flex
-                h-7
-                w-7
-                items-center
-                justify-center
-                rounded-lg
-                bg-amber-100
-                text-amber-700
-              "
-            >
-              <Lightbulb
-                size={13}
-              />
-            </div>
-
-            <div>
-              <p className="text-[11px] font-semibold text-amber-800">
-                Gợi ý tối ưu
-              </p>
-
-              <p className="text-[9px] text-amber-600/70">
-                Cải thiện SEO trước khi đăng
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-1.5 text-[10px] leading-4 text-amber-900">
-            {titleLength < 40 && (
-              <Suggestion>
-                Tiêu đề còn ngắn. Nên khoảng
-                40–60 ký tự.
-              </Suggestion>
-            )}
-
-            {titleLength > 60 && (
-              <Suggestion>
-                Tiêu đề quá dài, Google có thể
-                cắt bớt khi hiển thị.
-              </Suggestion>
-            )}
-
-            {descLength < 120 && (
-              <Suggestion>
-                Meta Description nên khoảng
-                120–160 ký tự.
-              </Suggestion>
-            )}
-
-            {descLength > 160 && (
-              <Suggestion>
-                Meta Description đang quá dài.
-              </Suggestion>
-            )}
-
-            {keyword === "" && (
-              <Suggestion>
-                Hãy thêm ít nhất một từ khóa
-                chính.
-              </Suggestion>
-            )}
-
-            {keyword !== "" &&
-              !hasKeywordInTitle && (
-                <Suggestion>
-                  Nên đưa từ khóa chính vào
-                  SEO Title.
-                </Suggestion>
-              )}
-
-            {keyword !== "" &&
-              !hasKeywordInDesc && (
-                <Suggestion>
-                  Nên đưa từ khóa chính vào
-                  Meta Description.
-                </Suggestion>
-              )}
-
-            {seoScore >= 90 && (
-              <div
-                className="
-                  flex
-                  items-center
-                  gap-1.5
-                  rounded-lg
-                  bg-emerald-50
-                  px-2.5
-                  py-2
-                  font-medium
-                  text-emerald-700
-                "
-              >
-                <Sparkles size={11} />
-
-                SEO đang ở mức rất tốt.
+                  }}
+                  placeholder={tags.length ? "Thêm từ khóa..." : "Nhập từ khóa rồi nhấn Enter"}
+                  className="min-w-[130px] flex-1 border-0 bg-transparent px-1 py-1 text-xs text-[#252525] outline-none placeholder:text-[#B8B8B8]"
+                />
               </div>
-            )}
+              <p className="mt-1.5 text-[10px] text-[#999999]">Nhấn Enter hoặc dấu phẩy để thêm từ khóa</p>
+            </div>
 
-            {seoScore < 90 &&
-              titleLength > 0 &&
-              descLength > 0 &&
-              keyword !== "" &&
-              hasKeywordInTitle &&
-              hasKeywordInDesc && (
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-1.5
-                    rounded-lg
-                    bg-emerald-50
-                    px-2.5
-                    py-2
-                    font-medium
-                    text-emerald-700
-                  "
-                >
-                  <Check size={11} />
-
-                  Nội dung SEO cơ bản đã đầy đủ.
-                </div>
-              )}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-xs font-semibold text-[#252525]">URL sản phẩm</label>
+                <span className="text-[10px] font-medium text-[#777777]">Tự động</span>
+              </div>
+              <div className="flex min-h-11 items-center rounded-xl border border-[#E5E7EB] bg-[#F5F5F5] px-3.5 py-2.5">
+                <span className="break-all text-xs leading-5 text-[#777777]">{pageUrl}</span>
+              </div>
+              <p className="mt-1.5 text-[10px] text-[#999999]">URL được tạo từ slug của sản phẩm</p>
+            </div>
           </div>
-        </div>
+
+          <div className="grid gap-4 border-t border-[#E5E7EB] pt-5 lg:grid-cols-2">
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-semibold text-[#252525]">SEO Checklist</h3>
+                  <p className="mt-1 text-[10px] text-[#999999]">Các tiêu chí tối ưu cơ bản</p>
+                </div>
+                <span className="rounded-lg bg-[#F5F5F5] px-2.5 py-1 text-[11px] font-semibold text-[#252525]">{seoScore}/100</span>
+              </div>
+              <div className="space-y-2">
+                <ChecklistRow valid={titleGood} label="SEO Title 40–60 ký tự" value={`${titleLength}/60`} />
+                <ChecklistRow valid={descriptionGood} label="Meta Description 120–160 ký tự" value={`${descLength}/160`} />
+                <ChecklistRow valid={keyword !== ""} label="Đã thêm từ khóa chính" />
+                <ChecklistRow valid={hasKeywordInTitle} label="Từ khóa xuất hiện trong Title" />
+                <ChecklistRow valid={hasKeywordInDesc} label="Từ khóa xuất hiện trong Description" />
+                <ChecklistRow valid={name.trim() !== ""} label="URL Slug đã được tạo" />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#F5F5F5] text-[#555555]"><Lightbulb size={15} /></div>
+                <div>
+                  <h3 className="text-xs font-semibold text-[#252525]">Gợi ý tối ưu</h3>
+                  <p className="mt-0.5 text-[10px] text-[#999999]">Những điểm cần hoàn thiện</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-[11px] leading-5 text-[#555555]">
+                {titleLength < 40 && <Suggestion>Tiêu đề nên dài khoảng 40–60 ký tự.</Suggestion>}
+                {titleLength > 60 && <Suggestion>Tiêu đề hơi dài; hãy cân nhắc rút gọn.</Suggestion>}
+                {descLength < 120 && <Suggestion>Meta Description nên dài khoảng 120–160 ký tự.</Suggestion>}
+                {descLength > 160 && <Suggestion>Meta Description đang dài hơn mức khuyến nghị.</Suggestion>}
+                {keyword === "" && <Suggestion>Thêm từ khóa chính mô tả đúng sản phẩm.</Suggestion>}
+                {keyword !== "" && !hasKeywordInTitle && <Suggestion>Đưa từ khóa chính vào SEO Title một cách tự nhiên.</Suggestion>}
+                {keyword !== "" && !hasKeywordInDesc && <Suggestion>Đề cập từ khóa chính trong Meta Description.</Suggestion>}
+                {seoScore >= 90 && <div className="flex items-center gap-2 rounded-lg border border-[#D9DDE2] bg-white px-3 py-2 font-medium text-[#252525]"><Sparkles size={13} />Các tiêu chí SEO cơ bản đã được đáp ứng.</div>}
+                {seoScore < 90 && titleLength > 0 && descLength > 0 && keyword !== "" && hasKeywordInTitle && hasKeywordInDesc && <div className="flex items-center gap-2 rounded-lg border border-[#D9DDE2] bg-white px-3 py-2 font-medium text-[#252525]"><Check size={13} />Nội dung SEO cơ bản đã đầy đủ.</div>}
+              </div>
+            </div>
+          </div>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1007,8 +479,8 @@ function ChecklistRow({
               items-center
               justify-center
               rounded-full
-              bg-emerald-100
-              text-emerald-600
+              bg-[#00B67A]
+              text-white
             "
           >
             <Check size={9} strokeWidth={2.5} />
@@ -1023,8 +495,9 @@ function ChecklistRow({
               items-center
               justify-center
               rounded-full
-              bg-red-50
-              text-red-500
+              border border-[#D9DDE2]
+              bg-white
+              text-[#777777]
             "
           >
             <CircleAlert
@@ -1058,7 +531,7 @@ function ChecklistRow({
             font-semibold
             ${
               valid
-                ? "text-emerald-600"
+                ? "text-[#00A86B]"
                 : "text-neutral-400"
             }
           `}
@@ -1081,7 +554,7 @@ function Suggestion({
 }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-amber-500" />
+      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#777777]" />
 
       <span>{children}</span>
     </div>

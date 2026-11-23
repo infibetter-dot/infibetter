@@ -753,65 +753,46 @@ function ProductPage() {
   }
 
   const productImages = useMemo(() => {
-
-    // Product gallery contains product images only. Lifestyle images are rendered
-
-    // separately in the Lifestyle section below and must not appear in thumbnails
-
-    // or the main gallery navigation.
-
+    // The Admin-selected Thumbnail is stored in products.image_url.
+    // Always place it first in the Retail gallery, regardless of sort_order.
     const images = (product.product_images ?? [])
-
       .filter(
-
         (item: any) =>
-
           item?.image_url &&
-
           item?.is_lifestyle !== true &&
-
           item?.image_type !== "video" &&
-
-          !/\.(mp4|webm)(?:$|[?#])/i.test(item.image_url),
-
+          !/\\.(mp4|webm)(?:$|[?#])/i.test(item.image_url),
       )
+      .slice()
+      .sort(
+        (a: any, b: any) =>
+          Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
+      );
 
-      .sort((a: any, b: any) => {
+    const featuredUrl =
+      typeof product.image_url === "string" ? product.image_url.trim() : "";
 
-        const sortDiff =
+    if (!featuredUrl) return images;
 
-          Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
+    const featuredIndex = images.findIndex(
+      (item: any) => item.image_url === featuredUrl,
+    );
 
-        if (sortDiff !== 0) return sortDiff;
-
-        return Number(Boolean(a.is_lifestyle)) - Number(Boolean(b.is_lifestyle));
-
-      });
-
-    if (images.length > 0) return images;
-
-    if (product.image_url) {
-
+    // Keep the cover visible even if its URL has no product_images row.
+    if (featuredIndex === -1) {
       return [
-
         {
-
           id: "main",
-
-          image_url: product.image_url,
-
+          image_url: featuredUrl,
           color_id: null,
-
           is_lifestyle: false,
-
         },
-
+        ...images,
       ];
-
     }
 
-    return [];
-
+    const [featuredImage] = images.splice(featuredIndex, 1);
+    return [featuredImage, ...images];
   }, [product]);
 
   const lifestyleImages = useMemo(
@@ -955,10 +936,12 @@ function ProductPage() {
 
       : [];
 
+    const featuredImage = productImages.find(
+      (image: any) => image?.image_url === product.image_url,
+    );
     const colorImage =
-
+      featuredImage ??
       firstColorImages[0] ??
-
       productImages[0];
 
     setSelectedColor(firstColor);
@@ -990,7 +973,7 @@ function ProductPage() {
 
     setQuantity(1);
 
-  }, [product.id]);
+  }, [product.id, product.image_url, productImages]);
 
   function handleColorChange(color: any) {
 

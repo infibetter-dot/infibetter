@@ -35,6 +35,7 @@ export default function ProductFAQs({ productId }: ProductFAQsProps) {
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   async function loadFAQs() {
     if (!productId) {
@@ -243,17 +244,35 @@ export default function ProductFAQs({ productId }: ProductFAQsProps) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={addFAQ}
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsCollapsed((current) => !current)}
+            aria-expanded={!isCollapsed}
+            aria-label={isCollapsed ? "Expand Product FAQs" : "Collapse Product FAQs"}
+            title={isCollapsed ? "Expand FAQs" : "Collapse FAQs"}
+            className="grid h-9 w-9 place-items-center rounded-xl border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-900"
+          >
+            {isCollapsed ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronUp className="h-4 w-4" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={addFAQ}
           disabled={creating}
           className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-neutral-900 px-3.5 text-[11px] font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-3.5 w-3.5" />
           {creating ? "Adding..." : "Add FAQ"}
-        </button>
+          </button>
+        </div>
       </div>
 
+      {!isCollapsed && (
       <div className="p-4">
         {loading ? (
           <div className="rounded-xl border border-dashed border-neutral-200 py-10 text-center text-xs text-neutral-500">
@@ -350,9 +369,9 @@ export default function ProductFAQs({ productId }: ProductFAQsProps) {
                           event.target.value,
                         )
                       }
-                      rows={4}
+                      rows={2}
                       placeholder="Write a clear, product-specific answer..."
-                      className="w-full resize-y rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-xs leading-5 text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
+                      className="h-[72px] min-h-[72px] w-full resize-y rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs leading-5 text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100"
                     />
                   </div>
 
@@ -389,6 +408,7 @@ export default function ProductFAQs({ productId }: ProductFAQsProps) {
           </div>
         )}
       </div>
+      )}
     </section>
   );
 }

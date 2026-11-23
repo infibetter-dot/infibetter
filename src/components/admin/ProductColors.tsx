@@ -26,6 +26,8 @@ interface Props {
 
   onSaved?: () => void;
 
+  onToggleCollapse?: () => void;
+
 }
 
 
@@ -99,6 +101,8 @@ export default function ProductColors({
   productId,
 
   onSaved,
+
+  onToggleCollapse,
 
 }: Props) {
 
@@ -836,21 +840,21 @@ toast.success("Đã lưu màu sắc");
 
   return (
 
-    <section className="h-full rounded-2xl border border-stone-200 bg-white p-4 shadow-sm flex flex-col">
+    <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:p-5">
 
 
 
-      <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-100 pb-3">
+      <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
 
         <div className="min-w-0">
 
-          <h3 className="text-sm font-semibold text-stone-900">
+          <h3 className="text-sm font-semibold tracking-tight text-slate-900">
 
             Màu sắc & biến thể
 
           </h3>
 
-          <p className="mt-0.5 text-[10px] text-stone-400">
+          <p className="mt-1 text-xs leading-5 text-slate-500">
 
             Quản lý màu, chất liệu, ảnh, SKU, giá và tồn kho.
 
@@ -860,25 +864,49 @@ toast.success("Đã lưu màu sắc");
 
 
 
-        <button
+        <div className="flex shrink-0 items-center justify-end gap-2">
 
-          type="button"
+          <button
 
-          onClick={addColor}
+            type="button"
 
-          className="h-8 shrink-0 rounded-lg border border-stone-200 bg-white px-3 text-[11px] font-medium text-stone-700 transition hover:bg-stone-50"
+            onClick={addColor}
 
-        >
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
 
-          + Thêm màu
+          >
 
-        </button>
+            + Thêm màu
+
+          </button>
+
+          {onToggleCollapse && (
+
+            <button
+
+              type="button"
+
+              onClick={onToggleCollapse}
+
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+
+              aria-label="Thu gọn màu sắc và biến thể"
+
+            >
+
+              Thu gọn
+
+            </button>
+
+          )}
+
+        </div>
 
       </div>
 
 
 
-      <div className="space-y-3">
+      <div className="space-y-4">
 
 
 
@@ -916,7 +944,7 @@ space-y-2.5
 
 
 
-<h4 className="text-sm font-semibold text-stone-900">
+<h4 className="text-sm font-semibold tracking-tight text-slate-900">
 
 
 
@@ -1002,7 +1030,7 @@ items-stretch
 
 <div className="min-w-0 h-full">
 
-<label className="mb-1.5 block h-4 text-[10px] font-semibold leading-4 text-stone-700">
+<label className="mb-1.5 block h-4 text-xs font-semibold leading-4 text-slate-700">
 
  Màu sắc
 
@@ -1116,7 +1144,7 @@ items-stretch
 
     />
 
-    <span className="truncate text-[9px] text-stone-600">
+    <span className="truncate text-[11px] text-slate-500">
 
       {color.name || "Chưa chọn"}
 
@@ -1134,7 +1162,7 @@ items-stretch
 
       onClick={() => openOptionModal("color")}
 
-      className="inline-flex h-7 items-center gap-1 rounded-lg border border-stone-200 bg-white px-2 text-[9px] font-medium text-stone-600 hover:bg-stone-50"
+      className="inline-flex h-7 items-center gap-1 rounded-lg border border-stone-200 bg-white px-2 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50"
 
     >
 
@@ -1156,7 +1184,7 @@ items-stretch
 
 <div className="min-w-0 h-full">
 
-<label className="mb-1.5 block h-4 text-[10px] font-semibold leading-4 text-stone-700">
+<label className="mb-1.5 block h-4 text-xs font-semibold leading-4 text-slate-700">
 
  Chất liệu
 
@@ -1226,7 +1254,7 @@ items-stretch
 
 <div className="mt-1.5 flex items-center justify-between gap-2">
 
-  <span className="truncate text-[9px] text-stone-600">
+  <span className="truncate text-[11px] text-slate-500">
 
     {color.material || "Chưa chọn"}
 
@@ -1240,7 +1268,7 @@ items-stretch
 
     onClick={() => openOptionModal("material")}
 
-    className="inline-flex h-7 shrink-0 items-center gap-1 rounded-lg border border-stone-200 bg-white px-2 text-[9px] font-medium text-stone-600 hover:bg-stone-50"
+    className="inline-flex h-7 shrink-0 items-center gap-1 rounded-lg border border-stone-200 bg-white px-2 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50"
 
   >
 
@@ -1260,7 +1288,7 @@ items-stretch
 
 <div className="min-w-0 h-full">
 
-<label className="mb-1.5 block h-4 text-[10px] font-semibold leading-4 text-stone-700">
+<label className="mb-1.5 block h-4 text-xs font-semibold leading-4 text-slate-700">
 
  Ảnh Variant
 
@@ -1750,13 +1778,13 @@ JPG, PNG · tối đa 5MB
 
               <div>
 
-                <h3 className="text-sm font-semibold text-stone-900">
+                <h3 className="text-sm font-semibold tracking-tight text-slate-900">
 
                   {optionModal === "color" ? "Thêm màu sắc" : "Thêm chất liệu"}
 
                 </h3>
 
-                <p className="mt-0.5 text-[10px] text-stone-400">
+                <p className="mt-1 text-xs leading-5 text-slate-500">
 
                   Lựa chọn này sẽ được lưu và dùng lại cho các sản phẩm sau.
 
@@ -1876,7 +1904,7 @@ JPG, PNG · tối đa 5MB
 
                   onClick={closeOptionModal}
 
-                  className="h-8 rounded-lg border border-stone-200 px-3 text-[10px] font-medium text-stone-600"
+                  className="h-9 rounded-xl border border-slate-200 px-3 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
 
                 >
 
@@ -1892,7 +1920,7 @@ JPG, PNG · tối đa 5MB
 
                   disabled={savingOption}
 
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#2D6A4F] px-3 text-[10px] font-semibold text-white disabled:opacity-50"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-800 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
 
                 >
 
@@ -1922,7 +1950,7 @@ JPG, PNG · tối đa 5MB
 
         disabled={loading}
 
-        className="mt-3 self-end h-8 rounded-lg bg-primary px-4 text-[10px] font-semibold text-white"
+        className="mt-4 inline-flex h-10 self-end items-center justify-center rounded-xl bg-emerald-800 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
 
       >
 

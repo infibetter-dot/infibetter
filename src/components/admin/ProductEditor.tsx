@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronUp, Eye, ExternalLink, Save, Smartphone, ImagePlus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { ChevronUp, ChevronDown, Eye, ExternalLink, Save, Smartphone, ImagePlus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ProductEditorRichText from "./ProductEditorRichText";
@@ -52,6 +52,9 @@ export default function ProductEditor({
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [colorVersion, setColorVersion] = useState(0);
+  const [specificationCollapsed, setSpecificationCollapsed] = useState(false);
+  const [uspCollapsed, setUspCollapsed] = useState(false);
+  const [colorsCollapsed, setColorsCollapsed] = useState(false);
   const [name, setName] = useState(product.name ?? "");
   const [shortDescription, setShortDescription] = useState(
   product.short_description ?? ""
@@ -128,6 +131,7 @@ const [topSeller, setTopSeller] = useState(
       : []
   );
   const [uploadingMobileGallery, setUploadingMobileGallery] = useState(false);
+  const [mobileGalleryCollapsed, setMobileGalleryCollapsed] = useState(false);
 
   async function uploadMobileGalleryImages(e: React.ChangeEvent<HTMLInputElement>) {
     const input = e.currentTarget;
@@ -1245,6 +1249,36 @@ if (error) throw error;
         </p>
       </section>
 
+      {/* MÀU SẮC / BIẾN THỂ */}
+      {product.id && (
+        <section className="relative w-full min-w-0">
+          {colorsCollapsed ? (
+            <div className="flex min-h-[72px] items-center justify-between gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-sm">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-[#252525]">Màu sắc & biến thể</h3>
+                <p className="mt-0.5 text-[11px] text-[#888888]">Quản lý màu sắc, chất liệu, ảnh, SKU, giá và tồn kho</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setColorsCollapsed(false)}
+                aria-expanded={false}
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3 text-[11px] font-semibold text-[#555555] shadow-sm transition hover:bg-[#F5F5F5]"
+              >
+                Mở rộng <ChevronDown size={14} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <ProductColors
+                productId={product.id}
+                onSaved={() => setColorVersion((v) => v + 1)}
+                onToggleCollapse={() => setColorsCollapsed(true)}
+              />
+            </>
+          )}
+        </section>
+      )}
+
       {/* MOBILE-ONLY PRODUCT GALLERY */}
       <section className="rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm md:p-5">
         <div className="mb-4 flex flex-col gap-3 border-b border-[#ECE7DF] pb-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1255,57 +1289,78 @@ if (error) throw error;
               <p className="mt-0.5 text-[11px] text-neutral-500">Bộ ảnh riêng cho điện thoại. Website ưu tiên ảnh này trên mobile để không phải crop ảnh desktop.</p>
             </div>
           </div>
-          <label className={`inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#2D6A4F] px-4 text-xs font-semibold text-white transition hover:bg-[#245640] ${uploadingMobileGallery ? "pointer-events-none opacity-60" : ""}`}>
-            <ImagePlus size={15} />{uploadingMobileGallery ? "Đang tải ảnh..." : "Thêm ảnh mobile"}
-            <input type="file" accept="image/*" multiple disabled={uploadingMobileGallery} onChange={uploadMobileGalleryImages} className="hidden" />
-          </label>
+          <div className="flex shrink-0 items-center gap-2">
+            <label className={`inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#2D6A4F] px-3.5 text-xs font-semibold text-white transition hover:bg-[#245640] ${uploadingMobileGallery ? "pointer-events-none opacity-60" : ""}`}>
+              <ImagePlus size={15} />{uploadingMobileGallery ? "Đang tải ảnh..." : "Thêm ảnh mobile"}
+              <input type="file" accept="image/*" multiple disabled={uploadingMobileGallery} onChange={uploadMobileGalleryImages} className="hidden" />
+            </label>
+            <button
+              type="button"
+              onClick={() => setMobileGalleryCollapsed((value) => !value)}
+              aria-expanded={!mobileGalleryCollapsed}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3 text-[11px] font-semibold text-[#555555] shadow-sm transition hover:bg-[#F5F5F5]"
+            >
+              {mobileGalleryCollapsed ? "Mở rộng" : "Thu gọn"}
+              {mobileGalleryCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            </button>
+          </div>
         </div>
-        {mobileGalleryImages.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[#D9D4CC] bg-[#FAF8F5] px-4 py-8 text-center">
-            <Smartphone className="mx-auto mb-2 text-neutral-400" size={24} />
-            <p className="text-sm font-semibold text-neutral-700">Chưa có ảnh mobile riêng</p>
-            <p className="mt-1 text-xs text-neutral-400">Thêm ảnh dọc tối ưu cho điện thoại. Nếu chưa có, website tiếp tục dùng Desktop Gallery.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {mobileGalleryImages.map((url, index) => (
-              <div key={`${url}-${index}`} className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-                <div className="aspect-[4/5] overflow-hidden bg-neutral-50"><img src={url} alt={`${name || "Product"} mobile image ${index + 1}`} className="h-full w-full object-contain" loading="lazy" /></div>
-                <div className="flex items-center justify-between gap-1 border-t border-neutral-100 px-2 py-2">
-                  <span className="text-[10px] font-semibold text-neutral-500">Ảnh {index + 1}</span>
-                  <div className="flex items-center gap-1">
-                    <button type="button" onClick={() => moveMobileGalleryImage(index, -1)} disabled={index === 0} title="Di chuyển lên" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-30"><ArrowUp size={13} /></button>
-                    <button type="button" onClick={() => moveMobileGalleryImage(index, 1)} disabled={index === mobileGalleryImages.length - 1} title="Di chuyển xuống" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-30"><ArrowDown size={13} /></button>
-                    <button type="button" onClick={() => setMobileGalleryImages((current) => current.filter((_, i) => i !== index))} title="Xóa ảnh mobile" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50"><Trash2 size={13} /></button>
-                  </div>
-                </div>
+        {!mobileGalleryCollapsed && (
+          <>
+            {mobileGalleryImages.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#D9D4CC] bg-[#FAF8F5] px-4 py-8 text-center">
+                <Smartphone className="mx-auto mb-2 text-neutral-400" size={24} />
+                <p className="text-sm font-semibold text-neutral-700">Chưa có ảnh mobile riêng</p>
+                <p className="mt-1 text-xs text-neutral-400">Thêm ảnh dọc tối ưu cho điện thoại. Nếu chưa có, website tiếp tục dùng Desktop Gallery.</p>
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {mobileGalleryImages.map((url, index) => (
+                  <div key={`${url}-${index}`} className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+                    <div className="aspect-[4/5] overflow-hidden bg-neutral-50">
+                      <img
+                        src={url}
+                        alt={`${name || "Product"} mobile image ${index + 1}`}
+                        className="h-full w-full object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-1 border-t border-neutral-100 px-2 py-2">
+                      <span className="text-[10px] font-semibold text-neutral-500">Ảnh {index + 1}</span>
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => moveMobileGalleryImage(index, -1)} disabled={index === 0} title="Di chuyển lên" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-30">
+                          <ArrowUp size={13} />
+                        </button>
+                        <button type="button" onClick={() => moveMobileGalleryImage(index, 1)} disabled={index === mobileGalleryImages.length - 1} title="Di chuyển xuống" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-30">
+                          <ArrowDown size={13} />
+                        </button>
+                        <button type="button" onClick={() => setMobileGalleryImages((current) => current.filter((_, i) => i !== index))} title="Xóa ảnh mobile" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-3 text-[10px] text-neutral-400">
+              Ảnh upload lên Cloudflare R2; products.mobile_gallery chỉ lưu URL và thứ tự ảnh. Nhấn Lưu sản phẩm để lưu thay đổi.
+            </p>
+          </>
         )}
-        <p className="mt-3 text-[10px] text-neutral-400">Ảnh upload lên Cloudflare R2; products.mobile_gallery chỉ lưu URL và thứ tự ảnh. Nhấn Lưu sản phẩm để lưu thay đổi.</p>
       </section>
 
-      {/* GALLERY + MÀU SẮC / BIẾN THỂ */}
+      {/* PRODUCT MEDIA — full width for a roomier image workspace */}
       {product.id && (
-        <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-2">
-          <div className="min-w-0 h-full">
-            <ProductGallery
-              key={imageUrl}
-              productId={product.id}
-              refresh={colorVersion}
-              onFeaturedChanged={setImageUrl}
-              onSaved={onSaved}
-            />
-          </div>
-
-          <div className="min-w-0 h-full">
-            <ProductColors
-              productId={product.id}
-              onSaved={() => setColorVersion((v) => v + 1)}
-            />
-          </div>
-        </div>
+        <section className="w-full min-w-0">
+          <ProductGallery
+            key={imageUrl}
+            productId={product.id}
+            refresh={colorVersion}
+            onFeaturedChanged={setImageUrl}
+            onSaved={onSaved}
+          />
+        </section>
       )}
 
       {/* DÒNG MÁY / COMPATIBILITY */}
@@ -1318,14 +1373,58 @@ if (error) throw error;
 
  {/* SPECIFICATION + USP */}
 {product.id && (
-  <div className="grid min-w-0 items-stretch gap-5 lg:grid-cols-2">
-    <div className="min-w-0 h-full">
-      <ProductSpecification productId={product.id} />
-    </div>
+  <div className="grid min-w-0 items-start gap-5 lg:grid-cols-2">
+    <section className="min-w-0">
+      {specificationCollapsed ? (
+        <div className="flex min-h-[72px] items-center justify-between gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-sm">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-[#252525]">Thông số kỹ thuật</h3>
+            <p className="mt-0.5 text-[11px] text-[#888888]">Thông tin hiển thị trên trang sản phẩm</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSpecificationCollapsed(false)}
+            aria-expanded={false}
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3 text-[11px] font-semibold text-[#555555] shadow-sm transition hover:bg-[#F5F5F5]"
+          >
+            Mở rộng <ChevronDown size={14} />
+          </button>
+        </div>
+      ) : (
+        <div className="min-w-0">
+          <ProductSpecification
+            productId={product.id}
+            onToggleCollapse={() => setSpecificationCollapsed(true)}
+          />
+        </div>
+      )}
+    </section>
 
-    <div className="min-w-0 h-full">
-      <ProductUSP productId={product.id} />
-    </div>
+    <section className="min-w-0">
+      {uspCollapsed ? (
+        <div className="flex min-h-[72px] items-center justify-between gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-sm">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-[#252525]">USP sản phẩm</h3>
+            <p className="mt-0.5 text-[11px] text-[#888888]">Những điểm nổi bật hiển thị trên sản phẩm</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setUspCollapsed(false)}
+            aria-expanded={false}
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3 text-[11px] font-semibold text-[#555555] shadow-sm transition hover:bg-[#F5F5F5]"
+          >
+            Mở rộng <ChevronDown size={14} />
+          </button>
+        </div>
+      ) : (
+        <div className="min-w-0">
+          <ProductUSP
+            productId={product.id}
+            onToggleCollapse={() => setUspCollapsed(true)}
+          />
+        </div>
+      )}
+    </section>
   </div>
 )}
 
@@ -1334,19 +1433,17 @@ if (error) throw error;
   <ProductFAQs productId={product.id} />
 )}
 
-{/* SEO */}
-<section className="rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm md:p-5">
-  <ProductSeo
-    name={name}
-    seoTitle={seoTitle}
-    setSeoTitle={setSeoTitle}
-    seoDescription={seoDescription}
-    setSeoDescription={setSeoDescription}
-    seoKeywords={seoKeywords}
-    setSeoKeywords={setSeoKeywords}
-    createSlug={createSlug}
-  />
-</section>
+{/* SEO OPTIMIZATION */}
+<ProductSeo
+  name={name}
+  seoTitle={seoTitle}
+  setSeoTitle={setSeoTitle}
+  seoDescription={seoDescription}
+  setSeoDescription={setSeoDescription}
+  seoKeywords={seoKeywords}
+  setSeoKeywords={setSeoKeywords}
+  createSlug={createSlug}
+/>
 
       {/* GIÁ — 3 cột thay vì xếp dọc */}
       <section className="rounded-2xl border border-[#DDD6CE] bg-white p-4 shadow-sm md:p-5">
