@@ -148,6 +148,13 @@ export function SiteHeader() {
 
     useState<MegaMenuKey>(null);
 
+  const [desktopSupportOpen, setDesktopSupportOpen] = useState(false);
+  const [desktopProductsOpen, setDesktopProductsOpen] = useState(false);
+  const [desktopSelectedCategory, setDesktopSelectedCategory] = useState<MobileCategory | null>(null);
+  const [desktopCategoryProducts, setDesktopCategoryProducts] = useState<MobileProduct[]>([]);
+  const [desktopProductsLoading, setDesktopProductsLoading] = useState(false);
+
+
   const [searchOpen, setSearchOpen] = useState(false);
 
   const [searchValue, setSearchValue] = useState("");
@@ -581,6 +588,74 @@ export function SiteHeader() {
     }
   };
 
+  const loadDesktopCategoryProducts = async (category: MobileCategory) => {
+    setDesktopSelectedCategory(category);
+    setDesktopCategoryProducts([]);
+    setDesktopProductsLoading(true);
+
+    try {
+      const { data: selectedCategory, error: categoryError } = await supabase
+        .from("categories")
+        .select("id,name,slug,parent_id")
+        .eq("slug", category.slug)
+        .maybeSingle();
+
+      if (categoryError) throw categoryError;
+      if (!selectedCategory) {
+        setDesktopCategoryProducts([]);
+        return;
+      }
+
+      const { data: allCategories, error: treeError } = await supabase
+        .from("categories")
+        .select("id,parent_id");
+
+      if (treeError) throw treeError;
+
+      const categoryIds = new Set<string>([selectedCategory.id]);
+      let changed = true;
+
+      while (changed) {
+        changed = false;
+        for (const row of allCategories ?? []) {
+          if (row.parent_id && categoryIds.has(row.parent_id) && !categoryIds.has(row.id)) {
+            categoryIds.add(row.id);
+            changed = true;
+          }
+        }
+      }
+
+      const { data: products, error: productsError } = await supabase
+        .from("products")
+        .select("id,slug,name,price,compare_at_price,image_url,is_active,status,created_at")
+        .eq("is_active", true)
+        .in("category_id", Array.from(categoryIds))
+        .order("created_at", { ascending: false })
+        .limit(12);
+
+      if (productsError) throw productsError;
+
+      setDesktopCategoryProducts(
+        ((products ?? []) as any[])
+          .filter((product) => product.status !== "hidden")
+          .slice(0, 3)
+          .map((product) => ({
+            id: product.id,
+            slug: product.slug,
+            name: product.name,
+            price: product.price,
+            compare_at_price: product.compare_at_price,
+            image_url: product.image_url,
+          })),
+      );
+    } catch (error) {
+      console.error("DESKTOP MEGA MENU PRODUCTS ERROR:", error);
+      setDesktopCategoryProducts([]);
+    } finally {
+      setDesktopProductsLoading(false);
+    }
+  };
+
   const closeMobileMenu = () => {
     setMobileOpen(false);
     setMobileExpandedMenu(null);
@@ -597,6 +672,62 @@ export function SiteHeader() {
       ? null
 
       : megaMenus.find((menu) => menu.menu_key === activeMenu) ?? null;
+
+  // Build Desktop Products from every visible top-level mega-menu group.
+  // The admin editor stores each primary collection as a mega_menu_group;
+  // its child categories live in mega_menu_items and must not become
+  // separate top-level entries here.
+  const desktopProductCategories = Array.from(
+    new Map(
+      megaMenus
+        .flatMap((section) => section.mega_menu_groups ?? [])
+        .filter((group) => group.is_visible)
+        .flatMap((group) => {
+          const visibleItems = (group.mega_menu_items ?? []).filter(
+            (item) => item.is_visible && item.categories?.slug,
+          );
+
+          // If this group has exactly one visible child category (e.g. Chargers
+          // -> Charging Stations), use that category for the product query.
+          // Otherwise use the group-level category so multi-category groups
+          // continue to aggregate their configured child collections.
+          const singleVisibleItem =
+            visibleItems.length === 1 ? visibleItems[0] : null;
+
+          const targetCategory = singleVisibleItem
+            ? {
+                name: group.title || singleVisibleItem.label_override || singleVisibleItem.categories.name,
+                slug: singleVisibleItem.categories.slug,
+              }
+            : group.category?.slug
+              ? {
+                  name: group.title || group.category.name,
+                  slug: group.category.slug,
+                }
+              : visibleItems[0]?.categories?.slug
+                ? {
+                    name: group.title || visibleItems[0].label_override || visibleItems[0].categories.name,
+                    slug: visibleItems[0].categories.slug,
+                  }
+                : null;
+
+          return targetCategory
+            ? [[targetCategory.slug, targetCategory] as const]
+            : [];
+        }),
+    ).values(),
+  );
+
+  useEffect(() => {
+    if (!desktopProductsOpen || desktopProductCategories.length === 0) return;
+
+    const selectedStillExists = desktopSelectedCategory &&
+      desktopProductCategories.some((category) => category.slug === desktopSelectedCategory.slug);
+
+    if (!selectedStillExists) {
+      void loadDesktopCategoryProducts(desktopProductCategories[0]);
+    }
+  }, [desktopProductsOpen, megaMenus]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -719,62 +850,61 @@ export function SiteHeader() {
 
         sm:py-2.5
 
+        lg:py-0
+
       "
 
     >
 
-      {/* TOP ANNOUNCEMENT */}
+      <style>{`
+        @keyframes infibetter-marquee {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .infibetter-marquee-track {
+            animation: none !important;
+          }
+        }
+      `}</style>
 
+      {/* TOP ANNOUNCEMENT — existing INFIBETTER benefits */}
+      <div className="group hidden h-[52px] w-full items-center overflow-hidden bg-[#1D1D1D] text-white lg:flex">
+        <div className="infibetter-marquee-track flex w-max min-w-max animate-[infibetter-marquee_34s_linear_infinite] items-center group-hover:[animation-play-state:paused]">
+          {[0, 1].map((track) => (
+            <div
+              key={track}
+              aria-hidden={track === 1}
+              className="flex shrink-0 items-center"
+            >
+              {Array.from({ length: 7 }).map((_, index) => (
+                <div
+                  key={`${track}-${index}`}
+                  className="flex shrink-0 items-center gap-3 px-7 whitespace-nowrap text-[12px] font-semibold tracking-[-0.01em]"
+                >
+                  <span>Free tracked shipping</span>
+                  <span className="text-white/70">·</span>
+                  <span>30-day returns</span>
+                  <span className="ml-5 text-[15px] text-white">•</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
 
-      <div
-
-        className="
-
-          mb-1.5
-
-          flex
-
-          h-4
-
-          items-center
-
-          justify-center
-
-          gap-2
-
-          text-[7px]
-
-          font-semibold
-
-          uppercase
-
-          tracking-[0.08em]
-
-          text-[#334155]
-
-        "
-
-      >
-
+      {/* MOBILE SHIPPING PROMISE STRIP */}
+      <div className="mb-1.5 flex h-4 items-center justify-center gap-2 text-[7px] font-semibold uppercase tracking-[0.08em] text-[#334155] lg:hidden">
         <span>Free tracked shipping</span>
-
-
-        <span className="text-[#94A3B8]">
-
-          ·
-
-        </span>
-
-
+        <span className="text-[#94A3B8]">·</span>
         <span>30-day returns</span>
-
       </div>
 
 
       {/* HEADER CAPSULE */}
 
 
-      <div className="relative mx-auto w-[calc(100%-24px)] max-w-[1320px]">
+      <div className="relative mx-auto w-[calc(100%-24px)] max-w-[1320px] lg:w-full lg:max-w-none">
 
         <div
 
@@ -804,7 +934,19 @@ export function SiteHeader() {
 
             sm:px-4
 
-            lg:px-5
+            lg:h-[72px]
+
+            lg:rounded-none
+
+            lg:border-x-0
+
+            lg:border-b-0
+
+            lg:border-t-0
+
+            lg:px-[max(32px,calc((100vw-1440px)/2))]
+
+            lg:shadow-none
 
           "
 
@@ -839,6 +981,8 @@ export function SiteHeader() {
 
               sm:text-[20px]
 
+              lg:text-[24px]
+
             "
 
           >
@@ -851,322 +995,98 @@ export function SiteHeader() {
           {/* DESKTOP NAV */}
 
 
-          <nav
-
-            className="
-
-              absolute
-
-              left-1/2
-
-              hidden
-
-              -translate-x-1/2
-
-              items-center
-
-              gap-1
-
-              rounded-full
-
-              border
-
-              border-[#D6DCE5]
-
-              bg-[#F6F8FB]
-
-              p-1
-
-              shadow-[0_2px_10px_rgba(15,23,42,0.06)]
-
-              lg:flex
-
-            "
-
-          >
-
+          <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 whitespace-nowrap lg:flex">
             <Link
-
               to="/shop"
-
-              className="
-
-                flex
-
-                items-center
-
-                gap-1.5
-
-                whitespace-nowrap
-
-                rounded-full
-
-                px-3.5
-
-                py-2
-
-                text-[11px]
-
-                font-semibold
-
-                tracking-[-0.01em]
-
-                text-[#334155]
-
-                transition-all
-
-                hover:bg-white
-
-                hover:text-[#111827]
-
-                hover:shadow-[0_1px_4px_rgba(15,23,42,0.06)]
-
-              "
-
+              onClick={() => {
+                setActiveMenu(null);
+                setDesktopProductsOpen(false);
+                setDesktopSupportOpen(false);
+              }}
+              className="inline-flex h-11 w-[128px] shrink-0 items-center justify-center gap-2 rounded-full bg-[#17191D] px-4 text-[13px] font-semibold text-white shadow-[0_4px_12px_rgba(23,25,29,0.14)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#30343A] hover:shadow-[0_6px_16px_rgba(23,25,29,0.18)]"
             >
-
-              Shop Apple accessories
-
-
-              <ArrowRight
-
-                size={10}
-
-                strokeWidth={1.8}
-
-              />
-
+              Shop All
+              <ArrowRight size={14} className="ml-2" />
             </Link>
 
-
-            {megaMenus.some((menu) => menu.menu_key === "cases" && menu.mega_menu_groups.length > 0) && (
             <button
-
               type="button"
-
-              onClick={() =>
-
-                toggleMenu("cases")
-
-              }
-
-              className={`
-
-                flex
-
-                items-center
-
-                gap-1.5
-
-                whitespace-nowrap
-
-                rounded-full
-
-                px-3.5
-
-                py-2
-
-                text-[11px]
-
-                font-semibold
-
-                tracking-[-0.01em]
-
-                transition-all
-
-                ${
-
-                  activeMenu === "cases"
-
-                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
-
-                    : "text-[#334155]"
-
-                }
-
-              `}
-
+              onClick={() => {
+                setDesktopSupportOpen(false);
+                setSearchOpen(false);
+                setDesktopProductsOpen((open) => !open);
+              }}
+              aria-expanded={desktopProductsOpen}
+              className={`inline-flex h-11 w-[116px] shrink-0 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-medium transition-all duration-200 ${
+                desktopProductsOpen
+                  ? "bg-[#F1F3F5] text-[#17191D] shadow-inner"
+                  : "bg-transparent text-[#343A40] hover:bg-[#F5F6F7]"
+              }`}
             >
-
-              {megaMenus.find((menu) => menu.menu_key === "cases")?.title ?? "Cases & Bands"}
-
-
+              Products
               <ChevronDown
-
-                size={12}
-
-                strokeWidth={2}
-
+                size={14}
+                strokeWidth={1.8}
                 className={`transition-transform duration-200 ${
-
-                  activeMenu === "cases"
-
-                    ? "rotate-180"
-
-                    : ""
-
+                  desktopProductsOpen ? "rotate-180" : ""
                 }`}
-
               />
-
             </button>
-            )}
 
-
-            {megaMenus.some((menu) => menu.menu_key === "charging" && menu.mega_menu_groups.length > 0) && (
-            <button
-
-              type="button"
-
-              onClick={() =>
-
-                toggleMenu("charging")
-
-              }
-
-              className={`
-
-                flex
-
-                items-center
-
-                gap-1.5
-
-                whitespace-nowrap
-
-                rounded-full
-
-                px-3.5
-
-                py-2
-
-                text-[11px]
-
-                font-semibold
-
-                tracking-[-0.01em]
-
-                transition-all
-
-                ${
-
-                  activeMenu === "charging"
-
-                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
-
-                    : "text-[#334155]"
-
-                }
-
-              `}
-
-            >
-
-              {megaMenus.find((menu) => menu.menu_key === "charging")?.title ?? "Charging"}
-
-
-              <ChevronDown
-
-                size={12}
-
-                strokeWidth={2}
-
-                className={`transition-transform duration-200 ${
-
-                  activeMenu === "charging"
-
-                    ? "rotate-180"
-
-                    : ""
-
+            <div className="relative">
+              <button
+                type="button"
+                aria-expanded={desktopSupportOpen}
+                onClick={() => {
+                  setActiveMenu(null);
+                  setDesktopSupportOpen((open) => !open);
+                }}
+                className={`inline-flex h-11 w-[116px] shrink-0 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-medium transition-all duration-200 ${
+                  desktopSupportOpen
+                    ? "bg-[#F1F3F5] text-[#17191D] shadow-inner"
+                    : "bg-transparent text-[#343A40] hover:bg-[#F5F6F7]"
                 }`}
+              >
+                Support
+                <ChevronDown
+                  size={14}
+                  strokeWidth={1.8}
+                  className={`transition-transform duration-200 ${
+                    desktopSupportOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
 
-              />
-
-            </button>
-            )}
-
-
-            {megaMenus.some((menu) => menu.menu_key === "lifestyle" && menu.mega_menu_groups.length > 0) && (
-            <button
-
-              type="button"
-
-              onClick={() =>
-
-                toggleMenu("lifestyle")
-
-              }
-
-              className={`
-
-                flex
-
-                items-center
-
-                gap-1.5
-
-                whitespace-nowrap
-
-                rounded-full
-
-                px-3.5
-
-                py-2
-
-                text-[11px]
-
-                font-semibold
-
-                tracking-[-0.01em]
-
-                transition-all
-
-                ${
-
-                  activeMenu === "lifestyle"
-
-                    ? "bg-[#111827] text-white shadow-[0_2px_7px_rgba(15,23,42,0.16)]"
-
-                    : "text-[#334155]"
-
-                }
-
-              `}
-
-            >
-
-              {megaMenus.find((menu) => menu.menu_key === "lifestyle")?.title ?? "Lifestyle Gear"}
-
-
-              <ChevronDown
-
-                size={12}
-
-                strokeWidth={2}
-
-                className={`transition-transform duration-200 ${
-
-                  activeMenu === "lifestyle"
-
-                    ? "rotate-180"
-
-                    : ""
-
-                }`}
-
-              />
-
-            </button>
-            )}
-
+              {desktopSupportOpen && (
+                <div className="absolute left-1/2 top-full z-[220] mt-3 w-[300px] -translate-x-1/2 rounded-[16px] border border-[#E7E9ED] bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.14)]">
+                  <div className="grid grid-cols-2 gap-x-3">
+                    {[
+                      { label: "FAQs", to: "/faqs" },
+                      { label: "Contact Us", to: "/contact" },
+                      { label: "Order & Payment", to: "/order-payment" },
+                      { label: "Shipping & Returns", to: "/shipping" },
+                      { label: "Warranty", to: "/warranty" },
+                    ].map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setDesktopSupportOpen(false)}
+                        className="flex min-h-[42px] items-center border-b border-[#ECEFF2] px-2 py-2 text-[12px] font-medium text-[#64748B] transition-colors hover:text-[#F05A28]"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </nav>
 
 
           {/* ACTIONS */}
 
 
-          <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
+          <div className="ml-auto flex items-center gap-1 sm:gap-1.5 lg:gap-3">
 
             {searchOpen && (
 
@@ -1526,601 +1446,124 @@ export function SiteHeader() {
         </div>
 
 
-        {/* MEGA MENU */}
+        {/* DESKTOP PRODUCTS MEGA MENU — INFIBETTER data, SKEGIC-style layout reference */}
+        {desktopProductsOpen && (
+          <div className="absolute left-1/2 top-[72px] z-[180] hidden w-[min(1320px,calc(100vw-64px))] -translate-x-1/2 overflow-hidden border border-[#E7E9ED] bg-white shadow-[0_22px_55px_rgba(15,23,42,0.13)] lg:block">
+            <div className="grid min-h-[390px] grid-cols-[250px_minmax(0,1fr)] gap-8 px-8 py-7">
+              <aside className="flex min-w-0 flex-col border-r border-[#ECEFF2] pr-7">
+                <p className="mb-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8B929B]">
+                  Shop by Category
+                </p>
 
-
-        {activeMegaMenu && (
-
-          <div
-
-            className="
-
-              absolute
-
-              left-1/2
-
-              top-[62px]
-
-              hidden
-
-              w-[calc(100%-28px)]
-
-              max-w-[1320px]
-
-              -translate-x-1/2
-
-              overflow-hidden
-
-              rounded-[18px]
-
-              border
-
-              border-[#D9DEE7]
-
-              bg-white
-
-              shadow-[0_24px_60px_rgba(15,23,42,0.12)]
-
-              lg:block
-
-            "
-
-          >
-
-            <div className="grid grid-cols-[minmax(0,1fr)_190px] gap-3 p-3">
-
-              {/* CATEGORY CARDS */}
-
-
-              <div
-
-                className="
-
-                  grid
-
-                  gap-x-3
-
-                  gap-y-3
-
-                  p-0.5
-
-                "
-
-                style={{
-
-                  gridTemplateColumns: `repeat(${getMegaGridColumns(
-
-                    activeMegaMenu.mega_menu_groups.length,
-
-                  )}, minmax(0, 1fr))`,
-
-                }}
-
-              >
-
-                {activeMegaMenu.mega_menu_groups.map(
-
-                  (column, columnIndex) => (
-
-                    <div
-
-                      key={column.title}
-
-                      className="flex h-full min-w-0 flex-col overflow-hidden rounded-[14px] border border-[#E8EBF0] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.045)] transition-shadow duration-300 hover:shadow-[0_8px_22px_rgba(15,23,42,0.08)]"
-
-                    >
-
-                      <Link
-
-                        to="/shop"
-
-                        search={
-
-                          {
-
-                            category:
-
-                              column.category?.slug ?? undefined,
-
-                          } as never
-
-                        }
-
-                        onClick={() =>
-
-                          setActiveMenu(
-
-                            null,
-
-                          )
-
-                        }
-
-                        className="group block"
-
+                <div className="flex flex-col gap-3">
+                  {desktopProductCategories.map((category) => {
+                    const selected = desktopSelectedCategory?.slug === category.slug;
+                    return (
+                      <button
+                        key={category.slug}
+                        type="button"
+                        onClick={() => void loadDesktopCategoryProducts(category)}
+                        className={`w-full text-left text-[18px] font-medium tracking-[-0.035em] transition-colors ${
+                          selected ? "text-[#17191D]" : "text-[#737B85] hover:text-[#17191D]"
+                        }`}
                       >
-
-                        <div
-
-                          className="
-
-                            relative
-
-                            aspect-[3/2]
-
-                            w-full
-
-                            overflow-hidden
-
-                            rounded-t-[13px]
-
-                            bg-[#F1F3F5]
-
-                          "
-
-                        >
-
-                          {column.image_url ? (
-                            <img src={column.image_url} alt={column.title} className="
-
-                              h-full
-
-                              w-full
-
-                              object-cover
-
-                              transition-transform
-
-                              duration-500
-
-                              group-hover:scale-[1.04]
-
-                            " />
-                          ) : null}
-
-                        </div>
-
-
-                        <div
-
-                          className="
-
-                            flex
-
-                            items-center
-
-                            gap-1.5
-
-                            px-3
-
-                            pt-3
-
-                            text-[13px]
-                            font-extrabold
-                            leading-[1.05]
-                            tracking-[-0.045em]
-                            text-[#111827]
-
-                            transition-colors
-
-                            group-hover:text-[#0877E8]
-
-                          "
-
-                        >
-
-                          {column.title}
-
-
-                          <ArrowRight
-
-                            size={9}
-
-                            className="
-
-                              opacity-40
-
-                              transition
-
-                              group-hover:translate-x-0.5
-
-                              group-hover:opacity-100
-
-                            "
-
-                          />
-
-                        </div>
-
-                      </Link>
-
-
-                      {/* ITEMS */}
-
-
-                      <p className="px-3 pt-1 text-[10px] leading-4 text-[#7B8493]">{column.title.toLowerCase().includes("case") ? "Stylish protection for every device." : column.title.toLowerCase().includes("charging") ? "Effortless power for everyday life." : column.title.toLowerCase().includes("bank") ? "Compact power, bigger possibilities." : column.title.toLowerCase().includes("travel") ? "Stay powered wherever you go." : "Smart accessories for everyday life."}</p>
-
-                      <div className="mt-2 flex flex-col gap-0.5 px-2.5">
-
-                        {column.mega_menu_items.map((item) => {
-
-                          const itemLabel =
-
-                            item.label_override ||
-
-                            item.categories?.name ||
-
-                            "Category";
-
-                          const itemSlug = item.categories?.slug;
-
-
-                          return (
-
-                            <Link
-
-                              key={item.id}
-
-                              to="/shop"
-
-                              search={
-
-                                itemSlug
-
-                                  ? ({ category: itemSlug } as never)
-
-                                  : undefined
-
-                              }
-
-                              onClick={() => setActiveMenu(null)}
-
-                              className="group
-
-                                flex
-
-                                w-full
-
-                                items-center
-
-                                justify-between
-
-                                rounded-[7px]
-
-                                px-2
-
-                                py-1
-
-                                text-[10px]
-                                font-medium
-                                leading-4
-                                text-[#475467]
-
-                                transition-all
-
-                                hover:bg-[#F5F7FA]
-
-                                hover:text-[#111827]
-
-                              "
-
-                            >
-
-                              <span>{itemLabel}</span>
-                              <ArrowRight size={10} className="shrink-0 text-[#94A3B8] transition-transform group-hover:translate-x-0.5 group-hover:text-[#475467]" />
-
-                            </Link>
-
-                          );
-
-                        })}
-
-                      </div>
-
-
-                      {/* VIEW ALL */}
-
-
-                      <Link
-
-                        to="/shop"
-
-                        search={
-
-                          {
-
-                            category:
-
-                              column.category?.slug ?? undefined,
-
-                          } as never
-
-                        }
-
-                        onClick={() =>
-
-                          setActiveMenu(
-
-                            null,
-
-                          )
-
-                        }
-
-                        className="
-
-                          mx-3
-
-                          mb-3
-
-                          mt-auto
-
-                          flex
-
-                          h-8
-
-                          shrink-0
-
-                          items-center
-
-                          justify-between
-
-                          rounded-full
-
-                          border border-white/80
-
-                          bg-white/55
-
-                          px-3
-
-                          text-[10px]
-
-                          font-semibold
-
-                          text-[#344054]
-
-                          shadow-[0_3px_10px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,0.95)]
-
-                          backdrop-blur-xl
-
-                          transition-all
-
-                          duration-200
-
-                          hover:border-white
-
-                          hover:bg-white/80
-
-                          hover:shadow-[0_5px_14px_rgba(15,23,42,0.11),inset_0_1px_0_rgba(255,255,255,1)]
-
-                        "
-
-                      >
-
-                        View all
-
-
-                        <ArrowRight size={11} />
-
-                      </Link>
-
-                    </div>
-
-                  ),
-
-                )}
-
-              </div>
-
-
-              {/* FEATURE CARD */}
-
-
-              <Link
-
-                to="/shop"
-
-                search={
-
-                  activeMegaMenu.mega_menu_groups[0]?.category?.slug
-
-                    ? ({
-
-                        category:
-
-                          activeMegaMenu.mega_menu_groups[0].category?.slug,
-
-                      } as never)
-
-                    : undefined
-
-                }
-
-                onClick={() =>
-
-                  setActiveMenu(null)
-
-                }
-
-                className="
-
-                  group
-
-                  relative
-
-                  min-h-[360px]
-
-                  overflow-hidden
-
-                  rounded-[14px]
-
-                  border
-
-                  border-[#E3E7EC]
-
-                  bg-[#E9EEF3]
-
-                  shadow-[0_8px_22px_rgba(15,23,42,0.12)]
-
-                "
-
-              >
-
-                {activeMegaMenu.image_url ? (
-                  <img src={activeMegaMenu.image_url} alt={activeMegaMenu.title} className="
-
-                    absolute
-
-                    inset-0
-
-                    h-full
-
-                    w-full
-
-                    object-cover
-
-                    transition-transform
-
-                    duration-500
-
-                    group-hover:scale-[1.03]
-
-                  " />
-                ) : null}
-
-
-                <div
-
-                  className="
-
-                    absolute
-
-                    inset-0
-
-                    bg-gradient-to-t
-
-                    from-black/70
-
-                    via-black/10
-
-                    to-transparent
-
-                  "
-
-                />
-
-
-                <div
-
-                  className="
-
-                    absolute
-
-                    inset-x-0
-
-                    bottom-0
-
-                    p-3
-
-                  "
-
-                >
-
-                  <p
-
-                    className="
-
-                      text-[9px]
-
-                      font-semibold
-
-                      uppercase
-
-                      tracking-[0.14em]
-
-                      text-white/75
-
-                    "
-
-                  >
-
-                    Explore
-
-                  </p>
-
-
-                  <h3
-
-                    className="
-
-                      mt-0.5
-
-                      text-[16px]
-
-                      font-extrabold
-
-                      leading-[1.05]
-
-                      tracking-[-0.045em]
-
-                      text-white
-
-                    "
-
-                  >
-
-                    {activeMegaMenu.title}
-
-                  </h3>
-
-
-                  <span
-
-                    className="
-
-                      mt-1.5
-
-                      inline-flex
-
-                      h-7
-
-                      items-center
-
-                      gap-2
-
-                      rounded-full
-
-                      bg-white
-
-                      px-2.5
-
-                      text-[8px]
-
-                      font-semibold
-
-                      text-[#111827]
-
-                    "
-
-                  >
-
-                    Shop now
-
-
-                    <ArrowRight size={10} />
-
-                  </span>
-
+                        {category.name}
+                      </button>
+                    );
+                  })}
                 </div>
 
-              </Link>
+                <Link
+                  to="/shop"
+                  onClick={() => { setActiveMenu(null); setDesktopProductsOpen(false); }}
+                  className="mt-auto flex items-center justify-between border-t border-[#DDE1E6] pt-4 text-[13px] font-medium text-[#333A43] transition-colors hover:text-[#F05A28]"
+                >
+                  Shop All Products
+                  <ArrowRight size={16} />
+                </Link>
+              </aside>
 
+              <section className="min-w-0">
+                <div className="mb-5 flex items-center justify-between">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#8B929B]">
+                    Featured Products
+                  </p>
+                  {desktopSelectedCategory && (
+                    <Link
+                      to="/shop"
+                      search={{ category: desktopSelectedCategory.slug } as never}
+                      onClick={() => { setActiveMenu(null); setDesktopProductsOpen(false); }}
+                      className="flex items-center gap-2 text-[13px] font-medium text-[#343A40] transition-colors hover:text-[#F05A28]"
+                    >
+                      All {desktopSelectedCategory.name}
+                      <ArrowRight size={15} />
+                    </Link>
+                  )}
+                </div>
+
+                {desktopProductsLoading ? (
+                  <div className="grid grid-cols-3 gap-5">
+                    {[0, 1, 2].map((item) => (
+                      <div key={item} className="animate-pulse">
+                        <div className="aspect-[4/3] rounded-[10px] bg-[#F1F3F5]" />
+                        <div className="mt-4 h-3 w-3/4 rounded bg-[#ECEFF2]" />
+                        <div className="mt-2 h-3 w-1/3 rounded bg-[#ECEFF2]" />
+                      </div>
+                    ))}
+                  </div>
+                ) : desktopCategoryProducts.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-5">
+                    {desktopCategoryProducts.map((product, index) => (
+                      <a
+                        key={product.id}
+                        href={`/products/${product.slug}`}
+                        onClick={() => { setActiveMenu(null); setDesktopProductsOpen(false); }}
+                        className="group min-w-0"
+                      >
+                        <div className="relative mb-4 flex aspect-[4/3] items-center justify-center overflow-hidden bg-white">
+                          {index === 0 && (
+                            <span className="absolute left-3 top-3 z-10 bg-[#E65A5A] px-2 py-1 text-[9px] font-semibold text-white">
+                              Featured
+                            </span>
+                          )}
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="h-full w-full bg-white object-contain p-0 transition-transform duration-500 group-hover:scale-[1.035]"
+                            />
+                          ) : (
+                            <span className="text-[11px] text-[#9AA1AA]">INFIBETTER</span>
+                          )}
+                        </div>
+                        <p className="line-clamp-2 min-h-[36px] text-[13px] font-medium leading-[1.35] text-[#343A40] transition-colors group-hover:text-[#F05A28]">
+                          {product.name}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <span className="text-[13px] font-semibold text-[#D94C4C]">
+                            {formatHeaderProductPrice(product.price)}
+                          </span>
+                          {product.compare_at_price &&
+                            Number(product.compare_at_price) > Number(product.price) && (
+                              <span className="text-[10px] text-[#9AA1AA] line-through">
+                                {formatHeaderProductPrice(product.compare_at_price)}
+                              </span>
+                            )}
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex min-h-[250px] items-center justify-center text-[13px] text-[#8B929B]">
+                    {desktopSelectedCategory
+                      ? "No products found in this category."
+                      : "Choose a category to explore products."}
+                  </div>
+                )}
+              </section>
             </div>
-
           </div>
-
         )}
-
 
         {/* MOBILE MENU */}
 

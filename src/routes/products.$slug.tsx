@@ -3092,7 +3092,7 @@ function ProductPage() {
 
               >
 
-                View all â†’
+                View all →
 
               </Link>
 
