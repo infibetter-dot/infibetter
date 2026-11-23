@@ -718,6 +718,34 @@ export function SiteHeader() {
     ).values(),
   );
 
+  // Build mobile collections directly from the exact same resolved category
+  // list used by the Desktop Products menu. This prevents the mobile drawer
+  // from silently dropping a group such as Chargers.
+  const mobileCollectionGroups = desktopProductCategories.map((targetCategory) => {
+    const matchingGroup = megaMenus
+      .flatMap((section) => section.mega_menu_groups ?? [])
+      .find((group) => {
+        if (!group.is_visible) return false;
+        const visibleItems = (group.mega_menu_items ?? []).filter(
+          (item) => item.is_visible && item.categories?.slug,
+        );
+        const resolvedSlug =
+          visibleItems.length === 1
+            ? visibleItems[0].categories.slug
+            : group.category?.slug || visibleItems[0]?.categories?.slug;
+        return resolvedSlug === targetCategory.slug;
+      });
+
+    return {
+      group: {
+        id: matchingGroup?.id || targetCategory.slug,
+        title: targetCategory.name,
+        image_url: matchingGroup?.image_url || null,
+      },
+      targetCategory,
+    };
+  });
+
   useEffect(() => {
     if (!desktopProductsOpen || desktopProductCategories.length === 0) return;
 
@@ -1583,7 +1611,7 @@ export function SiteHeader() {
               className="absolute inset-0 h-full w-full cursor-default"
             />
 
-            <div className="absolute inset-x-0 bottom-0 top-[7vh] flex max-h-[93vh] flex-col overflow-hidden rounded-t-[24px] bg-white shadow-[0_-12px_50px_rgba(0,0,0,0.16)]">
+            <div className="absolute inset-x-0 bottom-0 top-[3vh] flex max-h-[97vh] flex-col overflow-hidden rounded-t-[24px] bg-white shadow-[0_-12px_50px_rgba(0,0,0,0.16)]">
               <div className="relative flex h-[54px] shrink-0 items-center justify-center bg-white">
                 <span className="h-[4px] w-[44px] rounded-full bg-[#E5E5E5]" />
                 <button
@@ -1719,8 +1747,8 @@ export function SiteHeader() {
                       </span>
                     </div>
 
-                    <div className="px-3.5 pb-4 pt-3">
-                      <div className="relative mb-4 flex h-[88px] min-h-[88px] items-center overflow-hidden rounded-[14px] border border-[#D8E5F6] bg-[radial-gradient(ellipse_at_78%_15%,#E7F1FF_0%,#C6DCF9_48%,#91B4E3_100%)] px-4 py-3 shadow-[0_4px_12px_rgba(64,104,158,0.08)]">
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 pb-3 pt-2">
+                      <div className="relative mb-3 flex h-[72px] min-h-[72px] items-center overflow-hidden rounded-[14px] border border-[#D8E5F6] bg-[radial-gradient(ellipse_at_78%_15%,#E7F1FF_0%,#C6DCF9_48%,#91B4E3_100%)] px-4 py-3 shadow-[0_4px_12px_rgba(64,104,158,0.08)]">
                         <div className="absolute -right-9 -top-16 h-48 w-48 rounded-full border border-white/55" />
                         <div className="absolute -right-1 -top-10 h-36 w-36 rounded-full border border-white/45" />
                         <div className="absolute bottom-[-34px] right-[72px] h-20 w-20 rounded-full bg-white/15 blur-xl" />
@@ -1737,33 +1765,17 @@ export function SiteHeader() {
                         </div>
                       </div>
 
-                      <div className="mb-2.5 flex items-center justify-between px-0.5">
+                      <div className="mb-2 flex items-center justify-between px-0.5">
                         <span className="text-[11px] font-semibold tracking-[-0.01em] text-[#343A40]">
                           Choose your collection
                         </span>
                         <span className="text-[9px] font-semibold tracking-[0.12em] text-[#A0A6AE]">
-                          03 CATEGORIES
+                          {String(desktopProductCategories.length).padStart(2, "0")} CATEGORIES
                         </span>
                       </div>
 
-                      <div className="flex flex-col gap-2.5">
-                        {megaMenus
-                          .flatMap((section) => section.mega_menu_groups)
-                          .filter((group) => {
-                            const primaryNames = ["wireless charging", "power banks", "travel power"];
-                            return (
-                              primaryNames.includes((group.title || "").trim().toLowerCase()) ||
-                              primaryNames.includes((group.category?.name || "").trim().toLowerCase())
-                            );
-                          })
-                          .map((group) => {
-                            const fallbackItem = group.mega_menu_items.find((item) => item.categories?.slug);
-                            const targetCategory = group.category?.slug
-                              ? { name: group.category.name, slug: group.category.slug }
-                              : fallbackItem?.categories?.slug
-                                ? { name: fallbackItem.label_override || fallbackItem.categories.name, slug: fallbackItem.categories.slug }
-                                : null;
-
+                      <div className="flex flex-col gap-2">
+                        {mobileCollectionGroups.map(({ group, targetCategory }) => {
                             return (
                               <button
                                 key={group.id}
@@ -1772,18 +1784,18 @@ export function SiteHeader() {
                                 onClick={() => {
                                   if (targetCategory?.slug) openMobileCategory(targetCategory);
                                 }}
-                                className="group flex h-[76px] w-full items-center gap-3 overflow-hidden rounded-[12px] border border-[#E7E9ED] bg-[#FFFFFF] p-2 text-left shadow-[0_2px_7px_rgba(20,30,45,0.035)] transition-all duration-200 hover:border-[#D4D9E0] hover:shadow-[0_4px_12px_rgba(20,30,45,0.07)] active:scale-[0.99] disabled:opacity-60"
+                                className="group flex h-[60px] min-h-[60px] w-full items-center gap-2.5 overflow-hidden rounded-[11px] border border-[#E7E9ED] bg-[#FFFFFF] px-2.5 py-1.5 text-left shadow-[0_2px_7px_rgba(20,30,45,0.035)] transition-all duration-200 hover:border-[#D4D9E0] hover:shadow-[0_4px_12px_rgba(20,30,45,0.07)] active:scale-[0.99] disabled:opacity-60"
                               >
-                                <div className="h-[60px] w-[88px] shrink-0 overflow-hidden rounded-[9px] bg-[#F3F5F8]">
+                                <div className="flex h-[46px] w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-white">
                                   {group.image_url ? (
                                     <img
                                       src={group.image_url}
                                       alt={group.title}
                                       loading="lazy"
-                                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04] group-active:scale-[1.02]"
+                                      className="h-full w-full object-contain p-1.5"
                                     />
                                   ) : (
-                                    <div className="h-full w-full bg-gradient-to-br from-[#F3F4F5] to-[#E5E7EB]" />
+                                    <div className="h-full w-full rounded-[8px] bg-gradient-to-br from-[#F3F4F5] to-[#E5E7EB]" />
                                   )}
                                 </div>
                                 <span className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-[-0.02em] text-[#202329]">
@@ -1798,7 +1810,7 @@ export function SiteHeader() {
                       <Link
                         to="/shop"
                         onClick={closeMobileMenu}
-                        className="mt-4 flex h-[48px] w-full items-center justify-center gap-2 rounded-[11px] bg-[#17191D] text-[12px] font-semibold tracking-[0.01em] text-white shadow-[0_5px_14px_rgba(23,25,29,0.12)] transition-all duration-200 hover:bg-[#292C31] active:scale-[0.99]"
+                        className="mt-3 flex h-[44px] min-h-[44px] w-full items-center justify-center gap-2 rounded-[11px] bg-[#17191D] text-[12px] font-semibold tracking-[0.01em] text-white shadow-[0_5px_14px_rgba(23,25,29,0.12)] transition-all duration-200 hover:bg-[#292C31] active:scale-[0.99]"
                       >
                         View All Products
                         <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-[#F6A17F]"><ArrowRight size={14} /></span>

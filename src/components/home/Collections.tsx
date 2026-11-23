@@ -24,10 +24,11 @@ import {
   type CurrencyCode,
 } from "@/lib/currency-system";
 
+import banner01 from "@/assets/hero/case_banner.png";
 import banner02 from "@/assets/hero/wireless charger.png";
 import banner03 from "@/assets/hero/powerbank.png";
+import hero1 from "@/assets/hero/power_station.png";
 import hero2 from "@/assets/hero/hero_2.png";
-import travelCategoryImage from "@/assets/hero/danhmuc travel.png";
 
 interface CollectionProduct {
   id: string;
@@ -84,15 +85,15 @@ const categoryImages = [
   banner02, // Travel Power uses a charging-product image instead of the unrelated watchband/lifestyle image.
 ];
 
-interface HeaderCollection {
-  id: string;
-  title: string;
-  slug: string;
-  image_url: string | null;
-}
+// Keep these slugs in sync with the category query parameters supported by /shop.
+const collections = [
+  { title: "Wireless Charging", subtitle: "Shop Wireless Chargers", slug: "wireless-charging" },
+  { title: "Power Banks", subtitle: "Shop Power Banks", slug: "power-banks" },
+  { title: "Travel Power", subtitle: "Shop Travel Power", slug: "travel-power" },
+];
 
 // Fallback images used by product cards when a product has no image_url.
-const demoProductImages = [banner02, banner03, banner02, banner02, hero2];
+const demoProductImages = [banner02, banner03, banner01, hero1, hero2];
 
 function ProductMiniCard({
   product,
@@ -329,7 +330,7 @@ function ProductMiniCard({
         </span>
       </div>
       {/* PRODUCT DETAILS - HORIZONTAL LAYOUT */}
-      <div className={`flex min-w-0 gap-3 ${editorial ? "min-h-[132px] items-start px-5 py-4 sm:min-h-[148px] sm:px-7 sm:py-5" : "min-h-[88px] items-center justify-between px-3.5 py-3 sm:px-4"}`}>
+      <div className={`flex min-w-0 gap-3 ${editorial ? "min-h-[178px] items-start px-7 py-6 sm:min-h-[190px] sm:px-9 sm:py-7" : "min-h-[88px] items-center justify-between px-3.5 py-3 sm:px-4"}`}>
         {editorial ? (
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-[#929292]">INFIBETTER</span>
@@ -362,122 +363,7 @@ export default function Collections({
   const categoryScrollRef = useRef<HTMLDivElement>(null);
   const mobileProductsScrollRef = useRef<HTMLDivElement>(null);
   const reviewSliderRef = useRef<HTMLDivElement>(null);
-  const everydayPlusSliderRef = useRef<HTMLDivElement>(null);
   const [homepageReviews, setHomepageReviews] = useState<HomepageReview[]>([]);
-  const [headerCollections, setHeaderCollections] = useState<HeaderCollection[]>([]);
-
-  // Load the same visible Mega Menu groups as SiteHeader.
-  // The homepage cards therefore always use the category name, slug and image
-  // configured in Header > Mega Menu, instead of a separate hard-coded list.
-  useEffect(() => {
-    let active = true;
-
-    const loadHeaderCollections = async () => {
-      const { data, error } = await supabase
-        .from("mega_menu_sections")
-        .select(`
-          id, menu_key, title, image_url, sort_order, is_visible,
-          mega_menu_groups (
-            id, section_id, title, category_id, image_url, sort_order, is_visible,
-            categories ( id, name, slug, parent_id ),
-            mega_menu_items (
-              id, category_id, label_override, sort_order, is_visible,
-              categories ( id, name, slug, parent_id )
-            )
-          )
-        `)
-        .eq("is_visible", true)
-        .order("sort_order");
-
-      if (error) {
-        console.error("Homepage collections Mega Menu load error:", error);
-        return;
-      }
-      if (!active) return;
-
-      // Keep this list aligned with the four category groups shown in SiteHeader.
-      const primaryGroupNames = [
-        "wireless charging",
-        "power banks",
-        "chargers",
-        "travel power",
-      ];
-
-      const groups = (data ?? [])
-        .flatMap((section: any) => section.mega_menu_groups ?? [])
-        .filter((group: any) => group.is_visible)
-        .sort((a: any, b: any) => a.sort_order - b.sort_order);
-
-      const mapped = Array.from(
-        new Map(
-          groups.flatMap((group: any) => {
-            const groupCategory = Array.isArray(group.categories)
-              ? group.categories[0]
-              : group.categories;
-            const groupName = String(group.title || "").trim().toLowerCase();
-            const categoryName = String(groupCategory?.name || "").trim().toLowerCase();
-
-            if (
-              !primaryGroupNames.includes(groupName) &&
-              !primaryGroupNames.includes(categoryName)
-            ) {
-              return [];
-            }
-
-            const fallbackItem = (group.mega_menu_items ?? [])
-              .filter((item: any) => item.is_visible && item.category_id)
-              .sort((a: any, b: any) => a.sort_order - b.sort_order)
-              .find((item: any) => {
-                const category = Array.isArray(item.categories)
-                  ? item.categories[0]
-                  : item.categories;
-                return Boolean(category?.slug);
-              });
-
-            const fallbackCategory = fallbackItem
-              ? (Array.isArray(fallbackItem.categories)
-                  ? fallbackItem.categories[0]
-                  : fallbackItem.categories)
-              : null;
-
-            const category = groupCategory?.slug ? groupCategory : fallbackCategory;
-            if (!category?.slug) return [];
-
-            const title = group.title || category.name || fallbackItem?.label_override;
-
-            // The Shop page uses "charging-stations" for its Charging filter.
-            // The Mega Menu label is "Chargers", so map that group to the
-            // exact Shop filter slug instead of passing the underlying category slug.
-            const isChargersGroup =
-              groupName === "chargers" || categoryName === "chargers";
-            const destinationSlug = isChargersGroup
-              ? "charging-stations"
-              : category.slug;
-
-            const card: HeaderCollection = {
-              id: group.id,
-              title: title || category.name || "Shop Collection",
-              slug: destinationSlug,
-              image_url: group.image_url || null,
-            };
-
-            return [[card.slug, card] as const];
-          }),
-        ).values(),
-      );
-
-      setHeaderCollections(mapped);
-    };
-
-    loadHeaderCollections();
-    const handleMegaMenuUpdated = () => loadHeaderCollections();
-    window.addEventListener("infibetter:mega-menu-updated", handleMegaMenuUpdated);
-
-    return () => {
-      active = false;
-      window.removeEventListener("infibetter:mega-menu-updated", handleMegaMenuUpdated);
-    };
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -551,6 +437,24 @@ export default function Collections({
 
     return () => window.clearInterval(interval);
   }, [homepageReviews.length]);
+  // Use the actual image from the Travelmag Hybrid product for the Travel Power category card.
+  // Product images come from the product data already passed into this component.
+  const travelPowerProduct = [...products, ...newArrivals].find((product) => {
+    const name = product.name.toLowerCase();
+    const slug = product.slug.toLowerCase();
+    return name.includes("travelmag hybrid") || slug.includes("travelmag-hybrid");
+  });
+  const travelPowerImage = travelPowerProduct?.image_url || banner02;
+
+  const displayCollections = homepageTiles.map((tile, index) => ({
+    id: tile.id,
+    title: tile.title || tile.category_name,
+    slug: tile.category_slug,
+    image:
+      tile.image_url ||
+      (index === 2 ? travelPowerImage : categoryImages[index] || banner02),
+  }));
+
   // New Arrivals remains its own section.
   // Keep all Admin-configured homepage tabs visible.
   const visibleHomepageTiles = homepageTiles;
@@ -664,23 +568,6 @@ export default function Collections({
     }
   };
 
-  const scrollEverydayPlus = (direction: "next" | "prev") => {
-    const slider = everydayPlusSliderRef.current;
-    if (!slider) return;
-
-    const firstCard = slider.firstElementChild as HTMLElement | null;
-    if (!firstCard) return;
-
-    const styles = window.getComputedStyle(slider);
-    const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
-    const distance = firstCard.getBoundingClientRect().width + gap;
-
-    slider.scrollBy({
-      left: direction === "next" ? distance : -distance,
-      behavior: "smooth",
-    });
-  };
-
   return (
     <section
       className="
@@ -734,40 +621,38 @@ export default function Collections({
         ref={categoryScrollRef}
         aria-label="Shop by category"
         className="
-          mx-0 grid grid-cols-2 items-stretch gap-3 overflow-visible
-          px-0 pb-2
-          sm:grid-cols-2 sm:gap-4 sm:pb-0
-          lg:mx-auto lg:max-w-[1240px] lg:grid-cols-4 lg:gap-5
+          -mx-4 flex flex-nowrap snap-x snap-mandatory gap-3 overflow-x-auto
+          overscroll-x-contain scroll-smooth px-4 pb-3
+          [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
+          sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible
+          sm:px-0 sm:pb-0 sm:snap-none
+          lg:mx-auto lg:max-w-[1160px] lg:grid-cols-3 lg:gap-6
         "
       >
-        {headerCollections.map((item, index) => (
+        {collections.map((item, index) => (
           <Link
-            key={item.id}
+            key={item.slug}
             to="/shop"
             search={{ category: item.slug } as never}
             className="
-              group flex min-w-0 w-full flex-col overflow-hidden rounded-[14px]
+              group flex w-[min(290px,82vw)] min-w-[min(290px,82vw)] flex-none snap-center
+              flex-col overflow-hidden rounded-[18px]
               border border-[#E9EAEC] bg-white
               transition-all duration-300
               hover:-translate-y-1 hover:border-[#DDE3EA]
               hover:bg-white hover:shadow-[0_14px_34px_rgba(15,23,42,0.09)]
-              sm:rounded-[18px]
+              sm:w-auto sm:min-w-0
               lg:min-h-[250px]
             "
           >
-            <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-white">
+            <div className="relative aspect-square w-full overflow-hidden bg-white">
               <img
-                src={
-                  item.image_url ||
-                  (item.slug === "travel-power"
-                    ? travelCategoryImage
-                    : categoryImages[index % categoryImages.length])
-                }
+                src={index === 2 ? travelPowerImage : categoryImages[index]}
                 alt={item.title}
                 loading="lazy"
                 draggable={false}
                 className="
-                  block h-[84%] w-[84%] object-contain object-center
+                  mx-auto block h-[78%] w-[78%] object-contain object-center
                   bg-white
                   transition-transform duration-500 ease-out
                   group-hover:scale-[1.02]
@@ -775,11 +660,11 @@ export default function Collections({
               />
             </div>
 
-            <div className="flex min-h-[58px] items-center justify-between gap-1.5 px-2 py-2 sm:min-h-[76px] sm:gap-3 sm:px-5 sm:py-4">
+            <div className="flex min-h-[76px] items-center justify-between gap-3 px-4 py-4 sm:px-5">
               <div className="min-w-0">
                 <h3
                   className="
-                    text-[10px] font-semibold leading-tight
+                    text-[15px] font-semibold leading-tight
                     tracking-[-0.025em] text-[#171717]
                     transition-colors group-hover:text-[#FF4D00]
                     sm:text-[17px] lg:text-[18px]
@@ -787,14 +672,14 @@ export default function Collections({
                 >
                   {item.title}
                 </h3>
-                <p className="mt-0.5 truncate text-[8px] leading-tight text-[#7A8493] sm:mt-1 sm:text-[12px]">
-                  Shop {item.title}
+                <p className="mt-1 text-[11px] text-[#7A8493] sm:text-[12px]">
+                  {item.subtitle}
                 </p>
               </div>
 
               <span
                 className="
-                  flex h-6 w-6 flex-none items-center justify-center sm:h-9 sm:w-9
+                  flex h-9 w-9 flex-none items-center justify-center
                   rounded-full border border-[#E5E7EB] bg-white
                   text-[#344054] shadow-[0_3px_10px_rgba(15,23,42,0.07)]
                   transition-all duration-300
@@ -803,7 +688,7 @@ export default function Collections({
                 "
                 aria-hidden="true"
               >
-                <ArrowRight size={12} strokeWidth={1.8} className="sm:!h-[15px] sm:!w-[15px]" />
+                <ArrowRight size={15} strokeWidth={1.8} />
               </span>
             </div>
           </Link>
@@ -830,43 +715,31 @@ export default function Collections({
             </p>
           </div>
 
-          <div className="mb-0.5 flex flex-none items-center gap-2">
-            <button
-              type="button"
-              onClick={() => scrollEverydayPlus("prev")}
-              aria-label="Previous Everyday Plus products"
-              className="hidden h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#344054] shadow-sm transition hover:border-[#0066E6] hover:text-[#0066E6] sm:inline-flex"
-            >
-              <ChevronLeft size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollEverydayPlus("next")}
-              aria-label="Next Everyday Plus products"
-              className="hidden h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#344054] shadow-sm transition hover:border-[#0066E6] hover:text-[#0066E6] sm:inline-flex"
-            >
-              <ChevronRight size={15} />
-            </button>
-            <Link
-              to="/shop"
-              className="group flex h-8 flex-none items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 text-[9px] font-semibold text-[#0066E6] shadow-[0_2px_8px_rgba(15,23,42,0.045)] transition-all hover:border-[#0066E6]/30 hover:bg-[#F8FBFF]"
-            >
-              View all
-              <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
+          <Link
+            to="/shop"
+            className="group mb-0.5 flex h-8 flex-none items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 text-[9px] font-semibold text-[#0066E6] shadow-[0_2px_8px_rgba(15,23,42,0.045)] transition-all hover:border-[#0066E6]/30 hover:bg-[#F8FBFF]"
+          >
+            View all
+            <ArrowRight size={11} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
+          </Link>
         </div>
 
         {everydayPlusProducts.length > 0 ? (
           <div
-            ref={everydayPlusSliderRef}
-            className="mt-6 flex w-full snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4"
-            aria-label="Everyday Plus products carousel"
+            className="
+              -mx-4 mt-5 flex flex-nowrap snap-x snap-mandatory gap-3
+              overflow-x-auto overscroll-x-contain scroll-smooth px-4 pb-4
+              [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
+              sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible
+              sm:px-0 sm:pb-4 sm:snap-none
+              xl:grid-cols-4
+            "
+            aria-label="Everyday Plus products slider"
           >
             {everydayPlusProducts.map((product, index) => (
               <div
                 key={`everyday-plus-${product.id}`}
-                className="w-full min-w-0 flex-none basis-[78%] snap-start sm:basis-[calc((100%_-_1rem)/2)] lg:basis-[calc((100%_-_3rem)/4)]"
+                className="w-[72vw] max-w-[270px] min-w-0 shrink-0 snap-start sm:w-auto sm:max-w-none sm:shrink"
               >
                 <ProductMiniCard
                   product={product}
