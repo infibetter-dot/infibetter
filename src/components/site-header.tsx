@@ -872,11 +872,9 @@ export function SiteHeader() {
 
         w-full
 
-        bg-[#F7F8FA]/95
+        bg-[#1D1D1D] lg:bg-[#F7F8FA]/95
 
-        py-2
-
-        sm:py-2.5
+        py-0
 
         lg:py-0
 
@@ -921,11 +919,29 @@ export function SiteHeader() {
         </div>
       </div>
 
-      {/* MOBILE SHIPPING PROMISE STRIP */}
-      <div className="mb-1.5 flex h-4 items-center justify-center gap-2 text-[7px] font-semibold uppercase tracking-[0.08em] text-[#334155] lg:hidden">
-        <span>Free tracked shipping</span>
-        <span className="text-[#94A3B8]">·</span>
-        <span>30-day returns</span>
+      {/* MOBILE ANNOUNCEMENT RIBBON — matches the desktop black marquee */}
+      <div className="group relative mb-0 flex h-[30px] w-full items-center overflow-hidden bg-[#1D1D1D] text-white lg:hidden">
+        <div className="infibetter-marquee-track flex w-max min-w-max animate-[infibetter-marquee_24s_linear_infinite] items-center group-hover:[animation-play-state:paused]">
+          {[0, 1].map((track) => (
+            <div
+              key={track}
+              aria-hidden={track === 1}
+              className="flex shrink-0 items-center"
+            >
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={`${track}-${index}`}
+                  className="flex shrink-0 items-center gap-3 px-5 whitespace-nowrap text-[9px] font-semibold tracking-wide"
+                >
+                  <span>Free tracked shipping</span>
+                  <span className="text-white/70">·</span>
+                  <span>30-day returns</span>
+                  <span className="ml-2 text-white">•</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
 
 
