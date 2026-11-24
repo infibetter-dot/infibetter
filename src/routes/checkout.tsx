@@ -33,6 +33,7 @@ import { trackMetaEvent } from "@/lib/meta-pixel";
 import { supabase } from "@/integrations/supabase/client";
 import CheckoutVoucher from "@/components/checkout/CheckoutVoucher";
 import type { VoucherSummary } from "@/components/checkout/voucher.types";
+import paypalLogo from "@/assets/hero/paypal.png";
 
 // Keep PayPal SDK configuration stable for the entire checkout page lifetime.
 const PAYPAL_OPTIONS = {
@@ -1173,12 +1174,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
             <section id="checkout-express" className="mb-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold tracking-[-0.01em]">Express Checkout</h2>
-                <img
-                  src="/payment-methods/all%20card.png"
-                  alt="Accepted payment cards: Visa, Mastercard, American Express and UnionPay"
-                  className="h-[34px] w-auto max-w-[150px] object-contain"
-                  loading="eager"
-                />
+                
               </div>
               <div className="grid grid-cols-1 items-stretch gap-2">
                 <div className="w-full min-w-0 rounded-lg">
@@ -1398,7 +1394,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                           payment_location: "payment_section",
                         });
                       }}
-                      className="flex min-h-[68px] w-full items-center justify-between gap-3 px-3 py-3 text-left sm:px-4"
+                      className="flex h-[68px] w-full items-center justify-between gap-3 px-3 py-1.5 text-left sm:h-[72px] sm:px-4"
                     >
                       <span className="flex min-w-0 items-center gap-3">
                         <span aria-hidden="true" className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${paymentMethod === "card" ? "border-[#303030]" : "border-[#b8b8b8]"}`}>
@@ -1409,7 +1405,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       <img
                         src="/payment-methods/all%20card.png"
                         alt="Accepted cards: Visa, Mastercard, American Express and UnionPay"
-                        className="h-[42px] w-auto max-w-[190px] shrink-0 object-contain"
+                        className="h-[58px] w-auto max-w-[230px] shrink-0 object-contain sm:h-[66px] sm:max-w-[260px]"
                         loading="eager"
                       />
                     </button>
@@ -1449,7 +1445,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                           payment_location: "payment_section",
                         });
                       }}
-                      className={`flex min-h-[58px] w-full items-center justify-between gap-3 px-3 py-3 text-left sm:px-4 ${paymentMethod === "paypal" ? "bg-[#f7f7f7]" : "bg-white"}`}
+                      className={`flex h-[64px] w-full items-center justify-between gap-3 px-3 py-1.5 text-left sm:h-[68px] sm:px-4 ${paymentMethod === "paypal" ? "bg-[#f7f7f7]" : "bg-white"}`}
                     >
                       <span className="flex min-w-0 items-center gap-3">
                         <span aria-hidden="true" className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${paymentMethod === "paypal" ? "border-[#303030]" : "border-[#b8b8b8]"}`}>
@@ -1457,7 +1453,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                         </span>
                         <span className="text-[13px] font-semibold text-[#242424]">PayPal</span>
                       </span>
-                      <span className="shrink-0 text-[17px] font-bold italic tracking-[-0.06em] text-[#003087]">Pay<span className="text-[#009cde]">Pal</span></span>
+                      <img src={paypalLogo} alt="PayPal" className="h-[20px] w-auto max-w-[68px] shrink-0 object-contain sm:h-[24px] sm:max-w-[78px]" loading="eager" />
                     </button>
                     {paymentMethod === "paypal" && (
                       <div className="border-t border-[#d7d7d7] bg-white px-3 py-3 sm:px-4">
