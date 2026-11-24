@@ -8,6 +8,8 @@ import { queryOptions,
   useQuery,
   useSuspenseQuery } from "@tanstack/react-query";
 
+import NewsletterPopup from "@/components/popup/NewsletterPopup";
+
 import { useEffect,
   useMemo,
   useRef,
@@ -3777,6 +3779,9 @@ function ProductPage() {
           </section>
         </div>
       )}
+
+      {/* Newsletter signup popup — displayed on product detail pages. */}
+      <NewsletterPopup />
 
     </main>
 
