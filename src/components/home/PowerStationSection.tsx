@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+﻿
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Snowflake, Zap, Watch } from "lucide-react";
 
@@ -40,7 +41,9 @@ const PowerStationSection: React.FC = () => {
         "relative left-1/2 my-0 w-screen max-w-none -translate-x-1/2 overflow-hidden bg-[#DCEBFA]",
         "transform-gpu transition-[opacity,transform] duration-[850ms] ease-[cubic-bezier(0.2,0.75,0.25,1)]",
         "motion-reduce:transform-none motion-reduce:transition-none",
-        isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-7 scale-[0.99] opacity-0",
+        isVisible
+          ? "translate-y-0 scale-100 opacity-100"
+          : "translate-y-7 scale-[0.99] opacity-0",
       ].join(" ")}
     >
       <div className="relative aspect-[4/5] w-full overflow-hidden sm:aspect-[16/9] lg:aspect-[16/6.5] xl:aspect-[16/6]">
@@ -52,55 +55,65 @@ const PowerStationSection: React.FC = () => {
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
 
-        {/* Copy layout and placement are unchanged; only text contrast is improved. */}
-        <div className="absolute inset-x-0 top-0 z-10 flex justify-center px-4 pt-4 sm:px-6 sm:pt-5 lg:px-10 lg:pt-5">
+        {/* Hero content */}
+        <div className="absolute inset-x-0 top-0 z-10 flex justify-center px-4 pt-3 sm:px-6 sm:pt-8 lg:px-10 lg:pt-9">
           <div
             className={[
-              "w-full max-w-[1120px] text-center",
+              "w-full max-w-[1120px] text-center font-[Arial,sans-serif]",
               "transition-[opacity,transform] delay-150 duration-700 ease-out",
-              isVisible ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
+              isVisible
+                ? "translate-y-0 opacity-100"
+                : "translate-y-3 opacity-0",
             ].join(" ")}
           >
-            <p className="text-[7px] font-extrabold uppercase tracking-[0.2em] text-white [text-shadow:0_1px_5px_rgba(0,28,75,0.85)] sm:text-[9px]">
+            {/* Brand */}
+            <p className="text-[7px] font-bold uppercase tracking-[0.16em] text-white [text-shadow:0_1px_5px_rgba(0,28,75,0.85)] sm:text-[9px]">
               INFIBETTER · EVERYDAY WIRELESS CHARGING
             </p>
 
-            <h2 className="mt-1 text-[clamp(1.35rem,2.8vw,2.45rem)] font-extrabold leading-[1.02] tracking-[-0.05em] text-white [text-shadow:0_2px_9px_rgba(0,28,75,0.8)]">
+            {/* Heading */}
+            <h2 className="mt-1.5 text-[clamp(1.3rem,2.8vw,2.5rem)] font-extrabold leading-[1.02] tracking-[-0.045em] text-white [text-shadow:0_2px_9px_rgba(0,28,75,0.8)] sm:mt-3">
               A Smarter Way to Charge.
             </h2>
 
-            <p className="mx-auto mt-1 max-w-[650px] text-[9px] font-semibold leading-[1.35] text-white [text-shadow:0_1px_6px_rgba(0,28,75,0.9)] sm:mt-1.5 sm:text-[12px]">
+            {/* Description */}
+            <p className="mx-auto mt-1.5 max-w-[650px] text-[9px] font-semibold leading-[1.4] text-white [text-shadow:0_1px_6px_rgba(0,28,75,0.9)] sm:mt-3 sm:text-[12px]">
               One stand. Three devices. Zero cable clutter.
             </p>
 
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-1 sm:mt-2.5 sm:gap-1.5">
+            {/* Product features */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 sm:mt-5 sm:gap-2.5">
               {productFeatures.map(({ label, icon: Icon }) => (
                 <span
                   key={label}
-                  className="inline-flex min-h-6 items-center gap-1 rounded-full border border-white/90 bg-white/90 px-2 py-1 text-[7px] font-semibold text-[#173452] shadow-[0_2px_8px_rgba(20,55,90,0.10)] sm:min-h-7 sm:gap-1.5 sm:px-2.5 sm:text-[9px]"
+                  className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-white/90 bg-white/90 px-3 py-1.5 text-[7px] font-semibold text-[#173452] shadow-[0_2px_8px_rgba(20,55,90,0.10)] sm:min-h-9 sm:gap-2 sm:px-4 sm:text-[10px]"
                 >
-                  <Icon className="h-2.5 w-2.5 text-[#087BFF] sm:h-3 sm:w-3" />
+                  <Icon className="h-3 w-3 text-[#087BFF] sm:h-3.5 sm:w-3.5" />
                   {label}
                 </span>
               ))}
+            </div>
 
+            {/* Flat CTA button */}
+            <div className="mt-3 flex justify-center sm:mt-5 lg:mt-6">
               <Link
                 to="/products/$slug"
                 params={{ slug: "infi-magcool-x7-25w" }}
-                className="group relative inline-flex min-h-7 items-center justify-center gap-1.5 overflow-hidden rounded-full border border-white/90 bg-gradient-to-b from-white via-[#EDF4FC] to-[#B9CDE2] px-3.5 py-1 text-[7px] font-extrabold uppercase tracking-[0.07em] text-[#10243E] shadow-[0_4px_12px_rgba(16,45,80,0.18),inset_0_1px_2px_white,inset_0_-1px_2px_rgba(50,75,100,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_7px_18px_rgba(16,45,80,0.24),0_0_14px_rgba(65,165,255,0.2),inset_0_1px_2px_white] active:translate-y-0 active:scale-[0.98] sm:min-h-8 sm:px-4 sm:text-[8px]"
+                className="group inline-flex min-h-9 items-center justify-center gap-2 rounded-full border border-white bg-white px-6 py-2 font-[Arial,sans-serif] text-[8px] font-bold uppercase tracking-[0.07em] text-[#173452] transition-colors duration-200 hover:bg-[#F0F6FC] active:bg-[#E5EEF8] sm:min-h-11 sm:px-7 sm:text-[10px]"
               >
-                <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white to-transparent opacity-90 transition-transform duration-700 group-hover:translate-x-[450%]" />
-                <span className="relative z-10">Explore MAGCOOL X7</span>
+                <span>Explore MAGCOOL X7</span>
+
                 <ArrowRight
-                  size={11}
-                  strokeWidth={1.9}
-                  className="relative z-10 transition-transform duration-300 group-hover:translate-x-1"
+                  size={13}
+                  strokeWidth={2}
+                  className="transition-transform duration-200 group-hover:translate-x-1"
                 />
               </Link>
             </div>
           </div>
         </div>
 
+        {/* Bottom accent line */}
         <div
           aria-hidden="true"
           className={[

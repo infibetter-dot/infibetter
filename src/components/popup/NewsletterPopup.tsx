@@ -1,7 +1,9 @@
 ﻿
 import { FormEvent, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
 import popupImage from "@/assets/hero/popup.png";
+import popupMobileImage from "@/assets/hero/popupmobile.png";
 
 const STORAGE_KEY = "infibetter_newsletter_popup_dismissed";
 const SUBSCRIBED_KEY = "infibetter_newsletter_subscribed";
@@ -14,19 +16,19 @@ export default function NewsletterPopup() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-  try {
-    if (sessionStorage.getItem(STORAGE_KEY) === "1") return;
-    if (localStorage.getItem(SUBSCRIBED_KEY) === "1") return;
-  } catch {
-    // Continue if browser storage is unavailable.
-  }
+    try {
+      if (sessionStorage.getItem(STORAGE_KEY) === "1") return;
+      if (localStorage.getItem(SUBSCRIBED_KEY) === "1") return;
+    } catch {
+      // Continue if browser storage is unavailable.
+    }
 
-  const timer = window.setTimeout(() => {
-    setIsOpen(true);
-  }, 1800);
+    const timer = window.setTimeout(() => {
+      setIsOpen(true);
+    }, 1800);
 
-  return () => window.clearTimeout(timer);
-}, []);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const closePopup = () => {
     setIsOpen(false);
@@ -88,7 +90,7 @@ export default function NewsletterPopup() {
 
   return (
     <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 p-3 backdrop-blur-[2px] sm:p-6"
+      className="fixed inset-0 z-[99999] flex items-center justify-center overflow-y-auto bg-black/65 p-3 backdrop-blur-[3px] sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="newsletter-popup-title"
@@ -96,50 +98,77 @@ export default function NewsletterPopup() {
         if (event.target === event.currentTarget) closePopup();
       }}
     >
-      <div className="relative grid w-full max-w-[850px] overflow-hidden rounded-[22px] bg-white shadow-2xl md:min-h-[500px] md:grid-cols-2">
+      {/* Popup container */}
+      <div className="relative my-auto grid max-h-[90dvh] w-full max-w-[820px] grid-cols-1 overflow-y-auto overscroll-contain rounded-[18px] bg-white shadow-2xl sm:rounded-[22px] md:min-h-[460px] md:grid-cols-2 md:overflow-hidden">
+
+        {/* Close button */}
         <button
           type="button"
           onClick={closePopup}
           aria-label="Close newsletter popup"
-          className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white/95 text-2xl leading-none text-gray-700 shadow-sm transition hover:bg-gray-100"
+          className="absolute right-2.5 top-2.5 z-30 flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white/95 text-xl leading-none text-gray-700 shadow-sm transition hover:bg-gray-100 sm:right-3 sm:top-3 sm:h-9 sm:w-9"
         >
           ×
         </button>
 
-        <div className="relative h-[190px] overflow-hidden bg-[#F5F5F5] sm:h-[240px] md:h-full">
+        {/* Image area */}
+        <div className="relative w-full shrink-0 overflow-hidden bg-white md:h-full md:min-h-[460px]">
+
+          {/* Mobile image - full width, natural aspect ratio */}
+          <img
+            src={popupMobileImage}
+            alt="INFIBETTER wireless charging products"
+            loading="lazy"
+            draggable={false}
+            className="block h-auto w-full object-contain md:hidden"
+          />
+
+          {/* Desktop image */}
           <img
             src={popupImage}
-            alt="INFIBETTER products"
-            className="h-full w-full object-cover"
+            alt="INFIBETTER wireless charging products"
+            loading="lazy"
+            draggable={false}
+            className="hidden h-full w-full object-contain object-center p-5 md:block"
           />
         </div>
 
-        <div className="flex flex-col justify-center px-6 py-8 text-center sm:px-10 sm:py-10 md:px-11">
-          <p className="mb-8 text-[17px] font-bold tracking-[0.16em] text-[#252525]">
+        {/* Form content */}
+        <div className="flex flex-col justify-center px-5 py-5 text-center sm:px-8 sm:py-7 md:px-9 md:py-9 lg:px-11">
+
+          {/* Brand */}
+          <p className="mb-4 text-[13px] font-bold tracking-[0.16em] text-[#252525] sm:mb-6 sm:text-[15px] md:mb-8 md:text-[17px]">
             INFIBETTER
           </p>
 
           {!submitted ? (
             <>
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#777777]">
+              {/* Eyebrow */}
+              <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#777777] sm:mb-2 sm:text-[10px] md:text-[11px]">
                 A little something for you
               </p>
 
+              {/* Heading */}
               <h2
                 id="newsletter-popup-title"
-                className="text-[30px] font-semibold leading-[1.08] tracking-[-0.04em] text-black sm:text-[36px]"
+                className="text-[25px] font-semibold leading-[1.08] tracking-[-0.04em] text-black sm:text-[30px] md:text-[36px]"
               >
                 Get 30% Off
                 <br />
                 Your First Order
               </h2>
 
-              <p className="mx-auto mt-4 max-w-[340px] text-sm leading-6 text-[#666666]">
+              {/* Description */}
+              <p className="mx-auto mt-2.5 max-w-[340px] text-[12px] leading-[1.55] text-[#666666] sm:mt-3 sm:text-[13px] md:mt-4 md:text-sm md:leading-6">
                 Sign up with your email and receive an exclusive 30% discount
                 voucher from INFIBETTER.
               </p>
 
-              <form onSubmit={handleSubmit} className="mt-7 space-y-3">
+              {/* Form */}
+              <form
+                onSubmit={handleSubmit}
+                className="mt-4 space-y-2 sm:mt-5 sm:space-y-2.5 md:mt-7 md:space-y-3"
+              >
                 <input
                   type="email"
                   value={email}
@@ -147,41 +176,44 @@ export default function NewsletterPopup() {
                   placeholder="Enter your email address"
                   autoComplete="email"
                   required
-                  className="h-12 w-full rounded-full border border-[#D8D8D8] bg-white px-5 text-sm text-[#252525] outline-none transition placeholder:text-[#999999] focus:border-[#252525]"
+                  className="h-10 w-full rounded-full border border-[#D8D8D8] bg-white px-4 text-[12px] text-[#252525] outline-none transition placeholder:text-[#999999] focus:border-[#252525] sm:h-11 sm:px-5 sm:text-sm md:h-12"
                 />
 
                 {error && (
-                  <p className="text-left text-xs text-red-600">{error}</p>
+                  <p className="text-left text-[11px] text-red-600">
+                    {error}
+                  </p>
                 )}
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="h-12 w-full rounded-full bg-[#171717] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-10 w-full rounded-full bg-[#171717] px-5 text-[12px] font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:text-sm md:h-12"
                 >
                   {isSubmitting ? "Submitting..." : "Get My 30% Voucher"}
                 </button>
               </form>
 
-              <p className="mt-4 text-[11px] leading-5 text-[#999999]">
+              {/* Disclaimer */}
+              <p className="mt-3 text-[9px] leading-[1.6] text-[#999999] sm:mt-3.5 sm:text-[10px] md:mt-4 md:text-[11px] md:leading-5">
                 By signing up, you agree to receive occasional emails from
                 INFIBETTER. Unsubscribe anytime.
               </p>
             </>
           ) : (
-            <div className="py-8">
-              <h2 className="text-3xl font-semibold tracking-tight text-black">
+            <div className="py-4 sm:py-6 md:py-8">
+              <h2 className="text-2xl font-semibold tracking-tight text-black sm:text-3xl">
                 Thank you!
               </h2>
 
-              <p className="mt-3 text-sm leading-6 text-[#666666]">
+              <p className="mt-2.5 text-[12px] leading-5 text-[#666666] sm:text-sm sm:leading-6">
                 Your email has been successfully registered with INFIBETTER.
               </p>
 
               <button
                 type="button"
                 onClick={closePopup}
-                className="mt-7 h-11 rounded-full bg-[#171717] px-8 text-sm font-semibold text-white hover:bg-black"
+                className="mt-5 h-10 rounded-full bg-[#171717] px-7 text-[12px] font-semibold text-white transition hover:bg-black sm:mt-7 sm:h-11 sm:px-8 sm:text-sm"
               >
                 Continue shopping
               </button>
