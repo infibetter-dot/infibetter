@@ -70,7 +70,7 @@ const PowerStationSection: React.FC = () => {
             </h2>
 
             <p className="mx-auto mt-1 max-w-[650px] text-[9px] font-semibold leading-[1.35] text-white [text-shadow:0_1px_6px_rgba(0,28,75,0.9)] sm:mt-1.5 sm:text-[12px]">
-              One convenient stand for your iPhone, Apple Watch and AirPods.
+              One stand. Three devices. Zero cable clutter.
             </p>
 
             <div className="mt-2 flex flex-wrap items-center justify-center gap-1 sm:mt-2.5 sm:gap-1.5">
