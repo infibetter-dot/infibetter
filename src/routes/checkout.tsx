@@ -473,15 +473,37 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     const getValue = (name: string) =>
       String(formData.get(name) ?? "").trim();
 
+    const checkoutFlow = paypalCheckoutModeRef.current;
+    const shippingAddressValue = getValue("address");
+    const shippingAddressLine2 = getValue("address_line_2");
+    const shippingCityValue = getValue("city");
+    const shippingStateValue = getValue("state");
+    const shippingPostalCodeValue = getValue("postal_code");
+
     const checkout = {
+      checkout_flow: checkoutFlow,
       full_name: getValue("full_name"),
       email: getValue("email") || email.trim(),
       phone: getValue("phone"),
-      address: [getValue("address"), getValue("address_line_2")].filter(Boolean).join(", "),
-      city: getValue("city"),
-      district: getValue("state"),
-      ward: getValue("postal_code"),
-      postal_code: getValue("postal_code"),
+      address: shippingAddressValue,
+      address_line_2: shippingAddressLine2,
+      city: shippingCityValue,
+      state: shippingStateValue,
+      district: shippingStateValue,
+      ward: shippingPostalCodeValue,
+      postal_code: shippingPostalCodeValue,
+      country_code: countryCode,
+      billing_same_as_shipping: billingSameAsShipping,
+      billing: billingSameAsShipping
+        ? null
+        : {
+            address: getValue("billing_address"),
+            address_line_2: getValue("billing_address_line_2"),
+            city: getValue("billing_city"),
+            state: getValue("billing_state"),
+            postal_code: getValue("billing_postal_code"),
+            country_code: countryCode,
+          },
       notes: [
         `Country: ${country.name}`,
         `Zone: ${country.zone}`,
@@ -575,7 +597,13 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     const checkout = buildPaypalCheckoutPayload();
     const { data, error } = await supabase.functions.invoke(
       "paypal-create-order",
-      { body: { checkout, currency: "USD" } },
+      {
+        body: {
+          checkout,
+          checkout_flow: checkout.checkout_flow,
+          currency: "USD",
+        },
+      },
     );
 
     if (error || !data?.success || !data?.orderId) {
