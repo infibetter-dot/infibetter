@@ -305,6 +305,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   const ga4BeginCheckoutSent = useRef(false);
   const ga4NameEnteredSent = useRef(false);
   const ga4OrderEventsSent = useRef<Set<string>>(new Set());
+  const paypalCheckoutModeRef = useRef<"express" | "standard">("standard");
 
   function trackCheckoutNameEntered() {
     if (!fullName.trim() || ga4NameEnteredSent.current) return;
@@ -509,10 +510,12 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
       })),
     };
 
-    if (!checkout.full_name || !checkout.email || !checkout.phone ||
-        !checkout.address || !checkout.city) {
+    if (paypalCheckoutModeRef.current !== "express" && (
+        !checkout.full_name || !checkout.email || !checkout.phone ||
+        !checkout.address || !checkout.city
+    )) {
       throw new Error(
-        "Please complete your name, email, phone and delivery address before paying.",
+        "Please complete your contact and delivery details before paying.",
       );
     }
 
@@ -525,6 +528,47 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     // The server recalculates prices and total from the database.
     // Do not send client-calculated amounts as payment authority.
     return checkout;
+  }
+
+  function validateStandardCheckout(): boolean {
+    paypalCheckoutModeRef.current = "standard";
+    const checkoutForm = document.querySelector<HTMLFormElement>("form");
+    if (!checkoutForm) {
+      window.alert("Checkout form could not be found. Please refresh and try again.");
+      return false;
+    }
+
+    const requiredFields = checkoutForm.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("[required]");
+    requiredFields.forEach((field) => {
+      field.setCustomValidity("");
+      if (field.validity.valueMissing) {
+        field.setCustomValidity("Please fill out this field.");
+      } else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") {
+        field.setCustomValidity("Please enter a valid email address.");
+      }
+    });
+
+    const phoneInput = checkoutForm.querySelector<HTMLInputElement>('input[name="phone"]');
+    if (phoneInput && !phoneInput.value.trim()) {
+      window.alert("Please enter your phone number before paying.");
+      phoneInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => phoneInput.focus(), 250);
+      return false;
+    }
+
+    const firstInvalid = checkoutForm.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(":invalid");
+    if (firstInvalid) {
+      window.alert("Please complete your contact and delivery information before paying.");
+      firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => {
+        firstInvalid.focus();
+        firstInvalid.reportValidity();
+      }, 250);
+      return false;
+    }
+
+    paypalCheckoutModeRef.current = "standard";
+    return true;
   }
 
   async function createPayPalOrder(paymentType: "PayPal" | "Card") {
@@ -626,7 +670,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
         })),
       };
 
-      if (!checkout.full_name) {
+      if (paypalCheckoutModeRef.current !== "express" && !checkout.full_name) {
         throw new Error("Please enter your full name before paying.");
       }
 
@@ -888,21 +932,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     disabled={submitting}
                     style={{ layout: "vertical", shape: "rect", color: "gold", label: "paypal", height: 42 }}
                     onClick={async (_data, actions) => {
-                      const checkoutForm = document.querySelector<HTMLFormElement>("form");
-                      if (!checkoutForm) return actions.reject();
-                      const requiredFields = checkoutForm.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("[required]");
-                      requiredFields.forEach((field) => {
-                        field.setCustomValidity("");
-                        if (field.validity.valueMissing) field.setCustomValidity("Please fill out this field.");
-                        else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") field.setCustomValidity("Please enter a valid email address.");
-                      });
-                      const firstInvalid = checkoutForm.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(":invalid");
-                      if (firstInvalid) {
-                        firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
-                        window.setTimeout(() => firstInvalid.focus(), 250);
-                        firstInvalid.reportValidity();
-                        return actions.reject();
-                      }
+                      paypalCheckoutModeRef.current = "express";
                       return actions.resolve();
                     }}
                     createOrder={async () => createPayPalOrder("PayPal")}
@@ -917,21 +947,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     disabled={submitting}
                     style={{ layout: "vertical", shape: "rect", label: "pay", height: 42 }}
                     onClick={async (_data, actions) => {
-                      const checkoutForm = document.querySelector<HTMLFormElement>("form");
-                      if (!checkoutForm) return actions.reject();
-                      const requiredFields = checkoutForm.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("[required]");
-                      requiredFields.forEach((field) => {
-                        field.setCustomValidity("");
-                        if (field.validity.valueMissing) field.setCustomValidity("Please fill out this field.");
-                        else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") field.setCustomValidity("Please enter a valid email address.");
-                      });
-                      const firstInvalid = checkoutForm.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(":invalid");
-                      if (firstInvalid) {
-                        firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
-                        window.setTimeout(() => firstInvalid.focus(), 250);
-                        firstInvalid.reportValidity();
-                        return actions.reject();
-                      }
+                      paypalCheckoutModeRef.current = "express";
                       return actions.resolve();
                     }}
                     createOrder={async () => createPayPalOrder("Card")}
@@ -1126,21 +1142,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                             disabled={submitting}
                             style={{ layout: "vertical", shape: "rect", label: "pay", height: 44 }}
                             onClick={async (_data, actions) => {
-                              const checkoutForm = document.querySelector<HTMLFormElement>("form");
-                              if (!checkoutForm) return actions.reject();
-                              const requiredFields = checkoutForm.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("[required]");
-                              requiredFields.forEach((field) => {
-                                field.setCustomValidity("");
-                                if (field.validity.valueMissing) field.setCustomValidity("Please fill out this field.");
-                                else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") field.setCustomValidity("Please enter a valid email address.");
-                              });
-                              const firstInvalid = checkoutForm.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(":invalid");
-                              if (firstInvalid) {
-                                firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
-                                window.setTimeout(() => firstInvalid.focus(), 250);
-                                firstInvalid.reportValidity();
-                                return actions.reject();
-                              }
+                              if (!validateStandardCheckout()) return actions.reject();
                               return actions.resolve();
                             }}
                             createOrder={async () => createPayPalOrder("Card")}
@@ -1358,23 +1360,9 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                   disabled={submitting}
                   style={{ layout: "vertical", shape: "rect", color: "gold", label: "pay", height: 48 }}
                   onClick={async (_data, actions) => {
-                    const checkoutForm = document.querySelector<HTMLFormElement>("form");
-                    if (!checkoutForm) return actions.reject();
-                    const requiredFields = checkoutForm.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("[required]");
-                    requiredFields.forEach((field) => {
-                      field.setCustomValidity("");
-                      if (field.validity.valueMissing) field.setCustomValidity("Please fill out this field.");
-                      else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") field.setCustomValidity("Please enter a valid email address.");
-                    });
-                    const firstInvalid = checkoutForm.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(":invalid");
-                    if (firstInvalid) {
-                      firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
-                      window.setTimeout(() => firstInvalid.focus(), 250);
-                      firstInvalid.reportValidity();
-                      return actions.reject();
-                    }
-                    return actions.resolve();
-                  }}
+                              if (!validateStandardCheckout()) return actions.reject();
+                              return actions.resolve();
+                            }}
                   createOrder={async () => createPayPalOrder("PayPal")}
                   onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
                   onCancel={() => toast.info("PayPal checkout was cancelled.")}
@@ -1593,30 +1581,9 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       height: 48,
                     }}
                     onClick={async (_data, actions) => {
-                        const checkoutForm = document.querySelector<HTMLFormElement>("form");
-                        if (!checkoutForm) return actions.reject();
-                        const requiredFields = checkoutForm.querySelectorAll<
-                          HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-                        >("[required]");
-                        requiredFields.forEach((field) => {
-                          field.setCustomValidity("");
-                          if (field.validity.valueMissing) {
-                            field.setCustomValidity("Please fill out this field.");
-                          } else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") {
-                            field.setCustomValidity("Please enter a valid email address.");
-                          }
-                        });
-                        const firstInvalid = checkoutForm.querySelector<
-                          HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-                        >(":invalid");
-                        if (firstInvalid) {
-                          firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
-                          window.setTimeout(() => firstInvalid.focus(), 250);
-                          firstInvalid.reportValidity();
-                          return actions.reject();
-                        }
-                        return actions.resolve();
-                      }}
+                              if (!validateStandardCheckout()) return actions.reject();
+                              return actions.resolve();
+                            }}
                     createOrder={async () => createPayPalOrder("PayPal")}
                     onApprove={async (data) => {
                       await handlePaypalApprove(data.orderID);
