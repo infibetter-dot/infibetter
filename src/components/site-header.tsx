@@ -1,4 +1,4 @@
-﻿import { Link } from "@tanstack/react-router";
+﻿import { Link, useRouterState } from "@tanstack/react-router";
 
 import CartDrawer from "@/components/cart/CartDrawer";
 
@@ -138,6 +138,8 @@ function getMegaGridColumns(groupCount: number) {
 
 
 export function SiteHeader() {
+
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   const { count } = useCart();
 
@@ -856,6 +858,10 @@ export function SiteHeader() {
 
 
 
+  if (pathname.replace(/\/+$/, "") === "/checkout") {
+    return null;
+  }
+
   return (
 
     <header
@@ -948,7 +954,7 @@ export function SiteHeader() {
       {/* HEADER CAPSULE */}
 
 
-      <div className="relative mx-auto w-full max-w-none sm:w-[calc(100%-24px)] sm:max-w-[1320px] lg:w-full lg:max-w-none">
+      <div className="relative mx-auto w-full max-w-none lg:w-full lg:max-w-none">
 
         <div
 
@@ -962,7 +968,7 @@ export function SiteHeader() {
 
             items-center
 
-            rounded-[12px]
+            rounded-none
 
             border
 

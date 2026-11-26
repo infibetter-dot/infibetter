@@ -181,15 +181,21 @@ export default function CartDrawer({
         );
 
         const uniqueProducts = (relatedProducts ?? [])
-          .filter(
-            (product) =>
+          .filter((product) => {
+            const rawProduct =
+              product as unknown as Record<string, unknown>;
+
+            return (
               product.id &&
+              rawProduct.is_active === true &&
+              rawProduct.status !== "hidden" &&
               !cartIds.has(String(product.id)) &&
               product.image_url &&
               (product.stock === null ||
                 Number(product.stock) > 0) &&
-              Number(product.price) > 0,
-          )
+              Number(product.price) > 0
+            );
+          })
           .filter(
             (product, index, all) =>
               all.findIndex(
@@ -328,7 +334,7 @@ export default function CartDrawer({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] isolate">
+    <div className="fixed inset-0 z-[2147483000] isolate bg-white">
 
       {/* ======================================================
           OVERLAY
@@ -352,11 +358,11 @@ export default function CartDrawer({
       <aside
         className="
           absolute
-          inset-y-0
-          right-0
+          inset-0
           z-10
           grid
           h-[100dvh]
+          min-h-0
           w-full
           max-w-[430px]
           grid-rows-[68px_minmax(0,1fr)_auto]
@@ -770,16 +776,10 @@ export default function CartDrawer({
 
             {items.length > 0 && (
               <section
-                className="
-                  mt-3
-                  overflow-hidden
-                  rounded-[14px]
-                  border border-[#E7E9E8]
-                  bg-white
-                "
+                className="mt-3 bg-transparent"
                 aria-label="Optional complimentary order benefits"
               >
-                <div className="px-3.5 py-3.5">
+                <div className="px-0 py-1">
                   {/* SECTION HEADING */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -829,8 +829,13 @@ export default function CartDrawer({
                       </span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-1.5">
-                      <span className="text-[12px] font-bold tracking-[-0.02em] text-[#00845D]">
-                        FREE
+                      <span className="flex items-baseline gap-1.5">
+                        <span className="text-[9px] text-[#A0A5A2] line-through">
+                          $7.00
+                        </span>
+                        <span className="text-[12px] font-bold tracking-[-0.02em] text-[#00845D]">
+                          FREE
+                        </span>
                       </span>
                       <span className={`flex h-[19px] w-[19px] items-center justify-center rounded-full border transition-colors ${includeMysteryGift ? "border-[#00845D] bg-[#00845D] text-white" : "border-[#D4D9D6] bg-white text-transparent"}`}>
                         <Check className="h-3 w-3" strokeWidth={2.5} />
@@ -857,10 +862,11 @@ export default function CartDrawer({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[12px] font-semibold leading-tight text-[#252A27]">
-                        Delivery Protection
+                        Free Shipping + Shipping Insurance
                       </span>
                       <span className="mt-1 block text-[9px] leading-[1.4] text-[#858B87]">
-                        Extra peace of mind for your delivery
+                        <span className="block">6 to 10 business days</span>
+                        <span className="block">Tracking number provided + Guaranteed compensation for loss</span>
                       </span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-1.5">
@@ -1143,16 +1149,25 @@ export default function CartDrawer({
             className="
               relative
               z-20
+              min-h-0
+              max-h-[72dvh]
+              overflow-x-hidden
+              overflow-y-auto
+              overscroll-contain
+              touch-pan-y
               shrink-0
               border-t
               border-[#E7E7E7]
               bg-white
               px-4
               pt-2
-              pb-[calc(6px+env(safe-area-inset-bottom))]
+              pb-[calc(80px+env(safe-area-inset-bottom))]
+              [scrollbar-width:thin]
+              sm:max-h-none
+              sm:overflow-visible
               sm:px-6
               sm:pt-2.5
-              sm:pb-[calc(12px+env(safe-area-inset-bottom))]
+              sm:pb-[calc(16px+env(safe-area-inset-bottom))]
             "
           >
 
@@ -1280,24 +1295,23 @@ export default function CartDrawer({
               <div
                 className="
                   mt-1
-                  flex h-[36px] w-full
+                  flex h-[28px] w-full
                   items-center justify-center
-                  gap-2
+                  gap-1.5
                 "
                 aria-label="Accepted payment methods"
               >
                 {/* Clip the built-in whitespace in the payment-logo image
                     so the actual card marks appear larger on mobile. */}
-                <div className="flex h-[35px] w-[270px] max-w-[calc(100%-48px)] items-center justify-center overflow-hidden">
+                <div className="flex h-[27px] w-[220px] max-w-[calc(100%-42px)] items-center justify-center overflow-hidden">
                   <img
                     src="/payment-methods/all%20card.png"
                     alt="Accepted payment methods"
                     loading="lazy"
                     className="
-                      h-[34px]
-                      w-[285px]
+                      h-[25px]
+                      w-[220px]
                       max-w-none
-                      scale-[1.8]
                       object-contain
                     "
                   />
@@ -1312,82 +1326,76 @@ export default function CartDrawer({
 
             
 {/* PREMIUM CUSTOMER ASSURANCE */}
-
             <section
+              aria-label="Customer assurance"
               className="
-                mt-1.5
+                mt-2
+                mb-1
                 overflow-hidden
-                rounded-[11px]
-                border border-[#E6E7E9]
-                bg-white
+                rounded-xl
+                border border-[#E3E8EC]
+                bg-gradient-to-b from-[#FFFFFF] to-[#FAFBFC]
+                shadow-[0_2px_10px_rgba(15,23,42,0.04)]
               "
             >
-              <div className="px-3 py-2.5">
-
-                {/* HEADER */}
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-[10px] font-bold tracking-[0.12em] text-[#252525]">
-                    CUSTOMER ASSURANCE
-                  </h3>
-
-                  <div className="flex items-center gap-1">
+              <div className="px-3.5 py-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-[10px] font-bold tracking-[0.13em] text-[#202A35]">
+                      SHOP WITH CONFIDENCE
+                    </h3>
+                    <p className="mt-0.5 text-[9px] text-[#7A8490]">
+                      Support you can count on
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-1 rounded-full border border-[#DCEFE8] bg-[#F3FBF7] px-2 py-1">
                     <ShieldCheck
-                      className="h-[13px] w-[13px] text-[#008F65]"
+                      className="h-[12px] w-[12px] text-[#008F65]"
                       strokeWidth={2}
                     />
-                    <span className="text-[9px] font-semibold tracking-[0.04em] text-[#777777]">
+                    <span className="text-[8px] font-bold tracking-[0.06em] text-[#28765D]">
                       INFIBETTER
                     </span>
                   </div>
                 </div>
 
-                {/* CUSTOMER BENEFITS */}
-                <div className="grid grid-cols-3 divide-x divide-[#EAEAEA]">
-
-                  {/* WARRANTY */}
-                  <div className="flex flex-col items-center px-1.5">
-                    <ShieldCheck
-                      className="h-[18px] w-[18px] text-[#333333]"
-                      strokeWidth={1.5}
-                    />
-                    <span className="mt-1.5 text-[11px] font-bold tracking-[-0.02em] text-[#252525]">
-                      01 YEAR
+                <div className="grid grid-cols-3 divide-x divide-[#E7EBEF]">
+                  <div className="flex flex-col items-center px-1.5 text-center">
+                    <div className="mb-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-[#F1F5F8]">
+                      <ShieldCheck className="h-[17px] w-[17px] text-[#334155]" strokeWidth={1.7} />
+                    </div>
+                    <span className="text-[11px] font-bold tracking-[-0.02em] text-[#202A35]">
+                      1 YEAR
                     </span>
-                    <span className="mt-0.5 text-center text-[9px] font-medium leading-tight text-[#858585]">
+                    <span className="mt-0.5 text-[9px] font-medium leading-tight text-[#788391]">
                       Product Warranty
                     </span>
                   </div>
 
-                  {/* REPLACEMENT */}
-                  <div className="flex flex-col items-center px-1.5">
-                    <RefreshCcw
-                      className="h-[18px] w-[18px] text-[#333333]"
-                      strokeWidth={1.5}
-                    />
-                    <span className="mt-1.5 text-[11px] font-bold tracking-[-0.02em] text-[#252525]">
+                  <div className="flex flex-col items-center px-1.5 text-center">
+                    <div className="mb-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-[#F1F5F8]">
+                      <RefreshCcw className="h-[17px] w-[17px] text-[#334155]" strokeWidth={1.7} />
+                    </div>
+                    <span className="text-[11px] font-bold tracking-[-0.02em] text-[#202A35]">
                       30 DAYS
                     </span>
-                    <span className="mt-0.5 text-center text-[9px] font-medium leading-tight text-[#858585]">
+                    <span className="mt-0.5 text-[9px] font-medium leading-tight text-[#788391]">
                       Replacement
                     </span>
                   </div>
 
-                  {/* TRACKING */}
-                  <div className="flex flex-col items-center px-1.5">
-                    <PackageCheck
-                      className="h-[18px] w-[18px] text-[#333333]"
-                      strokeWidth={1.5}
-                    />
-                    <span className="mt-1.5 text-[11px] font-bold tracking-[-0.02em] text-[#252525]">
+                  <div className="flex flex-col items-center px-1.5 text-center">
+                    <div className="mb-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-[#F1F5F8]">
+                      <PackageCheck className="h-[17px] w-[17px] text-[#334155]" strokeWidth={1.7} />
+                    </div>
+                    <span className="text-[11px] font-bold tracking-[-0.02em] text-[#202A35]">
                       FREE
                     </span>
-                    <span className="mt-0.5 text-center text-[9px] font-medium leading-tight text-[#858585]">
+                    <span className="mt-0.5 text-[9px] font-medium leading-tight text-[#788391]">
                       Order Tracking
                     </span>
                   </div>
-
                 </div>
-
               </div>
             </section>
 

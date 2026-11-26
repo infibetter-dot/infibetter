@@ -5,6 +5,7 @@ import {
 } from "@paypal/react-paypal-js";
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import CartDrawer from "@/components/cart/CartDrawer";
 
 import {
   ChevronDown,
@@ -296,9 +297,9 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   const [offerLoading, setOfferLoading] = useState(true);
   const [offerDismissed, setOfferDismissed] = useState(false);
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(true);
-  const [bottomOrderSummaryOpen, setBottomOrderSummaryOpen] = useState(true);
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [legalDocument, setLegalDocument] = useState<LegalDocumentKey>("refund");
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
 
   const checkoutEventSent = useRef(false);
   const ga4BeginCheckoutSent = useRef(false);
@@ -738,7 +739,31 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
 
   return (
     <div className="min-h-screen bg-white text-[#111]">
-      <main className="mx-auto w-full max-w-[1120px] px-4 py-5 sm:px-5 lg:px-8 lg:py-0">
+      {/* Minimal NOMAD checkout header — uses the existing public branding asset. */}
+      <header className="w-full border-b border-[#e8e8e8] bg-white">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1120px] items-center justify-between px-7 sm:px-8">
+          <Link
+            to="/"
+            aria-label="Go to homepage"
+            className="-ml-5 inline-flex items-center"
+          >
+            <img
+              src="/branding/Logo%20name.png"
+              alt="NOMAD"
+              className="block h-auto w-[132px] max-w-[42vw] object-contain object-left"
+            />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setCartDrawerOpen(true)}
+            aria-label="Open cart"
+            className="inline-flex h-10 w-10 items-center justify-center"
+          >
+            <ShoppingBag className="h-[19px] w-[19px] text-[#111]" strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+      <main className="mx-auto w-full max-w-[1120px] px-0 pb-5 pt-0 sm:px-5 sm:pb-5 lg:px-8 lg:py-0">
         <PayPalScriptProvider options={PAYPAL_OPTIONS}>
           <form
             onSubmit={handleSubmit}
@@ -747,21 +772,21 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
           <div className="contents lg:block lg:space-y-0 lg:py-7 lg:pr-10">
             <div className="mx-auto w-full max-w-[500px]">
             {/* Mobile order summary + express checkout */}
-            <section className="relative -mt-5 mb-4 -mx-4 w-[calc(100%+2rem)] overflow-hidden rounded-none border-x-0 border-y border-[#e5e5e5] bg-[#f5f5f5] lg:mt-0 lg:hidden">
+            <section className="relative left-1/2 mb-4 w-screen max-w-none -translate-x-1/2 overflow-hidden border-y border-[#e5e5e5] bg-[#fafafa] lg:hidden">
               <button
                 type="button"
                 onClick={() => setOrderSummaryOpen((open) => !open)}
                 aria-expanded={orderSummaryOpen}
-                className="flex min-h-[58px] w-full items-center justify-between px-5 py-4 text-left sm:min-h-[62px]"
+                className="flex w-full items-center justify-between px-5 py-4 text-left"
               >
-                <span className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em]">
+                <span className="flex items-center gap-2 text-sm font-semibold">
                   Order summary
                   <ChevronDown className={`h-4 w-4 transition-transform ${orderSummaryOpen ? "rotate-180" : ""}`} />
                 </span>
-                <span className="text-base font-bold tabular-nums">{usd(totalUsd)}</span>
+                <span className="text-sm font-semibold tabular-nums">{usd(totalUsd)}</span>
               </button>
               {orderSummaryOpen && (
-                <div className="border-t border-[#e8e8e8] bg-[#f5f5f5] px-3 py-3">
+                <div className="border-t border-[#e8e8e8] px-5 py-4">
                   <div className="space-y-3">
                     {items.map((item) => (
                       <div key={[
@@ -777,31 +802,70 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                         <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-xs font-medium">{item.name}</p>
                           <p className="mt-0.5 text-[11px] text-neutral-500">Qty {item.quantity}</p>
+                          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10px] leading-4 text-neutral-500">
+                            {item.colorName ? (
+                              <span className="inline-flex min-w-0 items-center gap-1">
+                                {item.colorHex ? (
+                                  <span
+                                    aria-hidden="true"
+                                    className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/10"
+                                    style={{ backgroundColor: item.colorHex }}
+                                  />
+                                ) : null}
+                                <span className="truncate">{item.colorName}</span>
+                              </span>
+                            ) : null}
+                            {item.plugType ? (
+                              <span className="inline-flex items-center gap-1">
+                                <span className="text-neutral-400">Plug type:</span>
+                                <span className="font-medium text-neutral-700">{item.plugType}</span>
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                         <span className="text-xs font-medium tabular-nums">{usd(Number(item.price) * Number(item.quantity))}</span>
                       </div>
                     ))}
                   </div>
+
+                  {/* Voucher / discount code entry for mobile order summary */}
+                  <div className="mt-4 border-t border-[#e8e8e8] pt-3">
+                    <CheckoutVoucher
+                      subtotal={subtotalUsd}
+                      shippingFee={shippingFeeUsd}
+                      phone={phone}
+                      cartItems={items}
+                      onChange={setVoucherSummary}
+                    />
+                  </div>
+
                   {/* Complimentary order benefits — display only; does not change checkout total. */}
                   <div className="mt-3 space-y-2 border-t border-[#e8e8e8] pt-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <Gift className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
-                        <span className="text-xs font-medium text-[#303030]">Mystery Gift</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#F3F6F4]">
+                        <Gift className="h-4 w-4 text-[#39443D]" strokeWidth={1.7} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <span className="block text-xs font-semibold leading-tight text-[#252A27]">Mystery Gift</span>
+                        <span className="mt-0.5 block text-[10px] leading-[1.35] text-[#858B87]">A surprise gift, selected for you</span>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
-                        <span className="text-[11px] text-neutral-400 line-through">{usd(7)}</span>
-                        <span className="font-semibold text-[#008F65]">{usd(0)}</span>
+                      <div className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums">
+                        <span className="text-[10px] text-[#A0A5A2] line-through">{usd(7)}</span>
+                        <span className="font-bold text-[#00845D]">FREE</span>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
-                        <span className="text-xs font-medium text-[#303030]">Delivery Protection</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#F3F6F4]">
+                        <ShieldCheck className="h-4 w-4 text-[#39443D]" strokeWidth={1.7} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <span className="block text-xs font-semibold leading-tight text-[#252A27]">Free Shipping + Shipping Insurance</span>
+                        <span className="mt-0.5 block text-[10px] leading-[1.35] text-[#858B87]">6 to 10 business days</span>
+                        <span className="mt-0.5 block text-[10px] leading-[1.35] text-[#858B87]">Tracking number provided + Guaranteed compensation for loss</span>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
-                        <span className="text-[11px] text-neutral-400 line-through">{usd(5)}</span>
-                        <span className="font-semibold text-[#008F65]">{usd(0)}</span>
+                      <div className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums">
+                        <span className="text-[10px] text-[#A0A5A2] line-through">{usd(5)}</span>
+                        <span className="font-bold text-[#00845D]">FREE</span>
                       </div>
                     </div>
                   </div>
@@ -815,14 +879,14 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               )}
             </section>
 
-            <section className="mb-5 lg:hidden">
-              <h2 className="mb-3 text-sm font-semibold tracking-[-0.01em]">Express Checkout</h2>
-              <div className="grid grid-cols-1 items-start gap-2">
-                <div className="min-w-0 overflow-hidden rounded-lg">
+            <section className="mx-auto mb-5 w-full max-w-[380px] lg:hidden">
+              <h2 className="mb-2.5 text-center text-[13px] font-semibold tracking-[-0.01em] text-[#252525]">Express Checkout</h2>
+              <div className="mx-auto grid w-full grid-cols-1 items-stretch gap-2">
+                <div className="w-full min-w-0 overflow-hidden rounded-lg">
                   <PayPalButtons
                     fundingSource={FUNDING.PAYPAL}
                     disabled={submitting}
-                    style={{ layout: "vertical", shape: "rect", color: "gold", label: "paypal", height: 46 }}
+                    style={{ layout: "vertical", shape: "rect", color: "gold", label: "paypal", height: 42 }}
                     onClick={async (_data, actions) => {
                       const checkoutForm = document.querySelector<HTMLFormElement>("form");
                       if (!checkoutForm) return actions.reject();
@@ -847,11 +911,11 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     onError={(error) => { console.error("PAYPAL EXPRESS ERROR", error); toast.error("PayPal could not complete the payment."); }}
                   />
                 </div>
-                <div className="min-w-0 overflow-hidden rounded-lg">
+                <div className="w-full min-w-0 overflow-hidden rounded-lg">
                   <PayPalButtons
                     fundingSource={FUNDING.CARD}
                     disabled={submitting}
-                    style={{ layout: "vertical", shape: "rect", label: "pay", height: 46 }}
+                    style={{ layout: "vertical", shape: "rect", label: "pay", height: 42 }}
                     onClick={async (_data, actions) => {
                       const checkoutForm = document.querySelector<HTMLFormElement>("form");
                       if (!checkoutForm) return actions.reject();
@@ -877,14 +941,14 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                   />
                 </div>
               </div>
-              <div className="my-4 flex items-center gap-3 text-[11px] text-neutral-400">
+              <div className="mt-4 mb-1 flex items-center gap-3 text-[11px] text-neutral-400">
                 <span className="h-px flex-1 bg-[#e5e5e5]" />
                 <span>OR</span>
                 <span className="h-px flex-1 bg-[#e5e5e5]" />
               </div>
             </section>
 
-            <section className="border-b border-[#e8e8e8] py-5 first:pt-2 sm:py-6">
+            <section className="mx-3 border-b border-[#e8e8e8] pt-2 pb-5 sm:mx-0 sm:py-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-[18px] font-semibold tracking-[-0.02em]">Contact</h2>
               </div>
@@ -900,7 +964,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email"
-                    className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 invalid:border-red-500 invalid:ring-1 invalid:ring-red-500"
+                    className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 user-invalid:border-red-500 user-invalid:ring-1 user-invalid:ring-red-500"
                   />
                 </label>
 
@@ -908,7 +972,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               </div>
             </section>
 
-            <section className="border-b border-[#e8e8e8] py-5 sm:py-6">
+            <section className="mx-3 border-b border-[#e8e8e8] py-5 sm:mx-0 sm:py-6">
               <h2 className="mb-4 text-[18px] font-semibold tracking-[-0.02em]">Delivery</h2>
 
               <div className="space-y-2.5">
@@ -936,7 +1000,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       }}
                       onBlur={trackCheckoutNameEntered}
                       placeholder="First name"
-                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 invalid:border-red-500 invalid:ring-1 invalid:ring-red-500"
+                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 user-invalid:border-red-500 user-invalid:ring-1 user-invalid:ring-red-500"
                     />
                   </label>
                   <label className="block">
@@ -953,7 +1017,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       }}
                       onBlur={trackCheckoutNameEntered}
                       placeholder="Last name"
-                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 invalid:border-red-500 invalid:ring-1 invalid:ring-red-500"
+                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 user-invalid:border-red-500 user-invalid:ring-1 user-invalid:ring-red-500"
                     />
                   </label>
                 </div>
@@ -987,7 +1051,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               </div>
             </section>
 
-            <section className="border-b border-[#e8e8e8] py-5 first:pt-2 sm:py-6">
+            <section className="mx-3 border-b border-[#e8e8e8] py-5 first:pt-2 sm:mx-0 sm:py-6">
               {hasShippingAddress ? (
                 <>
                   <SectionTitle
@@ -1021,7 +1085,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
             </section>
 
             {/* PAYMENT */}
-            <section id="checkout-payment" className="order-20 box-border w-full min-w-0 overflow-hidden border-b border-[#e5e7eb] bg-white py-5 sm:py-6 lg:order-none">
+            <section id="checkout-payment" className="order-20 mx-3 box-border min-w-0 overflow-hidden border-b border-[#e5e7eb] bg-white py-5 sm:mx-0 sm:py-6 lg:order-none">
               <div className="px-3 pb-3 sm:px-5 sm:pb-4">
                 <h2 className="text-[16px] font-semibold leading-5 tracking-[-0.02em] sm:text-[18px] sm:leading-6">
                   Payment
@@ -1122,7 +1186,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
             </section>
 
             {/* BILLING ADDRESS */}
-            <section id="checkout-billing" className="border-b border-[#e5e7eb] py-5 sm:py-6">
+            <section id="checkout-billing" className="mx-3 border-b border-[#e5e7eb] py-5 sm:mx-0 sm:py-6">
               <div className="px-3 sm:px-4">
                 <h2 className="mb-4 text-[16px] font-semibold leading-5 tracking-[-0.02em] sm:text-[18px] sm:leading-6">Billing address</h2>
                 <div className="overflow-hidden rounded-lg border border-[#d7d7d7]">
@@ -1137,178 +1201,200 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                   </label>
                   {!billingSameAsShipping && (
                     <div className="space-y-2.5 border-t border-[#d7d7d7] bg-white p-3 sm:p-4">
-                      <input name="billing_address" type="text" autoComplete="billing street-address" required placeholder="Address" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" />
+                      <input name="billing_address" type="text" autoComplete="billing street-address" required placeholder="Address" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] user-invalid:border-red-500 user-invalid:ring-1 user-invalid:ring-red-500" />
                       <input name="billing_address_line_2" type="text" autoComplete="billing address-line2" placeholder="Apartment, suite, etc. (optional)" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
                       <div className="grid grid-cols-2 gap-2.5">
-                        <input name="billing_city" type="text" autoComplete="billing address-level2" required placeholder="City" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" />
+                        <input name="billing_city" type="text" autoComplete="billing address-level2" required placeholder="City" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] user-invalid:border-red-500 user-invalid:ring-1 user-invalid:ring-red-500" />
                         <input name="billing_state" type="text" autoComplete="billing address-level1" placeholder="State" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
                       </div>
-                      <input name="billing_postal_code" type="text" autoComplete="billing postal-code" required placeholder="ZIP code" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" />
+                      <input name="billing_postal_code" type="text" autoComplete="billing postal-code" required placeholder="ZIP code" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] user-invalid:border-red-500 user-invalid:ring-1 user-invalid:ring-red-500" />
                     </div>
                   )}
                 </div>
               </div>
             </section>
 
-            {/* MOBILE BOTTOM ORDER SUMMARY */}
-            <section className="mt-6 border-t border-[#e5e7eb] pt-5 lg:hidden">
-              <button
-                type="button"
-                onClick={() => setBottomOrderSummaryOpen((open) => !open)}
-                aria-expanded={bottomOrderSummaryOpen}
-                className="flex w-full items-center justify-between gap-3 py-1 text-left"
-              >
-                <span className="text-[16px] font-semibold tracking-[-0.02em]">
-                  Order summary
-                </span>
-                <span className="flex items-center gap-2">
-                  <span className="text-[15px] font-semibold tabular-nums">{usd(totalUsd)}</span>
-                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${bottomOrderSummaryOpen ? "rotate-180" : "rotate-0"}`} />
-                </span>
-              </button>
+            {/* MOBILE ORDER SUMMARY + FINAL PAYMENT — restore the section shown in desktop sidebar */}
+            <section className="mx-3 mb-6 border-t border-[#e5e7eb] py-5 lg:hidden">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-[#171717]">Order summary</h2>
+                <span className="text-sm font-semibold tabular-nums text-[#171717]">{usd(totalUsd)}</span>
+              </div>
 
-              {bottomOrderSummaryOpen && (
-                <div className="mt-4">
-                  {/* Ordered products */}
-                  <div className="space-y-3">
-                    {items.map((item) => (
-                      <div
-                        key={[
-                          item.id,
-                          item.productColorId ?? "default-color",
-                          item.variantId ?? "default-variant",
-                          item.deviceModelId ?? "default-device",
-                          item.plugType ?? "default-plug",
-                        ].join("-")}
-                        className="flex min-w-0 items-center gap-3"
-                      >
-                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-[#e8e8e8] bg-white">
-                          {item.image ? (
-                            <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
-                          ) : null}
-                          <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#111] px-1 text-[10px] font-semibold text-white">
-                            {item.quantity}
-                          </span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-[12px] font-medium leading-4">{item.name}</p>
-                          <p className="mt-0.5 text-[11px] leading-4 text-neutral-500">
-                            {[
-                              item.colorName ? `Color: ${item.colorName}` : null,
-                              item.deviceModelName ? `Model: ${item.deviceModelName}` : null,
-                              item.plugType ? `Plug type: ${item.plugType}` : null,
-                            ].filter(Boolean).join(" / ")}
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-xs font-medium tabular-nums">
-                          {usd(Number(item.price) * Number(item.quantity))}
-                        </span>
+              {/* Products with thumbnails and selected options */}
+              <div className="mb-4 space-y-3 border-b border-[#e8e8e8] pb-4">
+                {items.map((item) => (
+                  <div
+                    key={[
+                      item.id,
+                      item.productColorId ?? "default-color",
+                      item.variantId ?? "default-variant",
+                      item.deviceModelId ?? "default-device",
+                      item.plugType ?? "default-plug",
+                    ].join("-")}
+                    className="flex min-w-0 items-center gap-3"
+                  >
+                    <div className="relative h-14 w-14 shrink-0 overflow-visible">
+                      <div className="h-full w-full overflow-hidden rounded-xl border border-[#e8e8e8] bg-white">
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            loading="lazy"
+                            className="h-full w-full object-contain p-1"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">
+                            No image
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Discount code / gift card */}
-                  <div className="mt-4">
-                    <CheckoutVoucher
-                      subtotal={subtotalUsd}
-                      shippingFee={shippingFeeUsd}
-                      phone={phone}
-                      cartItems={items}
-                      onChange={setVoucherSummary}
-                    />
-                  </div>
-
-                  {/* Complimentary order benefits */}
-                  <div className="mt-4 space-y-2 border-y border-[#e8e8e8] py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <Gift className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
-                        <span className="text-xs font-medium text-[#303030]">Mystery Gift</span>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
-                        <span className="text-[11px] text-neutral-400 line-through">{usd(7)}</span>
-                        <span className="font-semibold text-[#008F65]">{usd(0)}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
-                        <span className="text-xs font-medium text-[#303030]">Delivery Protection</span>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
-                        <span className="text-[11px] text-neutral-400 line-through">{usd(5)}</span>
-                        <span className="font-semibold text-[#008F65]">{usd(0)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Order totals */}
-                  <div className="mt-4 space-y-2.5 text-[13px]">
-                    <div className="flex justify-between">
-                      <span className="text-neutral-500">Subtotal</span>
-                      <span className="tabular-nums">{usd(subtotalUsd)}</span>
-                    </div>
-                    {(discountAmountUsd + customerDiscountUsd) > 0 && (
-                      <div className="flex justify-between text-emerald-700">
-                        <span>Discount</span>
-                        <span className="tabular-nums">−{usd(discountAmountUsd + customerDiscountUsd)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-neutral-500">Shipping</span>
-                      <span className={netShippingUsd <= 0 ? "font-medium text-emerald-600" : "tabular-nums"}>
-                        {netShippingUsd <= 0 ? "FREE" : usd(netShippingUsd)}
+                      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#171717] px-1 text-[10px] font-semibold text-white shadow-sm">
+                        {item.quantity}
                       </span>
                     </div>
-                    <div className="flex items-end justify-between border-t border-[#e8e8e8] pt-3">
-                      <span className="text-sm font-semibold">Total</span>
-                      <span className="text-lg font-semibold tabular-nums">{usd(totalUsd)}</span>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-[12px] font-medium leading-[1.4] text-[#252525]">
+                        {item.name}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-neutral-500">Qty {item.quantity}</p>
+                      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10px] leading-4 text-neutral-500">
+                        {item.colorName ? (
+                          <span className="inline-flex min-w-0 items-center gap-1">
+                            {item.colorHex ? (
+                              <span
+                                aria-hidden="true"
+                                className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/10"
+                                style={{ backgroundColor: item.colorHex }}
+                              />
+                            ) : null}
+                            <span className="truncate">{item.colorName}</span>
+                          </span>
+                        ) : null}
+                        {item.plugType ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="text-neutral-400">Plug type:</span>
+                            <span className="font-medium text-neutral-700">{item.plugType}</span>
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                    <p className="-mt-1 text-right text-[10px] text-neutral-500">USD</p>
+                    <span className="shrink-0 text-[12px] font-medium tabular-nums text-[#252525]">
+                      {usd(Number(item.price) * Number(item.quantity))}
+                    </span>
                   </div>
+                ))}
+              </div>
 
-                  {/* Final payment action follows the payment method selected above */}
-                  <div className="mt-4 w-full min-w-0 overflow-hidden">
-                    <PayPalButtons
-                      fundingSource={paymentMethod === "card" ? FUNDING.CARD : FUNDING.PAYPAL}
-                      disabled={submitting}
-                      style={{
-                        layout: "vertical",
-                        shape: "rect",
-                        color: paymentMethod === "card" ? "black" : "gold",
-                        label: "pay",
-                        height: 48,
-                        tagline: false,
-                      }}
-                      onClick={async (_data, actions) => actions.resolve()}
-                      createOrder={async () => createPayPalOrder(paymentMethod === "card" ? "Card" : "PayPal")}
-                      onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
-                      onCancel={() => toast.info("Checkout was cancelled.")}
-                      onError={(error) => {
-                        console.error("BOTTOM ORDER SUMMARY PAYMENT ERROR", error);
-                        toast.error("Payment could not be completed.");
-                      }}
-                    />
+              {/* Discount code + complimentary benefits below Billing address. Keep the collapsible Order summary above unchanged. */}
+              <div className="mb-4 border-b border-[#e8e8e8] pb-4">
+                <CheckoutVoucher
+                  subtotal={subtotalUsd}
+                  shippingFee={shippingFeeUsd}
+                  phone={phone}
+                  cartItems={items}
+                  onChange={setVoucherSummary}
+                />
+              </div>
+
+              <div className="mb-4 space-y-2 border-b border-[#e8e8e8] pb-4">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#F3F6F4]">
+                    <Gift className="h-4 w-4 text-[#39443D]" strokeWidth={1.7} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold leading-tight text-[#252A27]">Mystery Gift</span>
+                    <span className="mt-0.5 block text-[10px] leading-[1.35] text-[#858B87]">A surprise gift, selected for you</span>
                   </div>
-
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      onClick={() => setLegalModalOpen(true)}
-                      className="text-xs font-medium text-neutral-500 underline underline-offset-2 transition hover:text-[#111]"
-                    >
-                      Terms and policies
-                    </button>
+                  <div className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums">
+                    <span className="text-[10px] text-[#A0A5A2] line-through">{usd(7)}</span>
+                    <span className="font-bold text-[#00845D]">FREE</span>
                   </div>
                 </div>
-              )}
-            </section>
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#F3F6F4]">
+                    <ShieldCheck className="h-4 w-4 text-[#39443D]" strokeWidth={1.7} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold leading-tight text-[#252A27]">Free Shipping + Shipping Insurance</span>
+                    <span className="mt-0.5 block text-[10px] leading-[1.35] text-[#858B87]">6 to 10 business days</span>
+                    <span className="mt-0.5 block text-[10px] leading-[1.35] text-[#858B87]">Tracking number provided + Guaranteed compensation for loss</span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums">
+                    <span className="text-[10px] text-[#A0A5A2] line-through">{usd(5)}</span>
+                    <span className="font-bold text-[#00845D]">FREE</span>
+                  </div>
+                </div>
+              </div>
 
+              <div className="space-y-3 border-b border-[#e8e8e8] pb-4 text-[13px]">
+                <div className="flex justify-between gap-3">
+                  <span className="text-neutral-500">Subtotal</span>
+                  <span className="tabular-nums">{usd(subtotalUsd)}</span>
+                </div>
+                {(discountAmountUsd + customerDiscountUsd) > 0 && (
+                  <div className="flex justify-between gap-3 text-emerald-700">
+                    <span>Discount</span>
+                    <span className="tabular-nums">−{usd(discountAmountUsd + customerDiscountUsd)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-3">
+                  <span className="text-neutral-500">Shipping</span>
+                  <span className={netShippingUsd <= 0 ? "font-medium text-emerald-600" : "tabular-nums"}>
+                    {netShippingUsd <= 0 ? "FREE" : usd(netShippingUsd)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between py-4">
+                <span className="text-[16px] font-semibold text-[#171717]">Total</span>
+                <span className="text-[19px] font-semibold tabular-nums text-[#171717]">{usd(totalUsd)}</span>
+              </div>
+
+              <div className="w-full min-w-0 overflow-hidden rounded-lg">
+                <PayPalButtons
+                  fundingSource={FUNDING.PAYPAL}
+                  disabled={submitting}
+                  style={{ layout: "vertical", shape: "rect", color: "gold", label: "pay", height: 48 }}
+                  onClick={async (_data, actions) => {
+                    const checkoutForm = document.querySelector<HTMLFormElement>("form");
+                    if (!checkoutForm) return actions.reject();
+                    const requiredFields = checkoutForm.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("[required]");
+                    requiredFields.forEach((field) => {
+                      field.setCustomValidity("");
+                      if (field.validity.valueMissing) field.setCustomValidity("Please fill out this field.");
+                      else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") field.setCustomValidity("Please enter a valid email address.");
+                    });
+                    const firstInvalid = checkoutForm.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(":invalid");
+                    if (firstInvalid) {
+                      firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+                      window.setTimeout(() => firstInvalid.focus(), 250);
+                      firstInvalid.reportValidity();
+                      return actions.reject();
+                    }
+                    return actions.resolve();
+                  }}
+                  createOrder={async () => createPayPalOrder("PayPal")}
+                  onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
+                  onCancel={() => toast.info("PayPal checkout was cancelled.")}
+                  onError={(error) => { console.error("PAYPAL FINAL PAYMENT ERROR", error); toast.error("PayPal could not complete the payment."); }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setLegalModalOpen(true)}
+                className="mt-5 text-left text-xs font-medium text-neutral-500 underline underline-offset-2 transition hover:text-[#171717]"
+              >
+                Terms and policies
+              </button>
+            </section>
 
             </div>
           </div>
 
-          <aside className="hidden lg:relative lg:isolate lg:block lg:min-h-screen lg:self-stretch lg:bg-transparent lg:px-7 lg:py-8 lg:before:absolute lg:before:top-0 lg:before:bottom-[-56px] lg:before:left-0 lg:before:right-[min(-2rem,calc((70rem-100vw)/2))] lg:before:bg-[#f5f5f5] lg:before:content-['']">
+          <aside className="hidden lg:relative lg:isolate lg:block lg:min-h-screen lg:self-stretch lg:bg-transparent lg:px-7 lg:py-8 lg:before:absolute lg:before:top-0 lg:before:bottom-[-56px] lg:before:left-0 lg:before:right-[min(-2rem,calc((70rem-100vw)/2))] lg:before:bg-[#f6f6f6] lg:before:content-['']">
             <div className="relative z-10 order-10 bg-transparent py-5 sm:py-6 lg:order-none lg:py-0">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold tracking-[-0.02em]">
@@ -1429,24 +1515,30 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
 
               {/* Complimentary order benefits — display only; does not change checkout total. */}
               <div className="mt-4 space-y-2 border-y border-[#e8e8e8] py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Gift className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
-                    <span className="text-xs font-medium text-[#303030]">Mystery Gift</span>
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#F3F6F4]">
+                    <Gift className="h-4 w-4 text-[#39443D]" strokeWidth={1.7} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold leading-tight text-[#252A27]">Mystery Gift</span>
+                    <span className="mt-0.5 block text-[10px] leading-[1.35] text-[#858B87]">A surprise gift, selected for you</span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
-                    <span className="text-[11px] text-neutral-400 line-through">{usd(7)}</span>
-                    <span className="font-semibold text-[#008F65]">{usd(0)}</span>
+                  <div className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums">
+                    <span className="text-[10px] text-[#A0A5A2] line-through">{usd(7)}</span>
+                    <span className="font-bold text-[#00845D]">FREE</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
-                    <span className="text-xs font-medium text-[#303030]">Delivery Protection</span>
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#F3F6F4]">
+                    <ShieldCheck className="h-4 w-4 text-[#39443D]" strokeWidth={1.7} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold leading-tight text-[#252A27]">Delivery Protection</span>
+                    <span className="mt-0.5 block text-[10px] leading-[1.35] text-[#858B87]">Tracking included + compensation for loss</span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
-                    <span className="text-[11px] text-neutral-400 line-through">{usd(5)}</span>
-                    <span className="font-semibold text-[#008F65]">{usd(0)}</span>
+                  <div className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums">
+                    <span className="text-[10px] text-[#A0A5A2] line-through">{usd(5)}</span>
+                    <span className="font-bold text-[#00845D]">FREE</span>
                   </div>
                 </div>
               </div>
@@ -1564,6 +1656,11 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
           onClose={() => setLegalModalOpen(false)}
         />
       )}
+      <CartDrawer
+        open={cartDrawerOpen}
+        onClose={() => setCartDrawerOpen(false)}
+        onPayPal={() => setCartDrawerOpen(false)}
+      />
     </div>
   );
 }
@@ -2370,7 +2467,7 @@ function Field({
           name === "postal_code" ? "postal-code" : undefined
         }
         inputMode={type === "tel" ? "tel" : undefined}
-        className={`h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 ${required ? "invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" : ""}`}
+        className={`h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 ${required ? "user-invalid:border-red-500 user-invalid:ring-1 user-invalid:ring-red-500" : ""}`}
       />
     </label>
   );
