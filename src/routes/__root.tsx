@@ -30,7 +30,6 @@ import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import FloatingSupport from "@/components/FloatingSupport";
 import { supabase } from "@/integrations/supabase/client";
 
 /* =========================================================
@@ -444,9 +443,7 @@ function RootComponent() {
               <SiteFooter />
             </div>
 
-            {/* FLOATING SUPPORT — HIDDEN ON ADMIN */}
-
-            {!isAdminRoute && <FloatingSupport />}
+            {/* FLOATING SUPPORT REMOVED FROM THE RETAIL STOREFRONT */}
           </>
 
           <Toaster position="top-center" />

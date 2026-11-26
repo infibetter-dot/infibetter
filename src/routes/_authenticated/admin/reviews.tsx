@@ -18,6 +18,13 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 
+const COUNTRY_OPTIONS = [
+  { code: "GB", label: "United Kingdom", flag: "🇬🇧" },
+  { code: "AU", label: "Australia", flag: "🇦🇺" },
+  { code: "US", label: "United States", flag: "🇺🇸" },
+  { code: "CA", label: "Canada", flag: "🇨🇦" },
+] as const;
+
 export const Route = createFileRoute("/_authenticated/admin/reviews")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
@@ -54,6 +61,7 @@ type Review = {
   is_visible: boolean;
   sort_order: number;
   created_at: string;
+  country_code: "GB" | "AU" | "US" | "CA" | null;
 };
 
 type ReviewForm = {
@@ -63,6 +71,7 @@ type ReviewForm = {
   content: string;
   image_url: string;
   video_url: string;
+  country_code: "GB" | "AU" | "US" | "CA" | "";
   verified_purchase: boolean;
   is_visible: boolean;
   sort_order: number;
@@ -75,6 +84,7 @@ const emptyForm: ReviewForm = {
   content: "",
   image_url: "",
   video_url: "",
+  country_code: "",
   verified_purchase: true,
   is_visible: true,
   sort_order: 0,
@@ -185,6 +195,7 @@ function ReviewsAdminPage() {
       content: review.content,
       image_url: review.image_url ?? "",
       video_url: review.video_url ?? "",
+      country_code: review.country_code ?? "",
       verified_purchase: review.verified_purchase,
       is_visible: review.is_visible,
       sort_order: review.sort_order,
@@ -215,6 +226,7 @@ function ReviewsAdminPage() {
         content: form.content.trim(),
         image_url: form.image_url.trim() || null,
         video_url: form.video_url.trim() || null,
+        country_code: form.country_code || null,
         verified_purchase: form.verified_purchase,
         is_visible: form.is_visible,
         sort_order: Number(form.sort_order) || 0,
@@ -395,9 +407,10 @@ function ReviewsAdminPage() {
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
-          <div className="hidden border-b border-neutral-200 bg-[#FBFBF9] px-4 py-3 lg:grid lg:grid-cols-[minmax(300px,1.4fr)_180px_100px_100px_100px] lg:items-center lg:gap-4">
+          <div className="hidden border-b border-neutral-200 bg-[#FBFBF9] px-4 py-3 lg:grid lg:grid-cols-[minmax(260px,1.4fr)_160px_120px_90px_100px_88px] lg:items-center lg:gap-4">
             <HeaderLabel>Review</HeaderLabel>
             <HeaderLabel>Product</HeaderLabel>
+            <HeaderLabel>Country</HeaderLabel>
             <HeaderLabel>Rating</HeaderLabel>
             <HeaderLabel>Status</HeaderLabel>
             <HeaderLabel className="text-right">Actions</HeaderLabel>
@@ -449,7 +462,7 @@ function ReviewsAdminPage() {
               return (
                 <div
                   key={review.id}
-                  className="grid gap-3 border-b border-neutral-100 px-4 py-3 last:border-b-0 lg:grid-cols-[minmax(300px,1.4fr)_180px_100px_100px_100px] lg:items-center lg:gap-4"
+                  className="grid gap-3 border-b border-neutral-100 px-4 py-3 last:border-b-0 lg:grid-cols-[minmax(260px,1.4fr)_160px_120px_90px_100px_88px] lg:items-center lg:gap-4"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -512,6 +525,21 @@ function ReviewsAdminPage() {
 
                   <div className="text-[10px] font-medium text-neutral-600">
                     {product?.name ?? "Unknown product"}
+                  </div>
+
+                  <div className="flex items-center gap-1 text-[10px] font-medium text-neutral-600">
+                    {review.country_code ? (
+                      <>
+                        <span className="text-base leading-none">
+                          {COUNTRY_OPTIONS.find((country) => country.code === review.country_code)?.flag}
+                        </span>
+                        <span>
+                          {COUNTRY_OPTIONS.find((country) => country.code === review.country_code)?.label ?? review.country_code}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-neutral-400">Not set</span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-0.5">
@@ -630,6 +658,26 @@ function ReviewsAdminPage() {
                     placeholder="e.g. Alex"
                     className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-[11px] outline-none focus:border-neutral-400"
                   />
+                </Field>
+
+                <Field label="Country">
+                  <select
+                    value={form.country_code}
+                    onChange={(event) =>
+                      setForm((value) => ({
+                        ...value,
+                        country_code: event.target.value as ReviewForm["country_code"],
+                      }))
+                    }
+                    className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-[11px] outline-none focus:border-neutral-400"
+                  >
+                    <option value="">Select country</option>
+                    {COUNTRY_OPTIONS.map((country) => (
+                      <option key={country.code} value={country.code}>
+                        {country.flag} {country.label}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
 
                 <Field label="Rating">

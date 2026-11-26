@@ -2,8 +2,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  useRef,
-  type FormEvent,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -11,9 +9,6 @@ import {
   ChevronDown,
   ChevronUp,
   Star,
-  ImagePlus,
-  X,
-  LoaderCircle,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +26,7 @@ interface ProductReview {
   is_visible: boolean;
   sort_order: number;
   created_at: string;
+  country_code: string | null;
 }
 
 interface ProductReviewsProps {
@@ -44,6 +40,24 @@ interface ProductReviewsProps {
 const REVIEW_GREEN = "#00B67A";
 const VERIFIED_GREEN = "#008F68";
 const VERIFIED_BG = "#F0FAF7";
+
+const REVIEW_COUNTRIES: Record<string, { flagUrl: string; name: string }> = {
+  GB: { flagUrl: "https://flagcdn.com/w40/gb.png", name: "United Kingdom" },
+  AU: { flagUrl: "https://flagcdn.com/w40/au.png", name: "Australia" },
+  US: { flagUrl: "https://flagcdn.com/w40/us.png", name: "United States" },
+  CA: { flagUrl: "https://flagcdn.com/w40/ca.png", name: "Canada" },
+};
+
+function formatReviewDate(value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
 
 /* =========================================================
    TRUSTPILOT-STYLE STAR
@@ -149,115 +163,6 @@ export default function ProductReviews({
   const [isDesktop, setIsDesktop] =
     useState(false);
 
-  // Review submission state
-  const [formOpen, setFormOpen] = useState(false);
-  const [formRating, setFormRating] = useState(5);
-  const [customerName, setCustomerName] = useState("");
-  const [reviewTitle, setReviewTitle] = useState("");
-  const [reviewContent, setReviewContent] = useState("");
-  const [reviewPhoto, setReviewPhoto] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
-
-  function handleReviewPhotoChange(file: File | null) {
-    if (!file) return;
-
-    const isImage =
-      file.type.startsWith("image/") ||
-      /\\.(jpe?g|png|webp|gif|bmp|avif)$/i.test(file.name);
-
-    if (!isImage) {
-      window.alert("Please choose an image file (JPG, PNG, WEBP, GIF, BMP or AVIF).");
-      if (photoInputRef.current) photoInputRef.current.value = "";
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      window.alert("Image size must be 10 MB or less.");
-      if (photoInputRef.current) photoInputRef.current.value = "";
-      return;
-    }
-
-    setReviewPhoto(file);
-  }
-
-  async function handleReviewSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!productId || !customerName.trim() || !reviewContent.trim()) return;
-
-    setSubmitting(true);
-    try {
-      let imageUrl: string | null = null;
-
-      if (reviewPhoto) {
-        const safeName = reviewPhoto.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-        // INFIBETTER stores customer review photos in Cloudflare R2,
-        // using the same Worker already used by ProductGallery / product admin.
-        const R2_WORKER_URL =
-          "https://nova-deal-spot-upload.97protech-work.workers.dev";
-
-        const extension =
-          reviewPhoto.name.split(".").pop()?.toLowerCase() || "jpg";
-        const fileName =
-          `${Date.now()}-${crypto.randomUUID()}-${safeName}`;
-        const r2Key = `${productId}/reviews/${fileName}`;
-        const uploadUrl = `${R2_WORKER_URL}/${r2Key
-          .split("/")
-          .map(encodeURIComponent)
-          .join("/")}`;
-
-        const uploadResponse = await fetch(uploadUrl, {
-          method: "PUT",
-          body: reviewPhoto,
-          headers: {
-            "Content-Type":
-              reviewPhoto.type ||
-              `image/${extension === "jpg" ? "jpeg" : extension}`,
-          },
-        });
-
-        if (!uploadResponse.ok) {
-          const errorText = await uploadResponse.text();
-          throw new Error(
-            `Cloudflare R2 upload failed: ${uploadResponse.status} ${errorText}`,
-          );
-        }
-
-        // The Worker URL is also the public image URL used by INFIBETTER.
-        imageUrl = uploadUrl;
-      }
-
-      const { error } = await supabase.from("product_reviews").insert({
-        product_id: productId,
-        customer_name: customerName.trim(),
-        rating: formRating,
-        title: reviewTitle.trim() || null,
-        content: reviewContent.trim(),
-        image_url: imageUrl,
-        is_visible: false,
-        verified_purchase: false,
-      });
-
-      if (error) throw error;
-
-      window.alert("Thank you! Your review and photo have been submitted. The photo is stored on Cloudflare R2 and the review will appear after approval.");
-      setFormOpen(false);
-      setFormRating(5);
-      setCustomerName("");
-      setReviewTitle("");
-      setReviewContent("");
-      setReviewPhoto(null);
-      if (photoInputRef.current) photoInputRef.current.value = "";
-      await reviewsQuery.refetch();
-    } catch (error) {
-      console.error("SUBMIT PRODUCT REVIEW ERROR:", error);
-      window.alert("Unable to submit your review. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   /* =======================================================
      RESPONSIVE REVIEW COUNT
 
@@ -320,7 +225,8 @@ export default function ProductReviews({
               verified_purchase,
               is_visible,
               sort_order,
-              created_at
+              created_at,
+              country_code
             `,
           )
           .eq(
@@ -568,141 +474,6 @@ export default function ProductReviews({
             </span>
           </div>
         </div>
-
-        <div className="mt-5 flex justify-center">
-          <button
-            type="button"
-            onClick={() => setFormOpen((open) => !open)}
-            aria-expanded={formOpen}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#00B67A] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#009E69]"
-          >
-            {formOpen ? <X size={16} /> : <Star size={16} />}
-            {formOpen ? "Close review form" : "Write a Review"}
-          </button>
-        </div>
-
-        {formOpen && (
-          <form
-            onSubmit={handleReviewSubmit}
-            className="mx-auto mt-6 max-w-[900px] rounded-2xl border border-[#E5E5E5] bg-white p-5 sm:p-6"
-          >
-            <h3 className="text-base font-semibold text-[#111111]">Share your experience</h3>
-            <p className="mt-1 text-sm text-[#6B6B6B]">Your feedback helps other customers choose.</p>
-
-            <label className="mt-5 block text-xs font-semibold text-[#333333]">Your rating</label>
-            <div className="mt-2 flex items-center gap-1" role="radiogroup" aria-label="Your rating">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  role="radio"
-                  aria-checked={formRating === star}
-                  aria-label={`${star} stars`}
-                  onClick={() => setFormRating(star)}
-                  className="rounded p-1 focus:outline-none focus:ring-2 focus:ring-[#00B67A]"
-                >
-                  <Star size={24} className={star <= formRating ? "fill-[#00B67A] text-[#00B67A]" : "text-[#D1D5DB]"} />
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="product-review-name" className="mb-1.5 block text-xs font-medium text-[#333333]">Name *</label>
-                <input
-                  id="product-review-name"
-                  required
-                  maxLength={80}
-                  value={customerName}
-                  onChange={(event) => setCustomerName(event.target.value)}
-                  placeholder="Your name"
-                  className="h-11 w-full rounded-lg border border-[#D9DDE2] px-3 text-sm outline-none focus:border-[#00B67A]"
-                />
-              </div>
-              <div>
-                <label htmlFor="product-review-title" className="mb-1.5 block text-xs font-medium text-[#333333]">Review title (optional)</label>
-                <input
-                  id="product-review-title"
-                  maxLength={120}
-                  value={reviewTitle}
-                  onChange={(event) => setReviewTitle(event.target.value)}
-                  placeholder="Give your review a title"
-                  className="h-11 w-full rounded-lg border border-[#D9DDE2] px-3 text-sm outline-none focus:border-[#00B67A]"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label htmlFor="product-review-content" className="mb-1.5 block text-xs font-medium text-[#333333]">Your review *</label>
-              <textarea
-                id="product-review-content"
-                required
-                minLength={5}
-                maxLength={3000}
-                rows={4}
-                value={reviewContent}
-                onChange={(event) => setReviewContent(event.target.value)}
-                placeholder="What did you think about this product?"
-                className="w-full resize-y rounded-lg border border-[#D9DDE2] px-3 py-2.5 text-sm leading-6 outline-none focus:border-[#00B67A]"
-              />
-            </div>
-
-            <div className="mt-4">
-              <span className="block text-xs font-medium text-[#333333]">Add a photo (optional)</span>
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.bmp,.avif"
-                className="sr-only"
-                onChange={(event) => handleReviewPhotoChange(event.target.files?.[0] ?? null)}
-              />
-              <button
-                type="button"
-                onClick={() => photoInputRef.current?.click()}
-                className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-lg border border-dashed border-[#D1D5DB] px-3 py-2 text-xs text-[#333333] hover:border-[#00B67A]"
-              >
-                <ImagePlus size={16} /> Choose photo
-              </button>
-              {reviewPhoto && (
-                <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] p-2.5">
-                  <img
-                    src={URL.createObjectURL(reviewPhoto)}
-                    alt="Selected review upload preview"
-                    className="h-16 w-16 rounded-lg bg-white object-contain"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-[#333333]">{reviewPhoto.name}</p>
-                    <p className="mt-1 text-[11px] text-[#777777]">
-                      {(reviewPhoto.size / 1024).toFixed(1)} KB · Ready to upload
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setReviewPhoto(null);
-                      if (photoInputRef.current) photoInputRef.current.value = "";
-                    }}
-                    aria-label="Remove photo"
-                    className="rounded-full p-2 text-neutral-500 hover:bg-neutral-200"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row">
-              <button type="submit" disabled={submitting} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#00B67A] px-5 py-3 text-sm font-semibold text-white hover:bg-[#009E69] disabled:cursor-not-allowed disabled:opacity-60">
-                {submitting && <LoaderCircle size={16} className="animate-spin" />}
-                {submitting ? "Submitting..." : "Submit Review"}
-              </button>
-              <button type="button" disabled={submitting} onClick={() => setFormOpen(false)} className="min-h-11 rounded-lg border border-[#D9DDE2] px-5 py-3 text-sm text-[#333333] hover:bg-[#F7F7F7]">
-                Cancel
-              </button>
-            </div>
-            <p className="mt-3 text-[11px] leading-5 text-[#777777]">Reviews are checked before they appear publicly.</p>
-          </form>
-        )}
 
         {/* =================================================
             REVIEW SUMMARY
@@ -975,6 +746,31 @@ export default function ProductReviews({
                         review.customer_name
                       }
                     </p>
+
+                    {/* Review date and customer country */}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[#777777] sm:justify-end">
+                      {review.country_code && REVIEW_COUNTRIES[review.country_code] && (
+                        <span className="inline-flex items-center gap-1">
+                          <img
+                            src={REVIEW_COUNTRIES[review.country_code].flagUrl}
+                            alt={`${REVIEW_COUNTRIES[review.country_code].name} flag`}
+                            width={16}
+                            height={12}
+                            loading="lazy"
+                            className="h-3 w-4 shrink-0 rounded-[2px] object-cover"
+                          />
+                          <span>{REVIEW_COUNTRIES[review.country_code].name}</span>
+                        </span>
+                      )}
+                      {review.country_code && REVIEW_COUNTRIES[review.country_code] && review.created_at && (
+                        <span aria-hidden="true">·</span>
+                      )}
+                      {review.created_at && (
+                        <time dateTime={review.created_at}>
+                          {formatReviewDate(review.created_at)}
+                        </time>
+                      )}
+                    </div>
 
                     {/* Verified purchase */}
 

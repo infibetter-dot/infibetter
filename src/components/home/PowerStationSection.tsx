@@ -1,15 +1,9 @@
 ﻿
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Snowflake, Zap, Watch } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import powerStationImage from "@/assets/hero/power_station.png";
-
-const productFeatures = [
-  { label: "25W Qi2.2", icon: Zap },
-  { label: "TEC Cooling", icon: Snowflake },
-  { label: "3-in-1 Apple Charging", icon: Watch },
-];
 
 const PowerStationSection: React.FC = () => {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -81,20 +75,7 @@ const PowerStationSection: React.FC = () => {
               One stand. Three devices. Zero cable clutter.
             </p>
 
-            {/* Product features */}
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 sm:mt-5 sm:gap-2.5">
-              {productFeatures.map(({ label, icon: Icon }) => (
-                <span
-                  key={label}
-                  className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-white/90 bg-white/90 px-3 py-1.5 text-[7px] font-semibold text-[#173452] shadow-[0_2px_8px_rgba(20,55,90,0.10)] sm:min-h-9 sm:gap-2 sm:px-4 sm:text-[10px]"
-                >
-                  <Icon className="h-3 w-3 text-[#087BFF] sm:h-3.5 sm:w-3.5" />
-                  {label}
-                </span>
-              ))}
-            </div>
-
-            {/* Flat CTA button */}
+            {/* CTA button */}
             <div className="mt-3 flex justify-center sm:mt-5 lg:mt-6">
               <Link
                 to="/products/$slug"

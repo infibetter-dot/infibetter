@@ -3164,53 +3164,56 @@ function ProductPage() {
       )}
 
       {showStickyAddToCart && inStock && (
-        <div className="fixed bottom-5 left-4 right-[76px] z-[90] md:hidden">
-          <div className="flex h-[52px] w-full min-w-0 items-center gap-1.5 rounded-[8px] border border-white/90 bg-white/95 px-2 py-1.5 shadow-[0_6px_22px_rgba(0,0,0,0.12)] backdrop-blur-xl">
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <p className="min-w-0 truncate text-[10px] font-bold leading-3 text-[#303846]">
-                  {product.name}
-                </p>
-                <span className="inline-flex shrink-0 items-center gap-0.5 text-[8px] font-semibold leading-3 text-[#168653]">
-                  <Truck size={10} strokeWidth={2} />
-                  Free ship
-                </span>
+        <div className="fixed inset-x-0 bottom-0 z-[90] w-full md:hidden">
+          <div className="w-full border-t border-[#E8EBEF] bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgba(20,32,48,0.10)] backdrop-blur-xl">
+            <div className="mx-auto grid min-h-[76px] w-full min-w-0 grid-cols-[minmax(0,1fr)_42px_auto] items-center gap-2.5 px-3 py-2.5">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <p className="min-w-0 truncate text-[10px] font-semibold leading-4 tracking-[-0.01em] text-[#252525]">
+                    {product.name}
+                  </p>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#EAF8F2] px-1.5 py-0.5 text-[8px] font-semibold leading-3 text-[#008F61]">
+                    <Truck size={10} strokeWidth={2} />
+                    Free ship
+                  </span>
+                </div>
+
+                <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+                  <p className={`text-[17px] font-bold leading-5 tracking-[-0.04em] ${hasDiscount ? "text-[#00A873]" : "text-[#252525]"}`}>
+                    {formatProductPrice(price, safeCurrency)}
+                  </p>
+                  {hasDiscount && (
+                    <>
+                      <p className="text-[9px] font-medium leading-4 text-[#9299A3] line-through">
+                        {formatProductPrice(comparePrice, safeCurrency)}
+                      </p>
+                      <span className="rounded-md bg-[#EAF8F2] px-1.5 py-0.5 text-[8px] font-bold leading-3 text-[#008F61]">
+                        -{discountPercent}%
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap">
-                <p className={`text-[14px] font-bold leading-5 tracking-[-0.025em] ${hasDiscount ? "text-[#00B67A]" : "text-[#1D1D1F]"}`}>
-                  {formatProductPrice(price, safeCurrency)}
-                </p>
-                {hasDiscount && (
-                  <>
-                    <p className="text-[9px] font-medium leading-4 text-[#969BA3] line-through">
-                      {formatProductPrice(comparePrice, safeCurrency)}
-                    </p>
-                    <span className="rounded-[3px] bg-[#EAF7F0] px-1.5 py-0.5 text-[8px] font-bold leading-3 text-[#168653]">
-                      -{discountPercent}%
-                    </span>
-                  </>
-                )}
-              </div>
+
+              <button
+                type="button"
+                onClick={addToCart}
+                aria-label="Add to cart"
+                title="Add to cart"
+                className="flex h-10 w-[42px] shrink-0 items-center justify-center rounded-xl border border-[#E2E7EC] bg-white text-[#354052] transition-colors duration-150 hover:border-[#C8D2DC] hover:bg-[#F7F9FB] active:scale-[0.96]"
+              >
+                <ShoppingBag size={17} strokeWidth={1.8} />
+              </button>
+
+              <button
+                type="button"
+                onClick={buyNow}
+                aria-label="Buy now"
+                className="flex h-10 shrink-0 items-center justify-center rounded-xl bg-[#00B67A] px-5 text-[10px] font-bold tracking-[0.01em] text-white shadow-[0_3px_10px_rgba(0,182,122,0.18)] transition-colors duration-150 hover:bg-[#009F6B] active:scale-[0.97]"
+              >
+                Buy now
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={addToCart}
-              aria-label="Add to cart"
-              title="Add to cart"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] border border-[#E8ECF1] bg-white text-[#536273] transition-colors duration-150 hover:border-[#C9D5E2] hover:bg-[#F7F9FB] active:scale-[0.96]"
-            >
-              <ShoppingBag size={15} strokeWidth={1.7} />
-            </button>
-
-            <button
-              type="button"
-              onClick={buyNow}
-              aria-label="Buy now"
-              className="flex h-8 shrink-0 items-center justify-center rounded-[5px] border border-[#DCE6F1] bg-[#F3F7FC] px-3.5 text-[10px] font-semibold tracking-[-0.01em] text-[#29435F] transition-colors duration-150 hover:border-[#C7D7E8] hover:bg-[#EAF1F8] active:scale-[0.97]"
-            >
-              Buy now
-            </button>
           </div>
         </div>
       )}

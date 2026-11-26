@@ -69,6 +69,25 @@ interface HomepageReview {
   verified_purchase: boolean | null;
   created_at: string;
   product_id: string;
+  country_code?: string | null;
+}
+
+const REVIEW_COUNTRIES: Record<string, { flagUrl: string; name: string }> = {
+  GB: { flagUrl: "https://flagcdn.com/w40/gb.png", name: "United Kingdom" },
+  AU: { flagUrl: "https://flagcdn.com/w40/au.png", name: "Australia" },
+  US: { flagUrl: "https://flagcdn.com/w40/us.png", name: "United States" },
+  CA: { flagUrl: "https://flagcdn.com/w40/ca.png", name: "Canada" },
+};
+
+function formatReviewDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
 }
 
 interface CollectionsProps {
@@ -396,7 +415,7 @@ export default function Collections({
       const { data, error } = await supabase
         .from("product_reviews")
         .select(
-          "id, product_id, customer_name, rating, title, content, image_url, video_url, verified_purchase, created_at",
+          "id, product_id, customer_name, rating, title, content, image_url, video_url, verified_purchase, created_at, country_code",
         )
         .eq("is_visible", true)
         .not("title", "ilike", "[SAMPLE]%")
@@ -971,9 +990,41 @@ export default function Collections({
                       <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#EEF4FB] text-[10px] font-bold uppercase text-[#2869A8]">
                         {(review.customer_name || "C").trim().charAt(0)}
                       </span>
-                      <span className="truncate text-[10px] font-semibold text-[#344054]">
-                        {review.customer_name || "Customer"}
-                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[10px] font-semibold text-[#344054]">
+                          {review.customer_name || "Customer"}
+                        </p>
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[9px] leading-tight text-[#8792A2]">
+                          {(() => {
+                            const country = REVIEW_COUNTRIES[
+                              String(review.country_code ?? "").trim().toUpperCase()
+                            ];
+
+                            return country ? (
+                              <span className="inline-flex items-center gap-1">
+                                <img
+                                  src={country.flagUrl}
+                                  alt=""
+                                  aria-hidden="true"
+                                  width={16}
+                                  height={12}
+                                  loading="lazy"
+                                  className="h-3 w-4 shrink-0 rounded-[2px] object-cover"
+                                />
+                                <span>{country.name}</span>
+                              </span>
+                            ) : null;
+                          })()}
+                          {review.country_code && formatReviewDate(review.created_at) && (
+                            <span aria-hidden="true">·</span>
+                          )}
+                          {formatReviewDate(review.created_at) && (
+                            <time dateTime={review.created_at}>
+                              {formatReviewDate(review.created_at)}
+                            </time>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </article>
