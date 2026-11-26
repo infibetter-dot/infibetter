@@ -9,8 +9,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronDown,
   Clock3,
-  PackageCheck,
-  RotateCcw,
+  Gift,
   Search,
   ShieldCheck,
   ShoppingBag,
@@ -33,7 +32,6 @@ import { trackMetaEvent } from "@/lib/meta-pixel";
 import { supabase } from "@/integrations/supabase/client";
 import CheckoutVoucher from "@/components/checkout/CheckoutVoucher";
 import type { VoucherSummary } from "@/components/checkout/voucher.types";
-import paypalLogo from "@/assets/hero/paypal.png";
 
 // Keep PayPal SDK configuration stable for the entire checkout page lifetime.
 const PAYPAL_OPTIONS = {
@@ -67,7 +65,6 @@ export const Route = createFileRoute("/checkout")({
 });
 
 type ShippingMethod = "standard" | "express";
-type CheckoutFlow = "express" | "standard";
 
 type CountryOption = {
   code: string;
@@ -157,16 +154,6 @@ function pushGa4Event(
     event: eventName,
     ...extraParams,
     ...(ecommerce ? { ecommerce } : {}),
-  });
-}
-
-function pushCheckoutBehaviorEvent(
-  eventName: string,
-  params: Record<string, unknown> = {},
-) {
-  pushGa4Event(eventName, undefined, {
-    checkout_page: "/checkout",
-    ...params,
   });
 }
 
@@ -280,7 +267,6 @@ function CheckoutPage() {
   const [shippingMethod, setShippingMethod] =
     useState<ShippingMethod>("standard");
   const [submitting, setSubmitting] = useState(false);
-  const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"paypal" | "card">("paypal");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -295,14 +281,6 @@ function CheckoutPage() {
     shippingCity.trim().length > 0 &&
     shippingPostalCode.trim().length > 0;
   const [phone, setPhone] = useState("");
-  const hasCompleteDeliveryDetails =
-    email.trim().length > 0 &&
-    firstName.trim().length > 0 &&
-    lastName.trim().length > 0 &&
-    shippingAddress.trim().length > 0 &&
-    shippingCity.trim().length > 0 &&
-    shippingPostalCode.trim().length > 0 &&
-    phone.trim().length > 0;
   const [voucherSummary, setVoucherSummary] = useState<VoucherSummary>({
     discountVoucher: null,
     shippingVoucher: null,
@@ -317,7 +295,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   const [offerIndex, setOfferIndex] = useState(0);
   const [offerLoading, setOfferLoading] = useState(true);
   const [offerDismissed, setOfferDismissed] = useState(false);
-  const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
+  const [orderSummaryOpen, setOrderSummaryOpen] = useState(true);
   const [bottomOrderSummaryOpen, setBottomOrderSummaryOpen] = useState(true);
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [legalDocument, setLegalDocument] = useState<LegalDocumentKey>("refund");
@@ -326,33 +304,6 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   const ga4BeginCheckoutSent = useRef(false);
   const ga4NameEnteredSent = useRef(false);
   const ga4OrderEventsSent = useRef<Set<string>>(new Set());
-
-  // Checkout behavior tracking: never collect field values or other PII.
-  const checkoutStartedAt = useRef(0);
-  const maxScrollDepth = useRef(0);
-  const scrollMilestonesSent = useRef<Set<number>>(new Set());
-  const viewedCheckoutSections = useRef<Set<string>>(new Set());
-  const focusedCheckoutFields = useRef<Set<string>>(new Set());
-  const editedCheckoutFields = useRef<Set<string>>(new Set());
-  const lastCheckoutSection = useRef("checkout_top");
-  const lastPaymentAttempt = useRef<{
-    flow: CheckoutFlow;
-    paymentType: "PayPal" | "Card";
-  } | null>(null);
-  const checkoutExitSent = useRef(false);
-  const checkoutCompleted = useRef(false);
-
-  function trackCheckoutPaymentClick(
-    flow: CheckoutFlow,
-    paymentType: "PayPal" | "Card",
-  ) {
-    lastPaymentAttempt.current = { flow, paymentType };
-    pushCheckoutBehaviorEvent("checkout_payment_click", {
-      checkout_flow: flow,
-      payment_type: paymentType,
-      payment_location: flow === "express" ? "express_checkout" : "payment_section",
-    });
-  }
 
   function trackCheckoutNameEntered() {
     if (!fullName.trim() || ga4NameEnteredSent.current) return;
@@ -381,211 +332,6 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     0,
     subtotalUsd + shippingFeeUsd - discountAmountUsd - shippingDiscountUsd - customerDiscountUsd,
   );
-
-  // Track checkout page entry, scroll milestones, section visibility,
-  // field interaction (field names only), and page exit.
-  useEffect(() => {
-    checkoutStartedAt.current = performance.now();
-    pushCheckoutBehaviorEvent("checkout_page_view", {
-      item_count: count,
-      currency: "USD",
-      value: Number(totalUsd.toFixed(2)),
-    });
-
-    const getScrollPercent = () => {
-      const doc = document.documentElement;
-      const scrollable = Math.max(1, doc.scrollHeight - window.innerHeight);
-      const atBottom = window.scrollY + window.innerHeight >= doc.scrollHeight - 2;
-      return atBottom ? 100 : Math.min(99, Math.round((window.scrollY / scrollable) * 100));
-    };
-
-    const handleScroll = () => {
-      const percent = getScrollPercent();
-      maxScrollDepth.current = Math.max(maxScrollDepth.current, percent);
-
-      for (const milestone of [25, 50, 75, 90, 100]) {
-        if (percent >= milestone && !scrollMilestonesSent.current.has(milestone)) {
-          scrollMilestonesSent.current.add(milestone);
-          pushCheckoutBehaviorEvent("checkout_scroll_depth", {
-            percent_scrolled: milestone,
-            max_scroll_depth: maxScrollDepth.current,
-          });
-        }
-      }
-    };
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll);
-
-    const sectionIds = [
-      ["checkout-order-summary", "order_summary"],
-      ["checkout-order-summary-desktop", "order_summary"],
-      ["checkout-express", "express_checkout"],
-      ["checkout-contact", "contact"],
-      ["checkout-delivery", "delivery"],
-      ["checkout-shipping", "shipping"],
-      ["checkout-payment", "payment"],
-      ["checkout-billing", "billing_address"],
-    ] as const;
-
-    const sectionEnteredAt = new Map<string, number>();
-    const sectionTotalTime = new Map<string, number>();
-    const sectionObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const section = sectionIds.find(([id]) => id === entry.target.id)?.[1];
-          if (!section) continue;
-
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
-            lastCheckoutSection.current = section;
-            if (!viewedCheckoutSections.current.has(section)) {
-              viewedCheckoutSections.current.add(section);
-              pushCheckoutBehaviorEvent("checkout_section_view", {
-                section_name: section,
-                visibility_ratio: Number(entry.intersectionRatio.toFixed(2)),
-              });
-            }
-            if (!sectionEnteredAt.has(section)) sectionEnteredAt.set(section, Date.now());
-          } else if (sectionEnteredAt.has(section)) {
-            const seconds = Math.max(0, Math.round((Date.now() - sectionEnteredAt.get(section)!) / 1000));
-            sectionTotalTime.set(section, (sectionTotalTime.get(section) ?? 0) + seconds);
-            sectionEnteredAt.delete(section);
-            if (seconds > 0) {
-              pushCheckoutBehaviorEvent("checkout_section_time", {
-                section_name: section,
-                visible_seconds: seconds,
-              });
-            }
-          }
-        }
-      },
-      { threshold: [0, 0.35, 0.6] },
-    );
-
-    sectionIds.forEach(([id]) => {
-      const element = document.getElementById(id);
-      if (element) sectionObserver.observe(element);
-    });
-
-    const form = document.querySelector<HTMLFormElement>("#infibetter-checkout-form");
-    const getFieldSection = (fieldName: string) => {
-      if (fieldName.startsWith("billing_")) return "billing_address";
-      if (["email"].includes(fieldName)) return "contact";
-      if (["first_name", "last_name", "address", "address_line_2", "city", "state", "postal_code", "phone"].includes(fieldName)) return "delivery";
-      return "other";
-    };
-
-    const handleFieldFocus = (event: Event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
-      const fieldName = target.name;
-      if (!fieldName || focusedCheckoutFields.current.has(fieldName)) return;
-      focusedCheckoutFields.current.add(fieldName);
-      pushCheckoutBehaviorEvent("checkout_field_focus", {
-        field_name: fieldName,
-        form_section: getFieldSection(fieldName),
-      });
-    };
-
-    const handleFieldInput = (event: Event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
-      const fieldName = target.name;
-      if (!fieldName || editedCheckoutFields.current.has(fieldName)) return;
-      editedCheckoutFields.current.add(fieldName);
-      pushCheckoutBehaviorEvent("checkout_field_interaction", {
-        field_name: fieldName,
-        form_section: getFieldSection(fieldName),
-      });
-    };
-
-    const handleFieldBlur = (event: Event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
-      if (!target.name) return;
-      // Record only validity state, never the field value.
-      pushCheckoutBehaviorEvent("checkout_field_validation", {
-        field_name: target.name,
-        form_section: getFieldSection(target.name),
-        is_valid: target.checkValidity(),
-        validation_reason: target.validity.valueMissing
-          ? "required"
-          : target.validity.typeMismatch
-            ? "type_mismatch"
-            : target.validity.patternMismatch
-              ? "pattern_mismatch"
-              : target.validity.tooShort
-                ? "too_short"
-                : target.validity.tooLong
-                  ? "too_long"
-                  : "other",
-      });
-    };
-
-    const handleCheckoutClick = (event: Event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const control = target.closest("button, [role='button'], label");
-      if (!control) return;
-      const text = (control.textContent ?? "").replace(/\\s+/g, " ").trim().slice(0, 70);
-      if (!text) return;
-      const lower = text.toLowerCase();
-
-      let actionCategory = "other";
-      if (/apply|discount|gift card|coupon/.test(lower)) actionCategory = "discount";
-      else if (/shipping|delivery|standard|express/.test(lower)) actionCategory = "shipping";
-      else if (/same as shipping|different billing|billing address/.test(lower)) actionCategory = "billing_address";
-      else if (/remove|delete|\bminus\b|\bplus\b|quantity/.test(lower)) actionCategory = "cart";
-      else if (/sign in|login/.test(lower)) actionCategory = "account";
-
-      pushCheckoutBehaviorEvent("checkout_ui_interaction", {
-        action_category: actionCategory,
-        control_text: text,
-      });
-    };
-
-    form?.addEventListener("focusin", handleFieldFocus, true);
-    form?.addEventListener("input", handleFieldInput, true);
-    form?.addEventListener("change", handleFieldInput, true);
-    form?.addEventListener("focusout", handleFieldBlur, true);
-    document.addEventListener("click", handleCheckoutClick, true);
-
-    const handlePageHide = () => {
-      if (checkoutExitSent.current || checkoutCompleted.current) return;
-      checkoutExitSent.current = true;
-      pushCheckoutBehaviorEvent("checkout_page_exit", {
-        max_scroll_depth: maxScrollDepth.current,
-        last_section_viewed: lastCheckoutSection.current,
-        sections_viewed: Array.from(viewedCheckoutSections.current),
-        fields_focused_count: focusedCheckoutFields.current.size,
-        fields_interacted_count: editedCheckoutFields.current.size,
-        section_time_seconds: Object.fromEntries(
-          Array.from(sectionTotalTime.entries()),
-        ),
-        elapsed_seconds: Math.max(
-          0,
-          Math.round((performance.now() - checkoutStartedAt.current) / 1000),
-        ),
-        last_payment_flow: lastPaymentAttempt.current?.flow ?? "none",
-        last_payment_type: lastPaymentAttempt.current?.paymentType ?? "none",
-      });
-    };
-
-    window.addEventListener("pagehide", handlePageHide);
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-      sectionObserver.disconnect();
-      form?.removeEventListener("focusin", handleFieldFocus, true);
-      form?.removeEventListener("input", handleFieldInput, true);
-      form?.removeEventListener("change", handleFieldInput, true);
-      form?.removeEventListener("focusout", handleFieldBlur, true);
-      document.removeEventListener("click", handleCheckoutClick, true);
-      window.removeEventListener("pagehide", handlePageHide);
-    };
-  }, []);
 
   // Meta Pixel: fire InitiateCheckout once per checkout-page visit.
   useEffect(() => {
@@ -715,85 +461,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     );
   }
 
-  function validateStandardCheckout(): boolean {
-    setShowValidationErrors(true);
-
-    const form = document.querySelector<HTMLFormElement>("form");
-    if (!form) {
-      toast.error("Checkout form not found.");
-      return false;
-    }
-
-    const formData = new FormData(form);
-    const getValue = (name: string) => String(formData.get(name) ?? "").trim();
-    const requiredFields = [
-      ["email", "Email"],
-      ["first_name", "First name"],
-      ["last_name", "Last name"],
-      ["address", "Address"],
-      ["city", "City"],
-      ["state", "State"],
-      ["postal_code", "ZIP code"],
-      ["phone", "Phone number"],
-    ] as const;
-
-    let firstInvalid: HTMLInputElement | null = null;
-    for (const [name] of requiredFields) {
-      const field = form.elements.namedItem(name);
-      if (!(field instanceof HTMLInputElement)) continue;
-      const value = getValue(name);
-      const invalid = !value || (name === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) || (name === "phone" && (value.replace(/\D/g, "").length < 7 || value.replace(/\D/g, "").length > 15));
-      field.setAttribute("aria-invalid", invalid ? "true" : "false");
-      if (invalid) firstInvalid ??= field;
-    }
-
-    if (!billingSameAsShipping) {
-      const billingRequired = [
-        ["billing_address", "Billing address"],
-        ["billing_city", "Billing city"],
-        ["billing_state", "Billing state"],
-        ["billing_postal_code", "Billing ZIP code"],
-      ] as const;
-      for (const [name] of billingRequired) {
-        const field = form.elements.namedItem(name);
-        if (!(field instanceof HTMLInputElement)) continue;
-        const invalid = !getValue(name);
-        field.setAttribute("aria-invalid", invalid ? "true" : "false");
-        if (invalid) firstInvalid ??= field;
-      }
-    }
-
-    if (firstInvalid) {
-      const validationFieldNames = [
-        ...requiredFields.map(([name]) => name),
-        ...(!billingSameAsShipping
-          ? ["billing_address", "billing_city", "billing_state", "billing_postal_code"]
-          : []),
-      ];
-      const invalidFieldNames = validationFieldNames
-        .map((name) => form.elements.namedItem(name))
-        .filter((field): field is HTMLInputElement => field instanceof HTMLInputElement)
-        .filter((field) => field.getAttribute("aria-invalid") === "true")
-        .map((field) => field.name);
-
-      pushCheckoutBehaviorEvent("checkout_validation_error", {
-        checkout_flow: "standard",
-        invalid_field_names: invalidFieldNames,
-        billing_address_mode: billingSameAsShipping ? "same_as_shipping" : "different_billing",
-      });
-      firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
-      window.setTimeout(() => firstInvalid?.focus(), 250);
-      toast.error("Please complete the highlighted required fields.");
-      return false;
-    }
-    pushCheckoutBehaviorEvent("checkout_validation_success", {
-      checkout_flow: "standard",
-      billing_address_mode: billingSameAsShipping ? "same_as_shipping" : "different_billing",
-    });
-    return true;
-  }
-
-  function buildPaypalCheckoutPayload(flow: CheckoutFlow) {
+  function buildPaypalCheckoutPayload() {
     trackCheckoutNameEntered();
 
     const form = document.querySelector("form");
@@ -818,18 +486,6 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
         `Shipping: ${shippingMethod}`,
         `Estimated delivery: ${deliveryRange}`,
       ].join(" | "),
-      checkout_flow: flow,
-      country_code: countryCode,
-      billing_same_as_shipping: billingSameAsShipping,
-      billing: billingSameAsShipping
-        ? null
-        : {
-            address: [getValue("billing_address"), getValue("billing_address_line_2")].filter(Boolean).join(", "),
-            city: getValue("billing_city"),
-            state: getValue("billing_state"),
-            postal_code: getValue("billing_postal_code"),
-            country_code: countryCode,
-          },
       subtotal: Number(subtotalUsd.toFixed(2)),
       shipping_fee: Number(shippingFeeUsd.toFixed(2)),
       discount_amount: Number(discountAmountUsd.toFixed(2)),
@@ -852,6 +508,13 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
       })),
     };
 
+    if (!checkout.full_name || !checkout.email || !checkout.phone ||
+        !checkout.address || !checkout.city) {
+      throw new Error(
+        "Please complete your name, email, phone and delivery address before paying.",
+      );
+    }
+
     if (!checkout.items.length || checkout.items.some(
       (item) => !item.product_id || !Number.isInteger(item.quantity) || item.quantity < 1
     )) {
@@ -863,31 +526,14 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     return checkout;
   }
 
-  async function createPayPalOrder(
-    paymentType: "PayPal" | "Card",
-    flow: CheckoutFlow,
-  ) {
-    // Only the standard form-based checkout validates Contact/Delivery.
-    // Express Checkout intentionally bypasses these fields.
-    if (flow === "standard" && !validateStandardCheckout()) {
-      throw new Error("Please complete the required checkout details.");
-    }
-    const checkout = buildPaypalCheckoutPayload(flow);
-    pushCheckoutBehaviorEvent("checkout_payment_order_create_started", {
-      checkout_flow: flow,
-      payment_type: paymentType,
-    });
+  async function createPayPalOrder(paymentType: "PayPal" | "Card") {
+    const checkout = buildPaypalCheckoutPayload();
     const { data, error } = await supabase.functions.invoke(
       "paypal-create-order",
-      { body: { checkout, currency: "USD", checkout_flow: flow } },
+      { body: { checkout, currency: "USD" } },
     );
 
     if (error || !data?.success || !data?.orderId) {
-      pushCheckoutBehaviorEvent("checkout_payment_order_create_failed", {
-        checkout_flow: flow,
-        payment_type: paymentType,
-        error_category: error ? "function_error" : "provider_or_validation_error",
-      });
       console.error("PAYPAL CREATE ORDER ERROR", { error, data });
       throw new Error(
         data?.error ?? "Unable to create the PayPal order.",
@@ -895,10 +541,6 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
     }
 
     const paypalOrderId = String(data.orderId);
-    pushCheckoutBehaviorEvent("checkout_payment_order_created", {
-      checkout_flow: flow,
-      payment_type: paymentType,
-    });
     if (!ga4OrderEventsSent.current.has(paypalOrderId)) {
       ga4OrderEventsSent.current.add(paypalOrderId);
 
@@ -950,11 +592,6 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   async function handlePaypalApprove(orderID: string) {
     if (submitting) return;
     setSubmitting(true);
-    const paymentAttempt = lastPaymentAttempt.current;
-    pushCheckoutBehaviorEvent("checkout_payment_approved", {
-      checkout_flow: paymentAttempt?.flow ?? "unknown",
-      payment_type: paymentAttempt?.paymentType ?? "unknown",
-    });
     try {
       const form = document.querySelector("form");
       if (!form) throw new Error("Checkout form not found.");
@@ -968,7 +605,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
         city: `${getValue("city")}, ${country.name}`,
         district: getValue("state"),
         ward: getValue("postal_code"),
-        notes: `Shipping: ${country.name} / ${country.zone} / ${shippingMethod} | Estimated delivery: ${deliveryRange}${billingSameAsShipping ? " | Billing: same as shipping" : ` | Billing: ${[getValue("billing_address_desktop") || getValue("billing_address"), getValue("billing_address_line_2_desktop") || getValue("billing_address_line_2"), getValue("billing_city_desktop") || getValue("billing_city"), getValue("billing_state_desktop") || getValue("billing_state"), getValue("billing_postal_code_desktop") || getValue("billing_postal_code")].filter(Boolean).join(", ")}`} | PayPal Order ID: ${orderID}`,
+        notes: `Shipping: ${country.name} / ${country.zone} / ${shippingMethod} | Estimated delivery: ${deliveryRange}${billingSameAsShipping ? " | Billing: same as shipping" : ` | Billing: ${[getValue("billing_address"), getValue("billing_address_line_2"), getValue("billing_city"), getValue("billing_state"), getValue("billing_postal_code")].filter(Boolean).join(", ")}`} | PayPal Order ID: ${orderID}`,
         subtotal: Number(subtotalUsd.toFixed(2)),
         shipping_fee: Number(shippingFeeUsd.toFixed(2)),
         total: Number(totalUsd.toFixed(2)),
@@ -988,15 +625,15 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
         })),
       };
 
+      if (!checkout.full_name) {
+        throw new Error("Please enter your full name before paying.");
+      }
+
       const { data, error } = await supabase.functions.invoke(
         "paypal-capture-order",
         { body: { orderId: orderID } },
       );
       if (error || !data?.success || !data?.dbOrderId) {
-        pushCheckoutBehaviorEvent("checkout_payment_capture_failed", {
-          checkout_flow: paymentAttempt?.flow ?? "unknown",
-          payment_type: paymentAttempt?.paymentType ?? "unknown",
-        });
         console.error("PAYPAL CHECKOUT FAILED", { error, data });
         throw new Error(data?.error ?? "Unable to confirm payment and save your order.");
       }
@@ -1060,21 +697,14 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
         }
       }
 
-      pushCheckoutBehaviorEvent("checkout_payment_completed", {
-        checkout_flow: paymentAttempt?.flow ?? "unknown",
-        payment_type: paymentAttempt?.paymentType ?? "unknown",
-        payment_status: data.paymentStatus ?? "unknown",
-      });
-      checkoutCompleted.current = true;
-
       localStorage.setItem("infibetter_last_order", JSON.stringify({
         id: data.dbOrderId,
         created_at: new Date().toISOString(),
-        full_name: data.customer?.full_name ?? checkout.full_name,
-        phone: data.customer?.phone ?? checkout.phone,
-        email: data.customer?.email ?? checkout.email,
-        address: data.delivery?.address ?? checkout.address,
-        city: data.delivery?.city ?? checkout.city,
+        full_name: checkout.full_name,
+        phone: checkout.phone,
+        email: checkout.email,
+        address: checkout.address,
+        city: checkout.city,
         payment_method: "paypal",
         payment_status: data.paymentStatus,
         subtotal: checkout.subtotal,
@@ -1107,33 +737,31 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
   }
 
   return (
-    <div className="min-h-screen bg-white text-[#111] [&_button]:font-[inherit] [&_input]:font-[inherit] [&_select]:font-[inherit] [&_textarea]:font-[inherit]" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", WebkitFontSmoothing: "antialiased", MozOsxFontSmoothing: "grayscale" }}> 
+    <div className="min-h-screen bg-white text-[#111]">
       <main className="mx-auto w-full max-w-[1120px] px-4 py-5 sm:px-5 lg:px-8 lg:py-0">
         <PayPalScriptProvider options={PAYPAL_OPTIONS}>
           <form
-            id="infibetter-checkout-form"
             onSubmit={handleSubmit}
-            data-validation-visible={showValidationErrors ? "true" : "false"}
-            className="grid items-start gap-7 lg:items-stretch lg:grid-cols-[minmax(0,1fr)_410px] lg:gap-0 [&[data-validation-visible=true]_input:required:invalid]:border-red-500 [&[data-validation-visible=true]_input:required:invalid]:ring-1 [&[data-validation-visible=true]_input:required:invalid]:ring-red-500"
+            className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_410px] lg:gap-0"
           >
           <div className="contents lg:block lg:space-y-0 lg:py-7 lg:pr-10">
             <div className="mx-auto w-full max-w-[500px]">
             {/* Mobile order summary + express checkout */}
-            <section id="checkout-order-summary" className="mb-4 overflow-hidden rounded-md border border-[#e5e5e5] bg-[#fafafa] lg:hidden">
+            <section className="relative -mt-5 mb-4 -mx-4 w-[calc(100%+2rem)] overflow-hidden rounded-none border-x-0 border-y border-[#e5e5e5] bg-[#f5f5f5] lg:mt-0 lg:hidden">
               <button
                 type="button"
                 onClick={() => setOrderSummaryOpen((open) => !open)}
                 aria-expanded={orderSummaryOpen}
-                className="flex w-full items-center justify-between px-4 py-3 text-left"
+                className="flex min-h-[58px] w-full items-center justify-between px-5 py-4 text-left sm:min-h-[62px]"
               >
-                <span className="flex items-center gap-2 text-sm font-semibold">
+                <span className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em]">
                   Order summary
                   <ChevronDown className={`h-4 w-4 transition-transform ${orderSummaryOpen ? "rotate-180" : ""}`} />
                 </span>
-                <span className="text-sm font-semibold tabular-nums">{usd(totalUsd)}</span>
+                <span className="text-base font-bold tabular-nums">{usd(totalUsd)}</span>
               </button>
               {orderSummaryOpen && (
-                <div className="border-t border-[#e8e8e8] px-3 py-3">
+                <div className="border-t border-[#e8e8e8] bg-[#f5f5f5] px-3 py-3">
                   <div className="space-y-3">
                     {items.map((item) => (
                       <div key={[
@@ -1143,23 +771,39 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                         item.deviceModelId ?? "default-device",
                         item.plugType ?? "default-plug",
                       ].join("-")} className="flex min-w-0 items-center gap-3">
-                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-[#e8e8e8] bg-white">
+                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-[#e8e8e8] bg-white">
                           {item.image ? <img src={item.image} alt={item.name} className="h-full w-full object-cover" /> : null}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-xs font-medium">{item.name}</p>
-                          <p className="mt-0.5 text-[11px] leading-4 text-neutral-500">
-                            {[
-                              item.colorName ? `Color: ${item.colorName}` : null,
-                              item.deviceModelName ? `Model: ${item.deviceModelName}` : null,
-                              item.plugType ? `Plug type: ${item.plugType}` : null,
-                            ].filter(Boolean).join(" / ")}
-                          </p>
                           <p className="mt-0.5 text-[11px] text-neutral-500">Qty {item.quantity}</p>
                         </div>
                         <span className="text-xs font-medium tabular-nums">{usd(Number(item.price) * Number(item.quantity))}</span>
                       </div>
                     ))}
+                  </div>
+                  {/* Complimentary order benefits — display only; does not change checkout total. */}
+                  <div className="mt-3 space-y-2 border-t border-[#e8e8e8] pt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Gift className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
+                        <span className="text-xs font-medium text-[#303030]">Mystery Gift</span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
+                        <span className="text-[11px] text-neutral-400 line-through">{usd(7)}</span>
+                        <span className="font-semibold text-[#008F65]">{usd(0)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
+                        <span className="text-xs font-medium text-[#303030]">Delivery Protection</span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
+                        <span className="text-[11px] text-neutral-400 line-through">{usd(5)}</span>
+                        <span className="font-semibold text-[#008F65]">{usd(0)}</span>
+                      </div>
+                    </div>
                   </div>
                   <div className="mt-3 space-y-2 border-t border-[#e8e8e8] pt-3 text-xs">
                     <div className="flex justify-between"><span className="text-neutral-500">Subtotal</span><span>{usd(subtotalUsd)}</span></div>
@@ -1171,65 +815,76 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               )}
             </section>
 
-            <section id="checkout-express" className="mb-5">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold tracking-[-0.01em]">Express Checkout</h2>
-                
-              </div>
-              <div className="grid grid-cols-1 items-stretch gap-2">
-                <div className="w-full min-w-0 rounded-lg">
+            <section className="mb-5 lg:hidden">
+              <h2 className="mb-3 text-sm font-semibold tracking-[-0.01em]">Express Checkout</h2>
+              <div className="grid grid-cols-1 items-start gap-2">
+                <div className="min-w-0 overflow-hidden rounded-lg">
                   <PayPalButtons
                     fundingSource={FUNDING.PAYPAL}
                     disabled={submitting}
-                    style={{ layout: "vertical", shape: "rect", color: "gold", label: "paypal", height: 46, disableMaxWidth: true }}
+                    style={{ layout: "vertical", shape: "rect", color: "gold", label: "paypal", height: 46 }}
                     onClick={async (_data, actions) => {
-                      trackCheckoutPaymentClick("express", "PayPal");
+                      const checkoutForm = document.querySelector<HTMLFormElement>("form");
+                      if (!checkoutForm) return actions.reject();
+                      const requiredFields = checkoutForm.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("[required]");
+                      requiredFields.forEach((field) => {
+                        field.setCustomValidity("");
+                        if (field.validity.valueMissing) field.setCustomValidity("Please fill out this field.");
+                        else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") field.setCustomValidity("Please enter a valid email address.");
+                      });
+                      const firstInvalid = checkoutForm.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(":invalid");
+                      if (firstInvalid) {
+                        firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+                        window.setTimeout(() => firstInvalid.focus(), 250);
+                        firstInvalid.reportValidity();
+                        return actions.reject();
+                      }
                       return actions.resolve();
                     }}
-                    createOrder={async () => createPayPalOrder("PayPal", "express")}
+                    createOrder={async () => createPayPalOrder("PayPal")}
                     onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
-                    onCancel={() => {
-                      pushCheckoutBehaviorEvent("checkout_payment_cancelled", { checkout_flow: "express", payment_type: "PayPal" });
-                      toast.info("PayPal checkout was cancelled.");
-                    }}
-                    onError={(error) => {
-                      pushCheckoutBehaviorEvent("checkout_payment_error", { checkout_flow: "express", payment_type: "PayPal" });
-                      console.error("PAYPAL EXPRESS ERROR", error);
-                      toast.error("PayPal could not complete the payment.");
-                    }}
+                    onCancel={() => toast.info("PayPal checkout was cancelled.")}
+                    onError={(error) => { console.error("PAYPAL EXPRESS ERROR", error); toast.error("PayPal could not complete the payment."); }}
                   />
                 </div>
-                <div className="w-full min-w-0 rounded-lg">
+                <div className="min-w-0 overflow-hidden rounded-lg">
                   <PayPalButtons
                     fundingSource={FUNDING.CARD}
                     disabled={submitting}
-                    style={{ layout: "vertical", shape: "rect", label: "pay", height: 46, tagline: false, disableMaxWidth: true }}
+                    style={{ layout: "vertical", shape: "rect", label: "pay", height: 46 }}
                     onClick={async (_data, actions) => {
-                      trackCheckoutPaymentClick("express", "Card");
+                      const checkoutForm = document.querySelector<HTMLFormElement>("form");
+                      if (!checkoutForm) return actions.reject();
+                      const requiredFields = checkoutForm.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("[required]");
+                      requiredFields.forEach((field) => {
+                        field.setCustomValidity("");
+                        if (field.validity.valueMissing) field.setCustomValidity("Please fill out this field.");
+                        else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") field.setCustomValidity("Please enter a valid email address.");
+                      });
+                      const firstInvalid = checkoutForm.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(":invalid");
+                      if (firstInvalid) {
+                        firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+                        window.setTimeout(() => firstInvalid.focus(), 250);
+                        firstInvalid.reportValidity();
+                        return actions.reject();
+                      }
                       return actions.resolve();
                     }}
-                    createOrder={async () => createPayPalOrder("Card", "express")}
+                    createOrder={async () => createPayPalOrder("Card")}
                     onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
-                    onCancel={() => {
-                      pushCheckoutBehaviorEvent("checkout_payment_cancelled", { checkout_flow: "express", payment_type: "Card" });
-                      toast.info("Card checkout was cancelled.");
-                    }}
-                    onError={(error) => {
-                      pushCheckoutBehaviorEvent("checkout_payment_error", { checkout_flow: "express", payment_type: "Card" });
-                      console.error("CARD EXPRESS ERROR", error);
-                      toast.error("Card payment could not be completed.");
-                    }}
+                    onCancel={() => toast.info("Card checkout was cancelled.")}
+                    onError={(error) => { console.error("CARD EXPRESS ERROR", error); toast.error("Card payment could not be completed."); }}
                   />
                 </div>
               </div>
-              <div className="mt-3 mb-0 flex items-center gap-3 text-[11px] text-neutral-400">
+              <div className="my-4 flex items-center gap-3 text-[11px] text-neutral-400">
                 <span className="h-px flex-1 bg-[#e5e5e5]" />
                 <span>OR</span>
                 <span className="h-px flex-1 bg-[#e5e5e5]" />
               </div>
             </section>
 
-            <section id="checkout-contact" className="border-b border-[#e8e8e8] pb-5 pt-1 sm:py-6">
+            <section className="border-b border-[#e8e8e8] py-5 first:pt-2 sm:py-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-[18px] font-semibold tracking-[-0.02em]">Contact</h2>
               </div>
@@ -1240,13 +895,12 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                   <input
                     name="email"
                     type="email"
-                    required
-                    aria-required="true"
                     autoComplete="email"
+                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email"
-                    className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0"
+                    className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 invalid:border-red-500 invalid:ring-1 invalid:ring-red-500"
                   />
                 </label>
 
@@ -1254,7 +908,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               </div>
             </section>
 
-            <section id="checkout-delivery" className="border-b border-[#e8e8e8] py-5 sm:py-6">
+            <section className="border-b border-[#e8e8e8] py-5 sm:py-6">
               <h2 className="mb-4 text-[18px] font-semibold tracking-[-0.02em]">Delivery</h2>
 
               <div className="space-y-2.5">
@@ -1273,9 +927,8 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     <input
                       name="first_name"
                       type="text"
-                      required
-                      aria-required="true"
                       autoComplete="given-name"
+                      required
                       value={firstName}
                       onChange={(e) => {
                         setFirstName(e.target.value);
@@ -1283,7 +936,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       }}
                       onBlur={trackCheckoutNameEntered}
                       placeholder="First name"
-                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0"
+                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 invalid:border-red-500 invalid:ring-1 invalid:ring-red-500"
                     />
                   </label>
                   <label className="block">
@@ -1291,9 +944,8 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     <input
                       name="last_name"
                       type="text"
-                      required
-                      aria-required="true"
                       autoComplete="family-name"
+                      required
                       value={lastName}
                       onChange={(e) => {
                         setLastName(e.target.value);
@@ -1301,7 +953,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       }}
                       onBlur={trackCheckoutNameEntered}
                       placeholder="Last name"
-                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0"
+                      className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 invalid:border-red-500 invalid:ring-1 invalid:ring-red-500"
                     />
                   </label>
                 </div>
@@ -1310,8 +962,8 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                 <Field
                   name="address"
                   label="Address"
-                  required
                   placeholder="Address"
+                  required
                   onValueChange={setShippingAddress}
                 />
 
@@ -1323,7 +975,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
 
                 <div className="grid grid-cols-3 gap-2.5">
                   <Field name="city" label="City" placeholder="City" required onValueChange={setShippingCity} />
-                  <Field name="state" label="State" placeholder="State" required />
+                  <Field name="state" label="State" placeholder="State" />
                   <Field name="postal_code" label="ZIP code" placeholder="ZIP code" required onValueChange={setShippingPostalCode} />
                 </div>
 
@@ -1331,12 +983,11 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                   country={country}
                   value={phone}
                   onChange={setPhone}
-                  showValidationErrors={showValidationErrors}
                 />
               </div>
             </section>
 
-            <section id="checkout-shipping" className="border-b border-[#e8e8e8] py-5 first:pt-2 sm:py-6">
+            <section className="border-b border-[#e8e8e8] py-5 first:pt-2 sm:py-6">
               {hasShippingAddress ? (
                 <>
                   <SectionTitle
@@ -1370,7 +1021,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
             </section>
 
             {/* PAYMENT */}
-            <section id="checkout-payment" className="order-20 box-border w-full min-w-0 border-b border-[#e5e7eb] bg-white py-5 sm:py-6 lg:order-none">
+            <section id="checkout-payment" className="order-20 box-border w-full min-w-0 overflow-hidden border-b border-[#e5e7eb] bg-white py-5 sm:py-6 lg:order-none">
               <div className="px-3 pb-3 sm:px-5 sm:pb-4">
                 <h2 className="text-[16px] font-semibold leading-5 tracking-[-0.02em] sm:text-[18px] sm:leading-6">
                   Payment
@@ -1381,20 +1032,14 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
               </div>
 
               <div className="px-3 sm:px-4">
-                <div className="w-full min-w-0 rounded-lg border border-[#d7d7d7] bg-white">
+                <div className="overflow-hidden rounded-lg border border-[#d7d7d7] bg-white">
                   {/* Credit / debit card option */}
                   <div className={paymentMethod === "card" ? "border-b border-[#d7d7d7] bg-white" : "border-b border-[#d7d7d7] bg-white"}>
                     <button
                       type="button"
                       aria-expanded={paymentMethod === "card"}
-                      onClick={() => {
-                        setPaymentMethod("card");
-                        pushCheckoutBehaviorEvent("checkout_payment_method_selected", {
-                          payment_type: "Card",
-                          payment_location: "payment_section",
-                        });
-                      }}
-                      className="flex h-[68px] w-full items-center justify-between gap-3 px-3 py-1.5 text-left sm:h-[72px] sm:px-4"
+                      onClick={() => setPaymentMethod("card")}
+                      className="flex min-h-[58px] w-full items-center justify-between gap-3 px-3 py-3 text-left sm:px-4"
                     >
                       <span className="flex min-w-0 items-center gap-3">
                         <span aria-hidden="true" className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${paymentMethod === "card" ? "border-[#303030]" : "border-[#b8b8b8]"}`}>
@@ -1405,22 +1050,36 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                       <img
                         src="/payment-methods/all%20card.png"
                         alt="Accepted cards: Visa, Mastercard, American Express and UnionPay"
-                        className="h-[58px] w-auto max-w-[230px] shrink-0 object-contain sm:h-[66px] sm:max-w-[260px]"
+                        className="h-[30px] w-auto max-w-[150px] shrink-0 object-contain"
                         loading="eager"
                       />
                     </button>
                     {paymentMethod === "card" && (
-                      <div className="w-full min-w-0 px-3 pb-4 sm:px-4">
-                        <div className="w-full min-w-0 max-w-full [&>div]:!w-full [&_iframe]:!w-full">
+                      <div className="px-3 pb-3 sm:px-4">
+                        <div className="w-full min-w-0 overflow-hidden">
                           <PayPalButtons
                             fundingSource={FUNDING.CARD}
                             disabled={submitting}
                             style={{ layout: "vertical", shape: "rect", label: "pay", height: 44 }}
                             onClick={async (_data, actions) => {
-                              trackCheckoutPaymentClick("standard", "Card");
-                              return validateStandardCheckout() ? actions.resolve() : actions.reject();
+                              const checkoutForm = document.querySelector<HTMLFormElement>("form");
+                              if (!checkoutForm) return actions.reject();
+                              const requiredFields = checkoutForm.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("[required]");
+                              requiredFields.forEach((field) => {
+                                field.setCustomValidity("");
+                                if (field.validity.valueMissing) field.setCustomValidity("Please fill out this field.");
+                                else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") field.setCustomValidity("Please enter a valid email address.");
+                              });
+                              const firstInvalid = checkoutForm.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(":invalid");
+                              if (firstInvalid) {
+                                firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+                                window.setTimeout(() => firstInvalid.focus(), 250);
+                                firstInvalid.reportValidity();
+                                return actions.reject();
+                              }
+                              return actions.resolve();
                             }}
-                            createOrder={async () => createPayPalOrder("Card", "standard")}
+                            createOrder={async () => createPayPalOrder("Card")}
                             onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
                             onCancel={() => toast.info("Card checkout was cancelled.")}
                             onError={(error) => {
@@ -1438,14 +1097,8 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     <button
                       type="button"
                       aria-expanded={paymentMethod === "paypal"}
-                      onClick={() => {
-                        setPaymentMethod("paypal");
-                        pushCheckoutBehaviorEvent("checkout_payment_method_selected", {
-                          payment_type: "PayPal",
-                          payment_location: "payment_section",
-                        });
-                      }}
-                      className={`flex h-[64px] w-full items-center justify-between gap-3 px-3 py-1.5 text-left sm:h-[68px] sm:px-4 ${paymentMethod === "paypal" ? "bg-[#f7f7f7]" : "bg-white"}`}
+                      onClick={() => setPaymentMethod("paypal")}
+                      className={`flex min-h-[58px] w-full items-center justify-between gap-3 px-3 py-3 text-left sm:px-4 ${paymentMethod === "paypal" ? "bg-[#f7f7f7]" : "bg-white"}`}
                     >
                       <span className="flex min-w-0 items-center gap-3">
                         <span aria-hidden="true" className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${paymentMethod === "paypal" ? "border-[#303030]" : "border-[#b8b8b8]"}`}>
@@ -1453,7 +1106,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                         </span>
                         <span className="text-[13px] font-semibold text-[#242424]">PayPal</span>
                       </span>
-                      <img src={paypalLogo} alt="PayPal" className="h-[20px] w-auto max-w-[68px] shrink-0 object-contain sm:h-[24px] sm:max-w-[78px]" loading="eager" />
+                      <span className="shrink-0 text-[17px] font-bold italic tracking-[-0.06em] text-[#003087]">Pay<span className="text-[#009cde]">Pal</span></span>
                     </button>
                     {paymentMethod === "paypal" && (
                       <div className="border-t border-[#d7d7d7] bg-white px-3 py-3 sm:px-4">
@@ -1462,7 +1115,9 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     )}
                   </div>
                 </div>
-                
+                <p className="mt-3 text-[11px] leading-4 text-[#777]">
+                  Your payment details are handled securely by PayPal. INFIBETTER does not store your PayPal credentials.
+                </p>
               </div>
             </section>
 
@@ -1472,179 +1127,189 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                 <h2 className="mb-4 text-[16px] font-semibold leading-5 tracking-[-0.02em] sm:text-[18px] sm:leading-6">Billing address</h2>
                 <div className="overflow-hidden rounded-lg border border-[#d7d7d7]">
                   <label className={`flex min-h-[54px] cursor-pointer items-center gap-3 px-3 py-3 sm:px-4 ${billingSameAsShipping ? "bg-[#f7f7f7]" : "bg-white"}`}>
-                    <input type="radio" name="billing_address_choice" checked={billingSameAsShipping} onChange={() => {
-                      setBillingSameAsShipping(true);
-                      pushCheckoutBehaviorEvent("checkout_billing_address_mode", { billing_address_mode: "same_as_shipping" });
-                    }} className="h-4 w-4 accent-[#303030]" />
+                    <input type="radio" name="billing_address_choice" checked={billingSameAsShipping} onChange={() => setBillingSameAsShipping(true)} className="h-4 w-4 accent-[#303030]" />
                     <span className="text-[13px] font-medium text-[#292929]">Same as shipping address</span>
                   </label>
                   <div className="border-t border-[#d7d7d7]" />
                   <label className={`flex min-h-[54px] cursor-pointer items-center gap-3 px-3 py-3 sm:px-4 ${!billingSameAsShipping ? "bg-[#f7f7f7]" : "bg-white"}`}>
-                    <input type="radio" name="billing_address_choice" checked={!billingSameAsShipping} onChange={() => {
-                      setBillingSameAsShipping(false);
-                      pushCheckoutBehaviorEvent("checkout_billing_address_mode", { billing_address_mode: "different_billing" });
-                    }} className="h-4 w-4 accent-[#303030]" />
+                    <input type="radio" name="billing_address_choice" checked={!billingSameAsShipping} onChange={() => setBillingSameAsShipping(false)} className="h-4 w-4 accent-[#303030]" />
                     <span className="text-[13px] font-medium text-[#292929]">Use a different billing address</span>
                   </label>
                   {!billingSameAsShipping && (
                     <div className="space-y-2.5 border-t border-[#d7d7d7] bg-white p-3 sm:p-4">
-                      <input name="billing_address" type="text" required aria-required="true" autoComplete="billing street-address" placeholder="Address" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
+                      <input name="billing_address" type="text" autoComplete="billing street-address" required placeholder="Address" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" />
                       <input name="billing_address_line_2" type="text" autoComplete="billing address-line2" placeholder="Apartment, suite, etc. (optional)" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
                       <div className="grid grid-cols-2 gap-2.5">
-                        <input name="billing_city" type="text" required aria-required="true" autoComplete="billing address-level2" placeholder="City" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
-                        <input name="billing_state" type="text" required aria-required="true" autoComplete="billing address-level1" placeholder="State" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
+                        <input name="billing_city" type="text" autoComplete="billing address-level2" required placeholder="City" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" />
+                        <input name="billing_state" type="text" autoComplete="billing address-level1" placeholder="State" className="h-12 min-w-0 rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
                       </div>
-                      <input name="billing_postal_code" type="text" required aria-required="true" autoComplete="billing postal-code" placeholder="ZIP code" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777]" />
+                      <input name="billing_postal_code" type="text" autoComplete="billing postal-code" required placeholder="ZIP code" className="h-12 w-full rounded-lg border border-[#d8d8d8] px-3 text-[13px] outline-none focus:border-[#777] invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" />
                     </div>
                   )}
                 </div>
               </div>
             </section>
 
-            {/* Desktop PayPal action: directly below Billing address in the left column */}
-            <div className="mt-5 hidden w-full min-w-0 overflow-hidden lg:block">
-              <PayPalButtons
-                fundingSource={FUNDING.PAYPAL}
-                disabled={submitting}
-                style={{
-                  layout: "vertical",
-                  shape: "rect",
-                  color: "blue",
-                  label: "pay",
-                  height: 48,
-                }}
-                onClick={async (_data, actions) => {
-                  trackCheckoutPaymentClick("standard", "PayPal");
-                  return validateStandardCheckout() ? actions.resolve() : actions.reject();
-                }}
-                createOrder={async () => createPayPalOrder("PayPal", "standard")}
-                onApprove={async (data) => {
-                  await handlePaypalApprove(data.orderID);
-                }}
-                onCancel={() => {
-                  pushCheckoutBehaviorEvent("checkout_payment_cancelled", { checkout_flow: "standard", payment_type: "PayPal" });
-                  toast.info("PayPal checkout was cancelled.");
-                }}
-                onError={(error) => {
-                  pushCheckoutBehaviorEvent("checkout_payment_error", { checkout_flow: "standard", payment_type: "PayPal" });
-                  console.error("PAYPAL BUTTON ERROR", error);
-                  toast.error("PayPal could not complete the payment.");
-                }}
-              />
-            </div>
-            <div className="mt-3 hidden w-full lg:block">
-              <button
-                type="button"
-                onClick={() => setLegalModalOpen(true)}
-                className="text-xs font-medium text-neutral-500 underline underline-offset-2 transition hover:text-[#111]"
-              >
-                Terms and policies
-              </button>
-            </div>
-
-            {/* Mobile bottom order summary with final payment action */}
-            <section className="mt-6 pt-5 lg:hidden">
+            {/* MOBILE BOTTOM ORDER SUMMARY */}
+            <section className="mt-6 border-t border-[#e5e7eb] pt-5 lg:hidden">
               <button
                 type="button"
                 onClick={() => setBottomOrderSummaryOpen((open) => !open)}
                 aria-expanded={bottomOrderSummaryOpen}
-                aria-label={bottomOrderSummaryOpen ? "Collapse bottom order summary" : "Expand bottom order summary"}
-                className="flex w-full items-center justify-between gap-3 rounded-lg py-1 text-left"
+                className="flex w-full items-center justify-between gap-3 py-1 text-left"
               >
-                <span className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.02em]">
+                <span className="text-[16px] font-semibold tracking-[-0.02em]">
                   Order summary
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="text-[15px] font-semibold tabular-nums">{usd(totalUsd)}</span>
                   <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${bottomOrderSummaryOpen ? "rotate-180" : "rotate-0"}`} />
                 </span>
-                <span className="text-[15px] font-semibold tabular-nums">{usd(totalUsd)}</span>
               </button>
 
-              {bottomOrderSummaryOpen && (<>
-              <div className="mt-4 space-y-3">
-                {items.map((item) => (
-                  <div key={[item.id, item.productColorId ?? "default-color", item.variantId ?? "default-variant", item.deviceModelId ?? "default-device", item.plugType ?? "default-plug"].join("-")} className="flex min-w-0 items-center gap-3">
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-[#e8e8e8] bg-white">
-                      {item.image ? <img src={item.image} alt={item.name} className="h-full w-full object-cover" /> : null}
-                      <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#111] px-1 text-[10px] font-semibold text-white">{item.quantity}</span>
+              {bottomOrderSummaryOpen && (
+                <div className="mt-4">
+                  {/* Ordered products */}
+                  <div className="space-y-3">
+                    {items.map((item) => (
+                      <div
+                        key={[
+                          item.id,
+                          item.productColorId ?? "default-color",
+                          item.variantId ?? "default-variant",
+                          item.deviceModelId ?? "default-device",
+                          item.plugType ?? "default-plug",
+                        ].join("-")}
+                        className="flex min-w-0 items-center gap-3"
+                      >
+                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-[#e8e8e8] bg-white">
+                          {item.image ? (
+                            <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                          ) : null}
+                          <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#111] px-1 text-[10px] font-semibold text-white">
+                            {item.quantity}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-2 text-[12px] font-medium leading-4">{item.name}</p>
+                          <p className="mt-0.5 text-[11px] leading-4 text-neutral-500">
+                            {[
+                              item.colorName ? `Color: ${item.colorName}` : null,
+                              item.deviceModelName ? `Model: ${item.deviceModelName}` : null,
+                              item.plugType ? `Plug type: ${item.plugType}` : null,
+                            ].filter(Boolean).join(" / ")}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-xs font-medium tabular-nums">
+                          {usd(Number(item.price) * Number(item.quantity))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Discount code / gift card */}
+                  <div className="mt-4">
+                    <CheckoutVoucher
+                      subtotal={subtotalUsd}
+                      shippingFee={shippingFeeUsd}
+                      phone={phone}
+                      cartItems={items}
+                      onChange={setVoucherSummary}
+                    />
+                  </div>
+
+                  {/* Complimentary order benefits */}
+                  <div className="mt-4 space-y-2 border-y border-[#e8e8e8] py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Gift className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
+                        <span className="text-xs font-medium text-[#303030]">Mystery Gift</span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
+                        <span className="text-[11px] text-neutral-400 line-through">{usd(7)}</span>
+                        <span className="font-semibold text-[#008F65]">{usd(0)}</span>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 text-[12px] font-medium leading-4">{item.name}</p>
-                      <p className="mt-0.5 text-[11px] leading-4 text-neutral-500">{[
-                        item.colorName ? `Color: ${item.colorName}` : null,
-                        item.deviceModelName ? `Model: ${item.deviceModelName}` : null,
-                        item.plugType ? `Plug type: ${item.plugType}` : null,
-                      ].filter(Boolean).join(" / ")}</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
+                        <span className="text-xs font-medium text-[#303030]">Delivery Protection</span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
+                        <span className="text-[11px] text-neutral-400 line-through">{usd(5)}</span>
+                        <span className="font-semibold text-[#008F65]">{usd(0)}</span>
+                      </div>
                     </div>
-                    <span className="shrink-0 text-xs font-medium tabular-nums">{usd(Number(item.price) * Number(item.quantity))}</span>
                   </div>
-                ))}
-              </div>
 
-              <div className="mt-4">
-                <CheckoutVoucher subtotal={subtotalUsd} shippingFee={shippingFeeUsd} phone={phone} cartItems={items} onChange={setVoucherSummary} />
-              </div>
-
-              <div className="mt-4 space-y-2.5 text-[13px]">
-                <div className="flex justify-between"><span className="text-neutral-500">Subtotal</span><span className="tabular-nums">{usd(subtotalUsd)}</span></div>
-                {(discountAmountUsd + customerDiscountUsd) > 0 && <div className="flex justify-between text-emerald-700"><span>Discount</span><span className="tabular-nums">−{usd(discountAmountUsd + customerDiscountUsd)}</span></div>}
-                <div className="flex justify-between"><span className="text-neutral-500">Shipping</span><span className={netShippingUsd <= 0 ? "font-medium text-emerald-600" : "tabular-nums"}>{netShippingUsd <= 0 ? "FREE" : usd(netShippingUsd)}</span></div>
-                <div className="flex items-end justify-between border-t border-[#e8e8e8] pt-3">
-                  <span className="text-sm font-semibold">Total</span>
-                  <span className="text-lg font-semibold tabular-nums">{usd(totalUsd)}</span>
-                </div>
-                <p className="-mt-1 text-right text-[10px] text-neutral-500">USD</p>
-              </div>
-
-              </>)}
-
-              <div className="mt-4 w-full min-w-0 overflow-hidden">
-                <PayPalButtons
-                  fundingSource={FUNDING.PAYPAL}
-                  disabled={submitting}
-                  style={{ layout: "vertical", shape: "rect", color: "blue", label: "pay", height: 48 }}
-                  onClick={async (_data, actions) => {
-                    trackCheckoutPaymentClick("standard", "PayPal");
-                    return validateStandardCheckout() ? actions.resolve() : actions.reject();
-                  }}
-                  createOrder={async () => createPayPalOrder("PayPal", "standard")}
-                  onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
-                  onCancel={() => {
-                    pushCheckoutBehaviorEvent("checkout_payment_cancelled", { checkout_flow: "standard", payment_type: "PayPal", payment_location: "mobile_bottom_summary" });
-                    toast.info("PayPal checkout was cancelled.");
-                  }}
-                  onError={(error) => {
-                    pushCheckoutBehaviorEvent("checkout_payment_error", { checkout_flow: "standard", payment_type: "PayPal", payment_location: "mobile_bottom_summary" });
-                    console.error("PAYPAL MOBILE SUMMARY ERROR", error);
-                    toast.error("PayPal could not complete the payment.");
-                  }}
-                />
-              </div>
-              <div className="mt-3">
-                <button type="button" onClick={() => setLegalModalOpen(true)} className="text-xs font-medium text-neutral-500 underline underline-offset-2 transition hover:text-[#111]">Terms and policies</button>
-              </div>
-
-              {hasCompleteDeliveryDetails && (
-                <div className="mt-7 grid grid-cols-3 items-center gap-2 px-1 py-3 text-center">
-                  <div className="flex min-w-0 flex-col items-center gap-2">
-                    <RotateCcw className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
-                    <span className="text-[11px] font-semibold leading-4 text-[#111] sm:text-xs">30 Day Returns</span>
+                  {/* Order totals */}
+                  <div className="mt-4 space-y-2.5 text-[13px]">
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">Subtotal</span>
+                      <span className="tabular-nums">{usd(subtotalUsd)}</span>
+                    </div>
+                    {(discountAmountUsd + customerDiscountUsd) > 0 && (
+                      <div className="flex justify-between text-emerald-700">
+                        <span>Discount</span>
+                        <span className="tabular-nums">−{usd(discountAmountUsd + customerDiscountUsd)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">Shipping</span>
+                      <span className={netShippingUsd <= 0 ? "font-medium text-emerald-600" : "tabular-nums"}>
+                        {netShippingUsd <= 0 ? "FREE" : usd(netShippingUsd)}
+                      </span>
+                    </div>
+                    <div className="flex items-end justify-between border-t border-[#e8e8e8] pt-3">
+                      <span className="text-sm font-semibold">Total</span>
+                      <span className="text-lg font-semibold tabular-nums">{usd(totalUsd)}</span>
+                    </div>
+                    <p className="-mt-1 text-right text-[10px] text-neutral-500">USD</p>
                   </div>
-                  <div className="flex min-w-0 flex-col items-center gap-2">
-                    <ShieldCheck className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
-                    <span className="text-[11px] font-semibold leading-4 text-[#111] sm:text-xs">1 Year Warranty</span>
+
+                  {/* Final payment action follows the payment method selected above */}
+                  <div className="mt-4 w-full min-w-0 overflow-hidden">
+                    <PayPalButtons
+                      fundingSource={paymentMethod === "card" ? FUNDING.CARD : FUNDING.PAYPAL}
+                      disabled={submitting}
+                      style={{
+                        layout: "vertical",
+                        shape: "rect",
+                        color: paymentMethod === "card" ? "black" : "gold",
+                        label: "pay",
+                        height: 48,
+                        tagline: false,
+                      }}
+                      onClick={async (_data, actions) => actions.resolve()}
+                      createOrder={async () => createPayPalOrder(paymentMethod === "card" ? "Card" : "PayPal")}
+                      onApprove={async (data) => { await handlePaypalApprove(data.orderID); }}
+                      onCancel={() => toast.info("Checkout was cancelled.")}
+                      onError={(error) => {
+                        console.error("BOTTOM ORDER SUMMARY PAYMENT ERROR", error);
+                        toast.error("Payment could not be completed.");
+                      }}
+                    />
                   </div>
-                  <div className="flex min-w-0 flex-col items-center gap-2">
-                    <PackageCheck className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
-                    <span className="text-[11px] font-semibold leading-4 text-[#111] sm:text-xs">Fast Shipping</span>
+
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setLegalModalOpen(true)}
+                      className="text-xs font-medium text-neutral-500 underline underline-offset-2 transition hover:text-[#111]"
+                    >
+                      Terms and policies
+                    </button>
                   </div>
                 </div>
               )}
             </section>
 
+
             </div>
           </div>
 
-          <aside className="relative hidden min-w-0 lg:block lg:self-stretch lg:bg-transparent lg:px-7 lg:py-8 lg:before:absolute lg:before:top-0 lg:before:bottom-[-160px] lg:before:left-0 lg:before:right-[calc((1120px-100vw)/2-2rem)] lg:before:bg-[#f6f6f6] lg:before:content-['']">
-            <div className="relative z-10 order-10 bg-transparent py-5 sm:py-6 lg:sticky lg:top-[120px] lg:order-none lg:py-0">
+          <aside className="hidden lg:relative lg:isolate lg:block lg:min-h-screen lg:self-stretch lg:bg-transparent lg:px-7 lg:py-8 lg:before:absolute lg:before:top-0 lg:before:bottom-[-56px] lg:before:left-0 lg:before:right-[min(-2rem,calc((70rem-100vw)/2))] lg:before:bg-[#f5f5f5] lg:before:content-['']">
+            <div className="relative z-10 order-10 bg-transparent py-5 sm:py-6 lg:order-none lg:py-0">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold tracking-[-0.02em]">
                   Order summary
@@ -1669,7 +1334,7 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                 </div>
               </div>
 
-              <div id="checkout-order-summary-desktop" className={`${orderSummaryOpen ? "block" : "hidden"} mt-5 lg:block`}>
+              <div className={`${orderSummaryOpen ? "block" : "hidden"} mt-5 lg:block`}>
               <div className="space-y-4 border-b border-[#e8e8e8] pb-5">
                 {items.map((item) => (
                   <div
@@ -1762,6 +1427,30 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                 />
               </div>
 
+              {/* Complimentary order benefits — display only; does not change checkout total. */}
+              <div className="mt-4 space-y-2 border-y border-[#e8e8e8] py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Gift className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
+                    <span className="text-xs font-medium text-[#303030]">Mystery Gift</span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
+                    <span className="text-[11px] text-neutral-400 line-through">{usd(7)}</span>
+                    <span className="font-semibold text-[#008F65]">{usd(0)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 shrink-0 text-[#008F65]" strokeWidth={1.8} />
+                    <span className="text-xs font-medium text-[#303030]">Delivery Protection</span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
+                    <span className="text-[11px] text-neutral-400 line-through">{usd(5)}</span>
+                    <span className="font-semibold text-[#008F65]">{usd(0)}</span>
+                  </div>
+                </div>
+              </div>
+
               <div className="mt-5 space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-neutral-500">Subtotal</span>
@@ -1799,25 +1488,68 @@ const [offerProducts, setOfferProducts] = useState<CheckoutOfferProduct[]>([]);
                     USD
                   </p>
                 </div>
+
+                <div className="mt-5 w-full min-w-0 overflow-hidden">
+                  <PayPalButtons
+                    fundingSource={FUNDING.PAYPAL}
+                    disabled={submitting}
+                    style={{
+                      layout: "vertical",
+                      shape: "rect",
+                      color: "blue",
+                      label: "pay",
+                      height: 48,
+                    }}
+                    onClick={async (_data, actions) => {
+                        const checkoutForm = document.querySelector<HTMLFormElement>("form");
+                        if (!checkoutForm) return actions.reject();
+                        const requiredFields = checkoutForm.querySelectorAll<
+                          HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+                        >("[required]");
+                        requiredFields.forEach((field) => {
+                          field.setCustomValidity("");
+                          if (field.validity.valueMissing) {
+                            field.setCustomValidity("Please fill out this field.");
+                          } else if (field.validity.typeMismatch && field instanceof HTMLInputElement && field.type === "email") {
+                            field.setCustomValidity("Please enter a valid email address.");
+                          }
+                        });
+                        const firstInvalid = checkoutForm.querySelector<
+                          HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+                        >(":invalid");
+                        if (firstInvalid) {
+                          firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+                          window.setTimeout(() => firstInvalid.focus(), 250);
+                          firstInvalid.reportValidity();
+                          return actions.reject();
+                        }
+                        return actions.resolve();
+                      }}
+                    createOrder={async () => createPayPalOrder("PayPal")}
+                    onApprove={async (data) => {
+                      await handlePaypalApprove(data.orderID);
+                    }}
+                    onCancel={() => {
+                      toast.info("PayPal checkout was cancelled.");
+                    }}
+                    onError={(error) => {
+                      console.error("PAYPAL BUTTON ERROR", error);
+                      toast.error("PayPal could not complete the payment.");
+                    }}
+                  />
+                </div>
+                <div className="mt-3 w-full">
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalOpen(true)}
+                    className="text-xs font-medium text-neutral-500 underline underline-offset-2 transition hover:text-[#111]"
+                  >
+                    Terms and policies
+                  </button>
+                </div>
               </div>
               </div>
 
-              {hasCompleteDeliveryDetails && (
-                <div className="mt-8 grid grid-cols-3 items-center gap-2 px-3 py-4 text-center">
-                  <div className="flex min-w-0 flex-col items-center gap-2">
-                    <RotateCcw className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
-                    <span className="text-[12px] font-semibold leading-4 text-[#111]">30 Day Returns</span>
-                  </div>
-                  <div className="flex min-w-0 flex-col items-center gap-2">
-                    <ShieldCheck className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
-                    <span className="text-[12px] font-semibold leading-4 text-[#111]">1 Year Warranty</span>
-                  </div>
-                  <div className="flex min-w-0 flex-col items-center gap-2">
-                    <PackageCheck className="h-7 w-7 text-[#111]" strokeWidth={1.8} aria-hidden="true" />
-                    <span className="text-[12px] font-semibold leading-4 text-[#111]">Fast Shipping</span>
-                  </div>
-                </div>
-              )}
             </div>
 
           </aside>
@@ -2628,7 +2360,6 @@ function Field({
         name={name}
         type={type}
         required={required}
-        aria-required={required ? "true" : undefined}
         placeholder={placeholder}
         onChange={(event) => onValueChange?.(event.target.value)}
         autoComplete={
@@ -2639,7 +2370,7 @@ function Field({
           name === "postal_code" ? "postal-code" : undefined
         }
         inputMode={type === "tel" ? "tel" : undefined}
-        className="h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0"
+        className={`h-12 w-full rounded-xl border border-[#d8d8d8] bg-white px-3 text-[13px] outline-none transition placeholder:text-[#777] focus:border-[#777] focus:ring-0 ${required ? "invalid:border-red-500 invalid:ring-1 invalid:ring-red-500" : ""}`}
       />
     </label>
   );
@@ -2764,29 +2495,21 @@ function PhoneField({
   country,
   value,
   onChange,
-  showValidationErrors,
 }: {
   country: CountryOption;
   value: string;
   onChange: (value: string) => void;
-  showValidationErrors: boolean;
 }) {
-  const phoneDigits = value.replace(/\D/g, "");
-  const phoneInvalid = phoneDigits.length < 7 || phoneDigits.length > 15;
-
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium text-neutral-600">
         Phone number
       </span>
 
-      <div className={`flex h-12 overflow-hidden rounded-xl border bg-white transition focus-within:border-[#777] focus-within:ring-0 ${showValidationErrors && phoneInvalid ? "border-red-500 ring-1 ring-red-500" : "border-[#d8d8d8]"}`}>
+      <div className="flex h-12 overflow-hidden rounded-xl border border-[#d8d8d8] bg-white transition focus-within:border-[#777] focus-within:ring-0">
         <input
           name="phone"
           type="tel"
-          required
-          aria-required="true"
-          aria-invalid={showValidationErrors && phoneInvalid ? "true" : "false"}
           inputMode="tel"
           value={value}
           onChange={(event) => onChange(event.target.value)}

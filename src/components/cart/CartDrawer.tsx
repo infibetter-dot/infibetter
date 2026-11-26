@@ -3,22 +3,42 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 
+
+
 import {
   X,
   Minus,
   Plus,
   ShieldCheck,
   ShoppingBag,
-  Sparkles,
-  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCcw,
+  PackageCheck,
+  Gift,
+  Check,
 } from "lucide-react";
 
 import { useCart } from "@/lib/cart";
+
+/* ============================================================
+   TYPES
+============================================================ */
 
 interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
   onPayPal: () => void;
+}
+
+interface RecommendedProduct {
+  id: string;
+  slug: string;
+  name: string;
+  price: number;
+  originalPrice: number | null;
+  image_url: string | null;
+  stock: number | null;
 }
 
 /* ============================================================
@@ -34,13 +54,36 @@ function formatUSD(value: number) {
   }).format(Number(value) || 0);
 }
 
-interface RecommendedProduct {
-  id: string;
-  slug: string;
-  name: string;
-  price: number | string;
-  image_url: string | null;
-  stock: number | null;
+function getOriginalPrice(
+  product: Record<string, unknown>,
+  currentPrice: number,
+): number | null {
+  const fields = [
+    "compare_at_price",
+    "original_price",
+    "old_price",
+    "regular_price",
+    "list_price",
+  ];
+
+  for (const field of fields) {
+    const raw = product[field];
+
+    if (raw === null || raw === undefined || raw === "") {
+      continue;
+    }
+
+    const value = Number(raw);
+
+    if (
+      Number.isFinite(value) &&
+      value > currentPrice
+    ) {
+      return value;
+    }
+  }
+
+  return null;
 }
 
 /* ============================================================
@@ -56,23 +99,37 @@ export default function CartDrawer({
     items,
     count,
     subtotal,
-    add,
     remove,
     setQuantity,
   } = useCart();
 
   const productListRef = useRef<HTMLDivElement>(null);
-  const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>([]);
-  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const recommendationSliderRef = useRef<HTMLDivElement>(null);
+
+  const [recommendedProducts, setRecommendedProducts] =
+    useState<RecommendedProduct[]>([]);
+
+  const [recommendationsLoading, setRecommendationsLoading] =
+    useState(false);
+
+  // Optional complimentary order benefits (UI selection only).
+  const [includeMysteryGift, setIncludeMysteryGift] =
+    useState(false);
+  const [includeDeliveryProtection, setIncludeDeliveryProtection] =
+    useState(false);
+
   const cartProductIds = useMemo(
     () => items.map((item) => item.id).filter(Boolean),
     [items],
   );
-  const cartProductKey = cartProductIds.slice().sort().join("|");
+
+  const cartProductKey = cartProductIds
+    .slice()
+    .sort()
+    .join("|");
 
   /* ==========================================================
-     RELATED PRODUCT RECOMMENDATIONS
-     Match products by the categories represented in the cart.
+     LOAD RECOMMENDED PRODUCTS
   ========================================================== */
 
   useEffect(() => {
@@ -87,58 +144,96 @@ export default function CartDrawer({
       setRecommendationsLoading(true);
 
       try {
-        const { data: cartProducts, error: cartProductsError } = await supabase
-          .from("products")
-          .select("id, category_id")
-          .in("id", cartProductIds);
+        const { data: cartProducts, error: cartError } =
+          await supabase
+            .from("products")
+            .select("id, category_id")
+            .in("id", cartProductIds);
 
-        if (cartProductsError) throw cartProductsError;
+        if (cartError) throw cartError;
 
         const categoryIds = Array.from(
-          new Set((cartProducts ?? []).map((product) => product.category_id).filter(Boolean)),
+          new Set(
+            (cartProducts ?? [])
+              .map((product) => product.category_id)
+              .filter(Boolean),
+          ),
         );
 
         if (categoryIds.length === 0) {
-          if (!cancelled) setRecommendedProducts([]);
+          if (!cancelled) {
+            setRecommendedProducts([]);
+          }
           return;
         }
 
-        const { data: relatedProducts, error: relatedError } = await supabase
-          .from("products")
-          .select("id, slug, name, price, image_url, stock, category_id")
-          .in("category_id", categoryIds)
-          .limit(20);
+        const { data: relatedProducts, error: relatedError } =
+          await supabase
+            .from("products")
+            .select("*")
+            .in("category_id", categoryIds)
+            .limit(20);
 
         if (relatedError) throw relatedError;
 
-        const cartIds = new Set(cartProductIds.map(String));
+        const cartIds = new Set(
+          cartProductIds.map(String),
+        );
+
         const uniqueProducts = (relatedProducts ?? [])
-          .filter((product) =>
-            product.id &&
-            !cartIds.has(String(product.id)) &&
-            product.image_url &&
-            (product.stock === null || Number(product.stock) > 0) &&
-            Number(product.price) > 0
+          .filter(
+            (product) =>
+              product.id &&
+              !cartIds.has(String(product.id)) &&
+              product.image_url &&
+              (product.stock === null ||
+                Number(product.stock) > 0) &&
+              Number(product.price) > 0,
           )
-          .filter((product, index, all) =>
-            all.findIndex((candidate) => candidate.id === product.id) === index
+          .filter(
+            (product, index, all) =>
+              all.findIndex(
+                (candidate) =>
+                  candidate.id === product.id,
+              ) === index,
           )
           .slice(0, 8)
-          .map((product) => ({
-            id: String(product.id),
-            slug: String(product.slug ?? ""),
-            name: String(product.name ?? ""),
-            price: product.price ?? 0,
-            image_url: product.image_url,
-            stock: product.stock,
-          }));
+          .map((product) => {
+            const rawProduct =
+              product as unknown as Record<string, unknown>;
 
-        if (!cancelled) setRecommendedProducts(uniqueProducts);
+            const price = Number(product.price);
+
+            return {
+              id: String(product.id),
+              slug: String(product.slug ?? ""),
+              name: String(product.name ?? ""),
+              price,
+              originalPrice: getOriginalPrice(
+                rawProduct,
+                price,
+              ),
+              image_url: product.image_url,
+              stock: product.stock,
+            };
+          });
+
+        if (!cancelled) {
+          setRecommendedProducts(uniqueProducts);
+        }
       } catch (error) {
-        console.error("Cart recommendations could not be loaded:", error);
-        if (!cancelled) setRecommendedProducts([]);
+        console.error(
+          "Cart recommendations could not be loaded:",
+          error,
+        );
+
+        if (!cancelled) {
+          setRecommendedProducts([]);
+        }
       } finally {
-        if (!cancelled) setRecommendationsLoading(false);
+        if (!cancelled) {
+          setRecommendationsLoading(false);
+        }
       }
     }
 
@@ -150,18 +245,40 @@ export default function CartDrawer({
   }, [open, cartProductKey]);
 
   /* ==========================================================
+     SLIDER NAVIGATION
+  ========================================================== */
+
+  const scrollRecommendations = (
+    direction: "prev" | "next",
+  ) => {
+    const slider = recommendationSliderRef.current;
+
+    if (!slider) return;
+
+    slider.scrollBy({
+      left:
+        direction === "next"
+          ? slider.clientWidth
+          : -slider.clientWidth,
+      behavior: "smooth",
+    });
+  };
+
+  /* ==========================================================
      LOCK BODY SCROLL
   ========================================================== */
 
   useEffect(() => {
     if (!open) return;
 
-    const previousOverflow = document.body.style.overflow;
+    const previousOverflow =
+      document.body.style.overflow;
 
     document.body.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow =
+        previousOverflow;
     };
   }, [open]);
 
@@ -181,46 +298,68 @@ export default function CartDrawer({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown,
+      );
     };
   }, [open, onClose]);
 
+  /* ==========================================================
+     RESET SCROLL
+  ========================================================== */
+
   useEffect(() => {
     if (!open) return;
-    // Reset the scroll position whenever the drawer opens so cart items are visible first.
+
     requestAnimationFrame(() => {
-      productListRef.current?.scrollTo({ top: 0, behavior: "auto" });
+      productListRef.current?.scrollTo({
+        top: 0,
+        behavior: "auto",
+      });
+
+      recommendationSliderRef.current?.scrollTo({
+        left: 0,
+        behavior: "auto",
+      });
     });
   }, [open]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999]">
-      {/* OVERLAY */}
+    <div className="fixed inset-0 z-[9999] isolate">
+
+      {/* ======================================================
+          OVERLAY
+      ====================================================== */}
+
       <button
         type="button"
         aria-label="Close cart"
         onClick={onClose}
         className="
-          absolute
-          inset-0
+          absolute inset-0
           cursor-default
-          bg-black/15
+          bg-black/25
         "
       />
 
-      {/* DRAWER */}
+      {/* ======================================================
+          DRAWER
+      ====================================================== */}
+
       <aside
         className="
           absolute
+          inset-y-0
           right-0
-          top-0
+          z-10
           grid
           h-[100dvh]
           w-full
           max-w-[430px]
-          grid-rows-[auto_minmax(0,1fr)_auto]
+          grid-rows-[68px_minmax(0,1fr)_auto]
           overflow-hidden
           bg-white
           shadow-[-12px_0_40px_rgba(0,0,0,0.12)]
@@ -229,28 +368,31 @@ export default function CartDrawer({
           duration-300
         "
       >
-        {/* HEADER */}
-        <div
+
+        {/* ==================================================
+            HEADER
+        ================================================== */}
+
+        <header
           className="
             flex
-            h-[76px]
-            shrink-0
             items-center
             justify-between
             border-b
-            border-[#E5E5E5]
+            border-[#EAEAEA]
             bg-white
             px-5
             sm:px-6
           "
         >
           <div className="flex items-center gap-2.5">
+
             <h2
               className="
-                text-[19px]
+                text-[18px]
                 font-semibold
-                tracking-[-0.025em]
-                text-[#111111]
+                tracking-[-0.035em]
+                text-[#171717]
               "
             >
               Your Cart
@@ -258,22 +400,19 @@ export default function CartDrawer({
 
             <span
               className="
-                flex
-                h-[23px]
-                min-w-[23px]
-                items-center
-                justify-center
+                flex h-[22px] min-w-[22px]
+                items-center justify-center
                 rounded-full
-                bg-[#111111]
+                bg-[#171717]
                 px-1.5
                 text-[11px]
                 font-semibold
-                leading-none
                 text-white
               "
             >
               {count}
             </span>
+
           </div>
 
           <button
@@ -281,26 +420,26 @@ export default function CartDrawer({
             onClick={onClose}
             aria-label="Close cart"
             className="
-              flex
-              h-9
-              w-9
-              items-center
-              justify-center
+              flex h-9 w-9
+              items-center justify-center
               rounded-full
-              text-[#555555]
+              text-[#666666]
               transition
               hover:bg-[#F5F5F5]
-              hover:text-[#111111]
+              hover:text-black
             "
           >
             <X
               className="h-[19px] w-[19px]"
-              strokeWidth={1.8}
+              strokeWidth={1.7}
             />
           </button>
-        </div>
+        </header>
 
-        {/* PRODUCT LIST */}
+        {/* ==================================================
+            MAIN SCROLL AREA
+        ================================================== */}
+
         <div
           ref={productListRef}
           className="
@@ -311,103 +450,97 @@ export default function CartDrawer({
             px-4
             py-3
             sm:px-6
-            sm:py-5
+            sm:py-4
           "
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "#D4D4D4 transparent",
+          }}
         >
-          {items.length === 0 ? (
-            /* EMPTY CART */
-            <div
-              className="
-                flex
-                min-h-full
-                flex-col
-                items-center
-                justify-center
-                px-6
-                text-center
-              "
-            >
+
+          {/* INNER CONTENT */}
+          <div className="flex min-h-full flex-col">
+
+            {/* ==============================================
+                CART PRODUCTS
+            ============================================== */}
+
+            {items.length === 0 ? (
+
               <div
                 className="
-                  mb-4
-                  flex
-                  h-16
-                  w-16
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-[#F5F5F5]
+                  flex min-h-[240px]
+                  flex-1 flex-col
+                  items-center justify-center
+                  text-center
                 "
               >
-                <ShoppingBag
-                  className="h-7 w-7 text-[#777777]"
-                  strokeWidth={1.5}
-                />
+                <div
+                  className="
+                    mb-4 flex h-16 w-16
+                    items-center justify-center
+                    rounded-full bg-[#F5F5F5]
+                  "
+                >
+                  <ShoppingBag
+                    className="h-7 w-7 text-[#777777]"
+                    strokeWidth={1.5}
+                  />
+                </div>
+
+                <h3 className="text-[17px] font-semibold text-[#171717]">
+                  Your cart is empty
+                </h3>
+
+                <p className="mt-2 max-w-[260px] text-[13px] leading-5 text-[#777777]">
+                  Add something you love and come back
+                  here when you're ready.
+                </p>
               </div>
 
-              <h3
-                className="
-                  text-[17px]
-                  font-semibold
-                  tracking-[-0.02em]
-                  text-[#111111]
-                "
-              >
-                Your cart is empty
-              </h3>
+            ) : (
 
-              <p
-                className="
-                  mt-2
-                  max-w-[270px]
-                  text-[13px]
-                  leading-5
-                  text-[#777777]
-                "
-              >
-                Add something you love and come back
-                here when you're ready.
-              </p>
-            </div>
-          ) : (
-            /* PRODUCTS */
-            <div className="space-y-5">
-              {items.map((item) => {
-                const configuration = {
-                  productColorId: item.productColorId,
-                  variantId: item.variantId,
-                  deviceModelId: item.deviceModelId,
-                  plugType: item.plugType,
-                };
+              <div className="space-y-0">
 
-                const itemKey = [
-                  item.id,
-                  item.productColorId ?? "default-color",
-                  item.variantId ?? "default-variant",
-                  item.deviceModelId ?? "default-model",
-                  item.plugType ?? "default-plug",
-                ].join("-");
+                {items.map((item) => {
 
-                return (
-                  <div
-                    key={itemKey}
-                    className="
-                      border-b
-                      border-[#EEEEEE]
-                      pb-5
-                      last:border-b-0
-                    "
-                  >
-                    <div className="flex gap-4">
+                  const configuration = {
+                    productColorId: item.productColorId,
+                    variantId: item.variantId,
+                    deviceModelId: item.deviceModelId,
+                    plugType: item.plugType,
+                  };
+
+                  const itemKey = [
+                    item.id,
+                    item.productColorId ?? "default-color",
+                    item.variantId ?? "default-variant",
+                    item.deviceModelId ?? "default-model",
+                    item.plugType ?? "default-plug",
+                  ].join("-");
+
+                  return (
+
+                    <article
+                      key={itemKey}
+                      className="
+                        flex gap-3.5
+                        border-b border-[#EEEEEE]
+                        py-2.5
+                        first:pt-1
+                        last:border-b-0
+                      "
+                    >
+
                       {/* PRODUCT IMAGE */}
+
                       <div
                         className="
-                          h-[88px]
-                          w-[88px]
+                          h-[84px] w-[84px]
                           shrink-0
                           overflow-hidden
-                          rounded-[10px]
-                          bg-[#F7F7F7]
+                          rounded-[9px]
+                          bg-[#FAFAFA]
                         "
                       >
                         {item.image ? (
@@ -415,65 +548,50 @@ export default function CartDrawer({
                             src={item.image}
                             alt={item.name}
                             className="
-                              h-full
-                              w-full
+                              h-full w-full
                               object-cover
                             "
                           />
                         ) : (
-                          <div
-                            className="
-                              flex
-                              h-full
-                              items-center
-                              justify-center
-                              text-[11px]
-                              text-[#999999]
-                            "
-                          >
+                          <div className="flex h-full items-center justify-center text-[10px] text-[#999999]">
                             No image
                           </div>
                         )}
                       </div>
 
-                      {/* PRODUCT INFO */}
+                      {/* PRODUCT DETAILS */}
+
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-3">
+
+                        <div className="flex items-start justify-between gap-2">
+
                           <div className="min-w-0">
+
                             <h3
                               className="
                                 line-clamp-2
-                                text-[14px]
+                                text-[13px]
                                 font-semibold
-                                leading-[1.35]
-                                tracking-[-0.01em]
-                                text-[#111111]
+                                leading-[1.4]
+                                tracking-[-0.015em]
+                                text-[#171717]
                               "
                             >
                               {item.name}
                             </h3>
 
                             {/* COLOR */}
+
                             {item.colorName && (
-                              <div
-                                className="
-                                  mt-1.5
-                                  flex
-                                  items-center
-                                  gap-2
-                                  text-[11px]
-                                  text-[#777777]
-                                "
-                              >
+                              <div className="mt-1.5 flex items-center gap-2 text-[11px] text-[#777777]">
+
                                 {item.colorHex && (
                                   <span
                                     className="
-                                      h-3
-                                      w-3
+                                      h-3 w-3
                                       shrink-0
                                       rounded-full
-                                      border
-                                      border-black/10
+                                      border border-black/10
                                     "
                                     style={{
                                       backgroundColor:
@@ -483,20 +601,23 @@ export default function CartDrawer({
                                 )}
 
                                 <span>{item.colorName}</span>
+
                               </div>
                             )}
 
                             {/* PLUG TYPE */}
+
                             {item.plugType && (
-                              <p className="mt-1.5 text-[11px] text-[#777777]">
+                              <p className="mt-1 text-[11px] text-[#777777]">
                                 Plug type:{" "}
-                                <span className="font-semibold text-[#333333]">
+                                <span className="font-medium text-[#333333]">
                                   {item.plugType}
                                 </span>
                               </p>
                             )}
 
                             {/* DEVICE MODEL */}
+
                             {item.deviceModelName && (
                               <p className="mt-1 text-[11px] text-[#777777]">
                                 Model:{" "}
@@ -505,9 +626,11 @@ export default function CartDrawer({
                                 </span>
                               </p>
                             )}
+
                           </div>
 
                           {/* REMOVE */}
+
                           <button
                             type="button"
                             onClick={() =>
@@ -515,48 +638,48 @@ export default function CartDrawer({
                             }
                             aria-label={`Remove ${item.name}`}
                             className="
-                              flex
-                              h-7
-                              w-7
+                              flex h-6 w-6
                               shrink-0
-                              items-center
-                              justify-center
+                              items-center justify-center
                               rounded-full
-                              text-[#999999]
+                              text-[#AAAAAA]
                               transition
                               hover:bg-[#F5F5F5]
-                              hover:text-[#111111]
+                              hover:text-[#222222]
                             "
                           >
                             <X
-                              className="h-4 w-4"
+                              className="h-3.5 w-3.5"
                               strokeWidth={1.8}
                             />
                           </button>
+
                         </div>
 
                         {/* QUANTITY + PRICE */}
+
                         <div
                           className="
-                            mt-4
+                            mt-3
                             flex
                             items-center
                             justify-between
-                            gap-3
+                            gap-2
                           "
                         >
+
                           {/* QUANTITY */}
+
                           <div
                             className="
-                              flex
-                              h-8
+                              flex h-[30px]
                               items-center
                               overflow-hidden
                               rounded-full
-                              border
-                              border-[#D9D9D9]
+                              border border-[#DDDDDD]
                             "
                           >
+
                             <button
                               type="button"
                               onClick={() =>
@@ -566,37 +689,25 @@ export default function CartDrawer({
                                   configuration,
                                 )
                               }
+                              aria-label="Decrease quantity"
                               className="
-                                flex
-                                h-full
-                                w-8
-                                items-center
-                                justify-center
-                                text-[#555555]
-                                transition
+                                flex h-full w-[30px]
+                                items-center justify-center
+                                text-[#666666]
                                 hover:bg-[#F5F5F5]
                               "
-                              aria-label="Decrease quantity"
                             >
-                              <Minus
-                                className="h-3.5 w-3.5"
-                                strokeWidth={1.8}
-                              />
+                              <Minus className="h-3 w-3" />
                             </button>
 
                             <span
                               className="
-                                flex
-                                h-full
-                                min-w-8
-                                items-center
-                                justify-center
-                                border-x
-                                border-[#D9D9D9]
-                                px-2
+                                flex h-full min-w-[30px]
+                                items-center justify-center
+                                border-x border-[#DDDDDD]
                                 text-[12px]
                                 font-medium
-                                text-[#111111]
+                                text-[#171717]
                               "
                             >
                               {item.quantity}
@@ -611,324 +722,680 @@ export default function CartDrawer({
                                   configuration,
                                 )
                               }
+                              aria-label="Increase quantity"
                               className="
-                                flex
-                                h-full
-                                w-8
-                                items-center
-                                justify-center
-                                text-[#555555]
-                                transition
+                                flex h-full w-[30px]
+                                items-center justify-center
+                                text-[#666666]
                                 hover:bg-[#F5F5F5]
                               "
-                              aria-label="Increase quantity"
                             >
-                              <Plus
-                                className="h-3.5 w-3.5"
-                                strokeWidth={1.8}
-                              />
+                              <Plus className="h-3 w-3" />
                             </button>
+
                           </div>
 
                           {/* PRICE */}
-                          <p className="whitespace-nowrap text-[14px] font-semibold tracking-[-0.01em] text-[#111111]">
-                            {formatUSD(item.price * item.quantity)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
 
-          {/* YOU MAY ALSO LIKE */}
-          {items.length > 0 && (recommendationsLoading || recommendedProducts.length > 0) && (
-            <section className="mt-7 rounded-2xl border border-[#E5E7EB] bg-white p-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.025)] sm:p-4">
-              <div className="mb-3 flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-[#777777]" strokeWidth={1.8} />
-                    <h3 className="text-[13px] font-semibold tracking-[-0.015em] text-[#171717]">
-                      You May Also Like
-                    </h3>
-                  </div>
-                  <p className="mt-1 text-[10px] leading-4 text-[#858585]">
-                    Accessories picked for your cart
-                  </p>
-                </div>
+                          <p
+                            className="
+                              whitespace-nowrap
+                              text-[13px]
+                              font-semibold
+                              tracking-[-0.02em]
+                              text-[#171717]
+                            "
+                          >
+                            {formatUSD(
+                              item.price * item.quantity,
+                            )}
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                    </article>
+
+                  );
+                })}
+
               </div>
 
-              {recommendationsLoading && recommendedProducts.length === 0 ? (
-                <div className="space-y-2">
-                  {[0, 1].map((item) => (
-                    <div
-                      key={item}
-                      className="flex h-[82px] animate-pulse items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-2.5"
-                    >
-                      <div className="h-14 w-14 shrink-0 rounded-lg bg-[#F5F5F5]" />
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="h-3 w-3/4 rounded bg-[#F0F0F0]" />
-                        <div className="h-3 w-1/3 rounded bg-[#F0F0F0]" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {recommendedProducts.map((product) => (
-                    <article
-                      key={product.id}
-                      className="flex min-h-[82px] w-full items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white p-2.5 transition-colors hover:border-[#CFCFCF]"
-                    >
-                      <Link
-                        to="/products/$slug"
-                        params={{ slug: product.slug }}
-                        className="flex h-[62px] w-[62px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white"
-                        aria-label={`View ${product.name}`}
-                      >
-                        <img
-                          src={product.image_url ?? ""}
-                          alt={product.name}
-                          loading="lazy"
-                          className="h-full w-full object-contain p-1"
-                        />
-                      </Link>
+            )}
 
-                      <div className="min-w-0 flex-1">
-                        <Link
-                          to="/products/$slug"
-                          params={{ slug: product.slug }}
-                          className="line-clamp-2 text-[11px] font-medium leading-[1.45] text-[#252525] hover:text-black sm:text-[12px]"
-                        >
-                          {product.name}
-                        </Link>
-                        <p className="mt-1.5 text-[12px] font-semibold text-[#171717]">
-                          {formatUSD(Number(product.price))}
-                        </p>
-                      </div>
+            {/* ==============================================
+                COMPLIMENTARY ORDER BENEFITS
+            ============================================== */}
+
+            {items.length > 0 && (
+              <section
+                className="
+                  mt-3
+                  overflow-hidden
+                  rounded-[14px]
+                  border border-[#E7E9E8]
+                  bg-white
+                "
+                aria-label="Optional complimentary order benefits"
+              >
+                <div className="px-3.5 py-3.5">
+                  {/* SECTION HEADING */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#F3F6F4]">
+                        <Gift
+                          className="h-[17px] w-[17px] text-[#303A35]"
+                          strokeWidth={1.7}
+                        />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[10px] font-bold tracking-[0.1em] text-[#252A27]">
+                          COMPLIMENTARY EXTRAS
+                        </span>
+                        <span className="mt-1 block text-[10px] leading-[1.35] text-[#858B87]">
+                          A little something extra with your order
+                        </span>
+                      </span>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-[#E6EAE7] px-2 py-1 text-[8px] font-semibold tracking-[0.08em] text-[#68736C]">
+                      OPTIONAL
+                    </span>
+                  </div>
+
+                  {/* MYSTERY GIFT */}
+                  <button
+                    type="button"
+                    onClick={() => setIncludeMysteryGift((value) => !value)}
+                    aria-pressed={includeMysteryGift}
+                    className={`mt-3 flex w-full items-center gap-3 rounded-[11px] border px-3 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008F65] focus-visible:ring-offset-2 ${
+                      includeMysteryGift
+                        ? "border-[#9BCDB7] bg-[#F6FAF8]"
+                        : "border-[#ECEEEC] bg-white hover:border-[#D5DDD8]"
+                    }`}
+                  >
+                    <span className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[10px] ${includeMysteryGift ? "bg-[#E7F3EC]" : "bg-[#F5F6F5]"}`}>
+                      <Gift
+                        className="h-[19px] w-[19px] text-[#39443D]"
+                        strokeWidth={1.65}
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[12px] font-semibold leading-tight text-[#252A27]">
+                        Mystery Gift
+                      </span>
+                      <span className="mt-1 block text-[9px] leading-[1.4] text-[#858B87]">
+                        A surprise gift, selected for you
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 flex-col items-end gap-1.5">
+                      <span className="text-[12px] font-bold tracking-[-0.02em] text-[#00845D]">
+                        FREE
+                      </span>
+                      <span className={`flex h-[19px] w-[19px] items-center justify-center rounded-full border transition-colors ${includeMysteryGift ? "border-[#00845D] bg-[#00845D] text-white" : "border-[#D4D9D6] bg-white text-transparent"}`}>
+                        <Check className="h-3 w-3" strokeWidth={2.5} />
+                      </span>
+                    </span>
+                  </button>
+
+                  {/* DELIVERY PROTECTION */}
+                  <button
+                    type="button"
+                    onClick={() => setIncludeDeliveryProtection((value) => !value)}
+                    aria-pressed={includeDeliveryProtection}
+                    className={`mt-2 flex w-full items-center gap-3 rounded-[11px] border px-3 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#008F65] focus-visible:ring-offset-2 ${
+                      includeDeliveryProtection
+                        ? "border-[#9BCDB7] bg-[#F6FAF8]"
+                        : "border-[#ECEEEC] bg-white hover:border-[#D5DDD8]"
+                    }`}
+                  >
+                    <span className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[10px] ${includeDeliveryProtection ? "bg-[#E7F3EC]" : "bg-[#F5F6F5]"}`}>
+                      <ShieldCheck
+                        className="h-[19px] w-[19px] text-[#39443D]"
+                        strokeWidth={1.65}
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[12px] font-semibold leading-tight text-[#252A27]">
+                        Delivery Protection
+                      </span>
+                      <span className="mt-1 block text-[9px] leading-[1.4] text-[#858B87]">
+                        Extra peace of mind for your delivery
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 flex-col items-end gap-1.5">
+                      <span className="flex items-baseline gap-1.5">
+                        <span className="text-[9px] text-[#A0A5A2] line-through">
+                          $5.00
+                        </span>
+                        <span className="text-[12px] font-bold tracking-[-0.02em] text-[#00845D]">
+                          FREE
+                        </span>
+                      </span>
+                      <span className={`flex h-[19px] w-[19px] items-center justify-center rounded-full border transition-colors ${includeDeliveryProtection ? "border-[#00845D] bg-[#00845D] text-white" : "border-[#D4D9D6] bg-white text-transparent"}`}>
+                        <Check className="h-3 w-3" strokeWidth={2.5} />
+                      </span>
+                    </span>
+                  </button>
+
+                  <p className="mt-3 text-center text-[9px] leading-[1.4] text-[#929894]">
+                    Select either or both · No additional charge
+                  </p>
+                </div>
+              </section>
+            )}
+
+            {/* ==============================================
+                RECOMMENDATIONS
+            ============================================== */}
+
+            {items.length > 0 &&
+              (recommendationsLoading ||
+                recommendedProducts.length > 0) && (
+
+                <section
+                  className="
+                    mt-auto
+                    shrink-0
+                    pt-5
+                    w-full
+                    bg-white
+                  "
+                >
+
+                  {/* HEADER */}
+
+                  <div
+                    className="
+                      mb-2.5
+                      flex
+                      items-center
+                      justify-between
+                      gap-3
+                      border-b
+                      border-[#EEEEEE]
+                      pb-2.5
+                    "
+                  >
+
+                    <h3
+                      className="
+                        text-[13px]
+                        font-semibold
+                        tracking-[-0.015em]
+                        text-[#252525]
+                      "
+                    >
+                      You may also like
+                    </h3>
+
+                    {/* NAVIGATION */}
+
+                    <div className="flex shrink-0 items-center gap-2">
 
                       <button
                         type="button"
-                        onClick={() => {
-                          add(
-                            {
-                              id: product.id,
-                              slug: product.slug,
-                              name: product.name,
-                              price: Number(product.price),
-                              image: product.image_url,
-                            },
-                            1,
-                          );
-                        }}
-                        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-[#171717] px-3 text-[10px] font-semibold text-white transition hover:bg-[#333333] active:scale-[0.97] sm:px-3.5 sm:text-[11px]"
-                        aria-label={`Add ${product.name} to cart`}
+                        onClick={() =>
+                          scrollRecommendations("prev")
+                        }
+                        disabled={
+                          recommendationsLoading ||
+                          recommendedProducts.length <= 1
+                        }
+                        aria-label="Previous product"
+                        className="
+                          flex h-[32px] w-[32px]
+                          items-center justify-center
+                          rounded-full
+                          border border-[#DDDDDD]
+                          bg-white
+                          text-[#777777]
+                          transition
+                          hover:border-[#888888]
+                          hover:text-[#171717]
+                          disabled:opacity-35
+                        "
                       >
-                        <Plus className="h-3 w-3" strokeWidth={2.2} />
-                        Add
+                        <ChevronLeft
+                          className="h-4 w-4"
+                          strokeWidth={1.7}
+                        />
                       </button>
-                    </article>
-                  ))}
-                </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          scrollRecommendations("next")
+                        }
+                        disabled={
+                          recommendationsLoading ||
+                          recommendedProducts.length <= 1
+                        }
+                        aria-label="Next product"
+                        className="
+                          flex h-[32px] w-[32px]
+                          items-center justify-center
+                          rounded-full
+                          border border-[#DDDDDD]
+                          bg-white
+                          text-[#555555]
+                          transition
+                          hover:border-[#888888]
+                          hover:text-[#171717]
+                          disabled:opacity-35
+                        "
+                      >
+                        <ChevronRight
+                          className="h-4 w-4"
+                          strokeWidth={1.7}
+                        />
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                  {/* LOADING */}
+
+                  {recommendationsLoading &&
+                  recommendedProducts.length === 0 ? (
+
+                    <div className="flex animate-pulse items-center gap-3 py-2">
+
+                      <div className="h-[76px] w-[76px] shrink-0 rounded-lg bg-[#F3F3F3]" />
+
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 w-4/5 rounded bg-[#EEEEEE]" />
+                        <div className="h-3 w-2/3 rounded bg-[#EEEEEE]" />
+                        <div className="h-3 w-1/3 rounded bg-[#EEEEEE]" />
+                      </div>
+
+                    </div>
+
+                  ) : (
+
+                    /* HORIZONTAL SLIDER */
+
+                    <div
+                      ref={recommendationSliderRef}
+                      className="
+                        flex
+                        w-full
+                        snap-x
+                        snap-mandatory
+                        overflow-x-auto
+                        overscroll-x-contain
+                        scroll-smooth
+                      "
+                      style={{
+                        scrollbarWidth: "none",
+                        WebkitOverflowScrolling: "touch",
+                      }}
+                    >
+
+                      {recommendedProducts.map((product) => (
+
+                        <article
+                          key={product.id}
+                          className="
+                            flex
+                            w-full
+                            min-w-full
+                            shrink-0
+                            snap-start
+                            items-center
+                            gap-3
+                            py-1
+                          "
+                        >
+
+                          {/* IMAGE */}
+
+                          <Link
+                            to="/products/$slug"
+                            params={{ slug: product.slug }}
+                            aria-label={`View ${product.name}`}
+                            className="
+                              flex h-[76px] w-[76px]
+                              shrink-0
+                              items-center
+                              justify-center
+                              overflow-hidden
+                              bg-white
+                            "
+                          >
+                            {product.image_url && (
+                              <img
+                                src={product.image_url}
+                                alt={product.name}
+                                loading="lazy"
+                                className="
+                                  h-full w-full
+                                  object-contain
+                                "
+                              />
+                            )}
+                          </Link>
+
+                          {/* PRODUCT INFO */}
+
+                          <div className="min-w-0 flex-1">
+
+                            <Link
+                              to="/products/$slug"
+                              params={{ slug: product.slug }}
+                              className="
+                                line-clamp-3
+                                text-[12px]
+                                font-medium
+                                leading-[1.5]
+                                text-[#333333]
+                                transition
+                                hover:text-black
+                              "
+                            >
+                              {product.name}
+                            </Link>
+
+                            {/* PRICES */}
+
+                            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+
+                              <span className="text-[12px] font-semibold text-[#E31B23]">
+                                {formatUSD(product.price)} USD
+                              </span>
+
+                              {product.originalPrice !== null && (
+                                <span className="text-[11px] text-[#999999] line-through">
+                                  {formatUSD(
+                                    product.originalPrice,
+                                  )} USD
+                                </span>
+                              )}
+
+                            </div>
+
+                          </div>
+
+                        </article>
+
+                      ))}
+
+                    </div>
+
+                  )}
+
+                </section>
+
               )}
-            </section>
-          )}
+
+          </div>
+
         </div>
 
-        {/* SUMMARY / FOOTER */}
+        {/* ==================================================
+            FOOTER - FIXED BOTTOM
+        ================================================== */}
+
         {items.length > 0 && (
-          <div
+
+          <footer
             className="
+              relative
+              z-20
               shrink-0
               border-t
-              border-[#E5E5E5]
+              border-[#E7E7E7]
               bg-white
               px-4
-              pb-[calc(8px+env(safe-area-inset-bottom))]
-              pt-2.5
+              pt-2
+              pb-[calc(6px+env(safe-area-inset-bottom))]
               sm:px-6
-              sm:pb-[calc(20px+env(safe-area-inset-bottom))]
-              sm:pt-4
+              sm:pt-2.5
+              sm:pb-[calc(12px+env(safe-area-inset-bottom))]
             "
           >
+
             {/* SUBTOTAL */}
-            <div className="space-y-1.5 sm:space-y-2.5">
-              <div
-                className="
-                  flex
-                  items-center
-                  justify-between
-                  gap-4
-                  text-[12px]
-                "
-              >
+
+            <div className="space-y-1">
+
+              <div className="flex items-center justify-between text-[12px]">
+
                 <span className="text-[#777777]">
                   Subtotal
                 </span>
 
-                <span className="font-medium text-[#111111]">
+                <span className="font-medium text-[#171717]">
                   {formatUSD(subtotal)}
                 </span>
+
               </div>
 
               {/* SHIPPING */}
-              <div
-                className="
-                  flex
-                  items-center
-                  justify-between
-                  gap-4
-                  text-[12px]
-                "
-              >
+
+              <div className="flex items-center justify-between text-[12px]">
+
                 <span className="text-[#777777]">
                   Shipping
                 </span>
 
-                <span className="text-right font-medium text-[#00A86B]">
+                <span className="font-semibold text-[#00A86B]">
                   Free
                 </span>
+
               </div>
+
             </div>
 
             {/* DIVIDER */}
-            <div
-              className="
-                my-2
-                border-t
-                border-[#E5E5E5]
-              "
-            />
+
+            <div className="my-1.5 border-t border-[#E8E8E8]" />
 
             {/* TOTAL */}
-            <div
-              className="
-                flex
-                items-end
-                justify-between
-                gap-4
-              "
-            >
+
+            <div className="flex items-center justify-between gap-3">
+
               <div className="flex items-baseline gap-2">
-                <p
+
+                <span
                   className="
                     text-[18px]
                     font-semibold
                     tracking-[-0.035em]
-                    text-[#111111]
+                    text-[#171717]
                   "
                 >
                   Total
-                </p>
+                </span>
 
-                <span
-                  className="
-                    text-[11px]
-                    font-medium
-                    text-[#E11D48]
-                  "
-                >
+                <span className="text-[10px] font-medium text-[#E11D48]">
                   Final price
                 </span>
+
               </div>
 
-              <p
+              <span
                 className="
                   text-[19px]
                   font-semibold
                   tracking-[-0.035em]
-                  text-[#111111]
+                  text-[#171717]
                 "
               >
                 {formatUSD(subtotal)}
-              </p>
+              </span>
+
             </div>
 
-            {/* SECURE CHECKOUT */}
+            {/* CHECKOUT BUTTON */}
+
             <button
               type="button"
               onClick={onPayPal}
               className="
-                mt-2.5
+                mt-2
                 flex
-                h-[44px]
+                h-[42px]
                 w-full
                 items-center
                 justify-center
                 gap-2
-                rounded-[10px]
-                bg-[#0071E3]
+                rounded-[9px]
+                bg-[#0875E8]
                 px-5
-                text-[15px]
+                text-[14px]
                 font-semibold
                 text-white
                 transition
-                hover:bg-[#0077ED]
+                hover:bg-[#0068D7]
                 active:scale-[0.99]
               "
             >
+
               <ShieldCheck
-                className="h-[17px] w-[17px]"
+                className="h-[16px] w-[16px]"
                 strokeWidth={2}
               />
 
               <span>Secure checkout</span>
+
             </button>
 
-            {/* PAYPAL PAYMENT BRANDING */}
-            <div className="mt-1 flex flex-col items-center justify-center">
-              <div className="mb-0 flex items-center justify-center">
-                <span className="text-[10px] italic font-medium text-[#777777]">
+            {/* PAYPAL + PAYMENT METHODS */}
+
+            <div className="mt-1 flex flex-col items-center">
+
+              {/* PAYPAL BRANDING */}
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-[10px] italic text-[#888888]">
                   Powered by
                 </span>
-
-                <span className="ml-1 text-[14px] font-bold italic text-[#003087]">
+                <span className="text-[14px] font-bold italic text-[#003087]">
                   PayPal
                 </span>
               </div>
 
+              {/* PAYMENT METHODS */}
               <div
-                className="-mt-1.5 flex w-full items-center justify-center gap-1.5"
+                className="
+                  mt-1
+                  flex h-[36px] w-full
+                  items-center justify-center
+                  gap-2
+                "
                 aria-label="Accepted payment methods"
               >
-                <img
-                  src="/payment-methods/all%20card.png"
-                  alt="Accepted payment methods"
-                  className="-my-1 block h-auto w-[280px] max-w-[calc(100%-48px)] object-contain"
-                  loading="lazy"
-                />
-                <span className="shrink-0 whitespace-nowrap text-[12px] font-semibold text-[#6B7280]">
+                {/* Clip the built-in whitespace in the payment-logo image
+                    so the actual card marks appear larger on mobile. */}
+                <div className="flex h-[35px] w-[270px] max-w-[calc(100%-48px)] items-center justify-center overflow-hidden">
+                  <img
+                    src="/payment-methods/all%20card.png"
+                    alt="Accepted payment methods"
+                    loading="lazy"
+                    className="
+                      h-[34px]
+                      w-[285px]
+                      max-w-none
+                      scale-[1.8]
+                      object-contain
+                    "
+                  />
+                </div>
+
+                <span className="shrink-0 text-[11px] font-medium text-[#777777]">
                   +more
                 </span>
               </div>
+
             </div>
 
-            {/* WARRANTY */}
-            <div
+            
+{/* PREMIUM CUSTOMER ASSURANCE */}
+
+            <section
               className="
-                mt-1
-                flex
-                min-h-[38px]
-                items-center
-                justify-center
-                rounded-[10px]
-                border
-                border-[#E5E7EB]
+                mt-1.5
+                overflow-hidden
+                rounded-[11px]
+                border border-[#E6E7E9]
                 bg-white
-                px-3
-                py-2
               "
             >
-              <span className="flex items-center gap-2 text-[11px] font-medium text-[#3F4854]">
-                <span className="text-[13px] font-semibold text-[#00A86B]">✓</span>
-                <span>1-year warranty</span>
-              </span>
-            </div>
-          </div>
-        )}
-      </aside>
-    </div>
-  );
+              <div className="px-3 py-2.5">
+
+                {/* HEADER */}
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-[10px] font-bold tracking-[0.12em] text-[#252525]">
+                    CUSTOMER ASSURANCE
+                  </h3>
+
+                  <div className="flex items-center gap-1">
+                    <ShieldCheck
+                      className="h-[13px] w-[13px] text-[#008F65]"
+                      strokeWidth={2}
+                    />
+                    <span className="text-[9px] font-semibold tracking-[0.04em] text-[#777777]">
+                      INFIBETTER
+                    </span>
+                  </div>
+                </div>
+
+                {/* CUSTOMER BENEFITS */}
+                <div className="grid grid-cols-3 divide-x divide-[#EAEAEA]">
+
+                  {/* WARRANTY */}
+                  <div className="flex flex-col items-center px-1.5">
+                    <ShieldCheck
+                      className="h-[18px] w-[18px] text-[#333333]"
+                      strokeWidth={1.5}
+                    />
+                    <span className="mt-1.5 text-[11px] font-bold tracking-[-0.02em] text-[#252525]">
+                      01 YEAR
+                    </span>
+                    <span className="mt-0.5 text-center text-[9px] font-medium leading-tight text-[#858585]">
+                      Product Warranty
+                    </span>
+                  </div>
+
+                  {/* REPLACEMENT */}
+                  <div className="flex flex-col items-center px-1.5">
+                    <RefreshCcw
+                      className="h-[18px] w-[18px] text-[#333333]"
+                      strokeWidth={1.5}
+                    />
+                    <span className="mt-1.5 text-[11px] font-bold tracking-[-0.02em] text-[#252525]">
+                      30 DAYS
+                    </span>
+                    <span className="mt-0.5 text-center text-[9px] font-medium leading-tight text-[#858585]">
+                      Replacement
+                    </span>
+                  </div>
+
+                  {/* TRACKING */}
+                  <div className="flex flex-col items-center px-1.5">
+                    <PackageCheck
+                      className="h-[18px] w-[18px] text-[#333333]"
+                      strokeWidth={1.5}
+                    />
+                    <span className="mt-1.5 text-[11px] font-bold tracking-[-0.02em] text-[#252525]">
+                      FREE
+                    </span>
+                    <span className="mt-0.5 text-center text-[9px] font-medium leading-tight text-[#858585]">
+                      Order Tracking
+                    </span>
+                  </div>
+
+                </div>
+
+              </div>
+            </section>
+
+            </footer>
+
+)}
+
+</aside>
+</div>
+);
 }
