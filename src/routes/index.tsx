@@ -10,6 +10,7 @@ import FeaturedCaseSection from "@/components/home/FeaturedCaseSection";
 import Collections from "@/components/home/Collections";
 import HomeVideoSection from "@/components/home/HomeVideoSection";
 import PowerStationSection from "@/components/home/PowerStationSection";
+import MagGoSection from "@/components/home/MagGoSection";
 
 const homeData = queryOptions({
   queryKey: ["infibetter-home-data"],
@@ -138,6 +139,7 @@ function HomePage() {
       {/* Featured product banner: single image, full-width */}
       <FeaturedCaseSection />
       <PowerStationSection />
+      <MagGoSection />
 
 
       {/* Keep product collections aligned to the existing content width */}

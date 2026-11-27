@@ -1601,10 +1601,8 @@ function ProductPage() {
 
             <div className="relative w-full overflow-hidden rounded-[18px] bg-white lg:rounded-[26px]">
 
-              {/* Mobile keeps each source image's natural aspect ratio so tall
-                  product-detail artwork is fully visible without being cropped.
-                  Desktop retains the square gallery frame. */}
-              <div className="w-full lg:aspect-square">
+              {/* Mobile uses a consistent 3:4 gallery frame. Desktop retains the square gallery frame. */}
+              <div className="relative aspect-[3/4] w-full lg:aspect-square">
 
                 {activeImage ? (
 
@@ -1624,7 +1622,7 @@ function ProductPage() {
 
                       aria-label={`${product.name} video`}
 
-                      className="block h-auto w-full bg-white object-contain lg:h-full"
+                      className="absolute inset-0 block h-full w-full bg-white object-contain"
 
                     />
 
@@ -1636,7 +1634,7 @@ function ProductPage() {
 
                       alt={product.name}
 
-                      className="block h-auto w-full object-contain scale-100 p-0 transition-transform duration-300 lg:h-full"
+                      className="absolute inset-0 block h-full w-full object-contain object-center scale-100 p-0 transition-transform duration-300"
 
                     />
 
@@ -2708,13 +2706,13 @@ function ProductPage() {
                 {realLifeMobileImages.map((image: any, index: number) => (
                   <div
                     key={`mobile-real-life-${image.id ?? index}-${image.image_url}`}
-                    className="relative mx-3 block aspect-[4/5] w-[calc(100%-1.5rem)] min-w-0 overflow-hidden rounded-none bg-white shadow-none ring-0 md:hidden"
+                    className="relative mx-3 block aspect-[3/4] w-[calc(100%-1.5rem)] min-w-0 overflow-hidden rounded-none bg-white shadow-none ring-0 md:hidden"
                   >
                     <img
                       src={image.image_url}
                       alt={`${product.name} in real life ${index + 1}`}
                       data-lifestyle-scroll-zoom
-                      className="absolute inset-0 block h-full w-full max-w-none object-cover object-center"
+                      className="absolute inset-0 block h-full w-full max-w-none object-contain object-center"
                       loading="lazy"
                     />
                   </div>
