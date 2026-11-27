@@ -43,6 +43,7 @@ const FeaturedCaseSection: React.FC = () => {
             style={{
               fontFamily:
                 '"SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, sans-serif',
+              fontWeight: 500,
             }}
           >
             INFIBETTER · 105W GAN CHARGING
@@ -73,18 +74,17 @@ const FeaturedCaseSection: React.FC = () => {
             Power your devices. Keep your desk tidy.
           </p>
 
-          {/* Learn More Button */}
+          {/* Learn More Button - Apple style */}
           <a
             href={PRODUCT_URL}
-            className="mt-4 inline-flex min-h-10 min-w-[170px] items-center justify-center gap-3 rounded-full border border-white/70 bg-[#F5F8FF]/95 px-8 py-2.5 text-[10px] font-medium uppercase tracking-[0.06em] text-[#10233F] shadow-[0_6px_20px_rgba(0,0,0,0.2)] backdrop-blur-sm transition-transform active:scale-[0.98]"
+            className="mt-3 inline-flex min-h-8 items-center justify-center rounded-full bg-white px-4 py-2 text-xs font-medium text-[#0071E3] transition-colors duration-200 hover:bg-[#F5F5F7] active:scale-[0.98]"
             style={{
               fontFamily:
                 '"SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, sans-serif',
               fontWeight: 500,
             }}
           >
-            Learn More
-            <span className="text-sm">→</span>
+            Learn more
           </a>
         </div>
       </div>
@@ -135,7 +135,7 @@ const FeaturedCaseSection: React.FC = () => {
                 fontWeight: 500,
               }}
             >
-              Learn More <span className="text-base">→</span>
+              Learn More
             </a>
           </div>
         </div>

@@ -2648,7 +2648,7 @@ function ProductPage() {
 
             </div>
 
-            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos â†’</p>}
+            {productVideos.length > 1 && <p className="mt-2 text-center text-[11px] text-[#86868B] sm:hidden">Swipe to explore more videos</p>}
 
           </div>
 
@@ -2664,20 +2664,18 @@ function ProductPage() {
 
           <div className="mx-auto w-full max-w-[1234px]">
 
-            <div className="w-full px-0 pb-6 pt-2 md:px-0 md:pb-8">
+            <div className="w-full px-0 pb-6 pt-12 md:px-0 md:pb-8 md:pt-14">
 
-              <div className="mb-6 px-5 text-center">
+              <div className="mb-6 px-10 text-left">
 
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86868B]">
-
-                  LIFESTYLE
-
-                </p>
-
-                <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.03em] text-[#1D1D1F] sm:text-[28px]">
-
-                  See it in real life
-
+                <h2
+                  className="text-[24px] font-semibold leading-[1.15] tracking-[-0.035em] text-[#1D1D1F] sm:text-[28px]"
+                  style={{
+                    fontFamily:
+                      '"SF Pro Display", "SF Pro", -apple-system, BlinkMacSystemFont, sans-serif',
+                  }}
+                >
+                  Get the highlights.
                 </h2>
 
               </div>

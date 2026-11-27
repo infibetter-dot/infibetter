@@ -1287,52 +1287,7 @@ export function SiteHeader() {
             </button>
 
 
-            {/* ACCOUNT */}
-
-
-            <Link
-
-              to="/account"
-
-              aria-label="Account"
-
-              className="
-
-                hidden
-
-                h-8
-
-                w-8
-
-                items-center
-
-                justify-center
-
-                rounded-full
-
-                text-[#334155]
-
-                transition
-
-                hover:bg-[#F1F5F9]
-
-                hover:text-[#0877E8]
-
-                sm:flex
-
-              "
-
-            >
-
-              <User
-
-                size={16}
-
-                strokeWidth={1.7}
-
-              />
-
-            </Link>
+           
 
 
             {/* CART */}

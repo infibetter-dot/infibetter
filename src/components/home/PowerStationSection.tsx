@@ -1,7 +1,6 @@
 ﻿
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
 
 import powerStationImage from "@/assets/hero/power_station.png";
 
@@ -52,7 +51,7 @@ const PowerStationSection: React.FC = () => {
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
 
-        {/* HERO CONTENT - MOBILE */}
+        {/* HERO CONTENT */}
         <div className="absolute inset-x-0 top-[clamp(28px,6vh,40px)] z-10 flex justify-center px-4 sm:top-0 sm:px-6 sm:pt-8 lg:px-10 lg:pt-9">
           <div
             className={[
@@ -69,6 +68,7 @@ const PowerStationSection: React.FC = () => {
               style={{
                 fontFamily:
                   '"SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, sans-serif',
+                fontWeight: 500,
               }}
             >
               INFIBETTER · EVERYDAY WIRELESS CHARGING
@@ -80,6 +80,7 @@ const PowerStationSection: React.FC = () => {
               style={{
                 fontFamily:
                   '"SF Pro Display", "SF Pro", -apple-system, BlinkMacSystemFont, sans-serif',
+                fontWeight: 700,
               }}
             >
               A Smarter Way to Charge.
@@ -91,29 +92,25 @@ const PowerStationSection: React.FC = () => {
               style={{
                 fontFamily:
                   '"SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, sans-serif',
+                fontWeight: 400,
               }}
             >
               One stand. Three devices. Zero cable clutter.
             </p>
 
-            {/* CTA BUTTON */}
+            {/* CTA BUTTON - APPLE STYLE */}
             <div className="mt-3 flex justify-center sm:mt-5 lg:mt-6">
               <Link
                 to="/products/$slug"
                 params={{ slug: "infi-magcool-x7-25w" }}
-                className="group inline-flex min-h-9 items-center justify-center gap-2 rounded-full border border-white bg-white px-6 py-2 text-[8px] font-medium uppercase tracking-[0.07em] text-[#173452] transition-colors duration-200 hover:bg-[#F0F6FC] active:bg-[#E5EEF8] sm:min-h-11 sm:px-7 sm:text-[10px]"
+                className="inline-flex min-h-8 items-center justify-center rounded-full bg-white px-4 py-2 text-xs font-medium text-[#0071E3] transition-colors duration-200 hover:bg-[#F5F5F7] active:scale-[0.98]"
                 style={{
                   fontFamily:
                     '"SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, sans-serif',
+                  fontWeight: 500,
                 }}
               >
-                <span>LEARN MORE</span>
-
-                <ArrowRight
-                  size={13}
-                  strokeWidth={2}
-                  className="transition-transform duration-200 group-hover:translate-x-1"
-                />
+                Learn more
               </Link>
             </div>
           </div>
